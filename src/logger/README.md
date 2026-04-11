@@ -12,7 +12,7 @@
 - **🎯 Five Transports** - Console, file, database, HTTP, webhook - all
   auto-detected
 - **🔧 Zero Configuration** - Smart defaults with environment variable override
-- **🌍 Environment-First** - Auto-detects from `VOILA_LOGGER_*` variables
+- **🌍 Environment-First** - Auto-detects from `BLOOM_LOGGER_*` variables
 - **🎨 Visual Error Display** - Enhanced error formatting in development
 - **🤖 AI-Ready** - Optimized for LLM code generation
 
@@ -46,8 +46,8 @@ The logger **automatically detects** what you need:
 | -------------------------- | ------------------ | ----------------------- |
 | _Nothing_                  | Console + File     | Development logging     |
 | `DATABASE_URL`             | + Database         | Centralized storage     |
-| `VOILA_LOGGER_HTTP_URL`    | + External service | Professional monitoring |
-| `VOILA_LOGGER_WEBHOOK_URL` | + Slack alerts     | Real-time notifications |
+| `BLOOM_LOGGER_HTTP_URL`    | + External service | Professional monitoring |
+| `BLOOM_LOGGER_WEBHOOK_URL` | + Slack alerts     | Real-time notifications |
 
 **Set environment variables, get enterprise features. No code changes.**
 
@@ -208,11 +208,11 @@ async function createUser(userData) {
 
 ```bash
 # Auto-detected log level
-VOILA_LOGGER_LEVEL=debug|info|warn|error  # Default: auto-detected
-VOILA_LOGGER_SCOPE=minimal|full           # Default: minimal
+BLOOM_LOGGER_LEVEL=debug|info|warn|error  # Default: auto-detected
+BLOOM_LOGGER_SCOPE=minimal|full           # Default: minimal
 
 # Service identification
-VOILA_SERVICE_NAME=my-app                  # Default: package.json name
+BLOOM_SERVICE_NAME=my-app                  # Default: package.json name
 ```
 
 ### **Transport Control**
@@ -222,11 +222,11 @@ VOILA_SERVICE_NAME=my-app                  # Default: package.json name
 DATABASE_URL=postgres://user:pass@localhost/app
 
 # HTTP (Datadog, Elasticsearch, etc.)
-VOILA_LOGGER_HTTP_URL=https://logs.datadog.com/api/v1/logs
+BLOOM_LOGGER_HTTP_URL=https://logs.datadog.com/api/v1/logs
 
 # Webhook (Slack alerts)
-VOILA_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/xxx
-VOILA_LOGGER_WEBHOOK_LEVEL=error         # Default: error only
+BLOOM_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/xxx
+BLOOM_LOGGER_WEBHOOK_LEVEL=error         # Default: error only
 ```
 
 ## 🚀 Production Deployment
@@ -236,13 +236,13 @@ VOILA_LOGGER_WEBHOOK_LEVEL=error         # Default: error only
 ```bash
 # ✅ Production settings
 NODE_ENV=production
-VOILA_LOGGER_SCOPE=minimal
-VOILA_LOGGER_LEVEL=warn
+BLOOM_LOGGER_SCOPE=minimal
+BLOOM_LOGGER_LEVEL=warn
 
 # ✅ Required transports
 DATABASE_URL=postgres://prod-user:pass@prod-db/app
-VOILA_LOGGER_HTTP_URL=https://logs.datadog.com/api/v1/logs
-VOILA_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/xxx
+BLOOM_LOGGER_HTTP_URL=https://logs.datadog.com/api/v1/logs
+BLOOM_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/xxx
 ```
 
 ### **Security Validation**
@@ -360,13 +360,13 @@ class DatabaseService {
 ### **Datadog**
 
 ```bash
-VOILA_LOGGER_HTTP_URL=https://http-intake.logs.datadoghq.com/api/v1/input/YOUR_API_KEY
+BLOOM_LOGGER_HTTP_URL=https://http-intake.logs.datadoghq.com/api/v1/input/YOUR_API_KEY
 ```
 
 ### **Slack Alerts**
 
 ```bash
-VOILA_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+BLOOM_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
 ```
 
 ## 📊 Output Examples

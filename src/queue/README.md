@@ -88,8 +88,8 @@ The queue **automatically detects** what you need:
 ```bash
 # Minimal setup for production
 REDIS_URL=redis://localhost:6379
-VOILA_QUEUE_CONCURRENCY=10
-VOILA_QUEUE_WORKER=true
+BLOOM_QUEUE_CONCURRENCY=10
+BLOOM_QUEUE_WORKER=true
 ```
 
 ```typescript
@@ -148,42 +148,42 @@ REDIS_URL=redis://localhost:6379              # Enables Redis transport
 DATABASE_URL=postgres://user:pass@host/db     # Enables Database transport
 
 # Worker configuration
-VOILA_QUEUE_WORKER=true                       # Enable job processing
-VOILA_QUEUE_CONCURRENCY=10                    # Jobs processed simultaneously
+BLOOM_QUEUE_WORKER=true                       # Enable job processing
+BLOOM_QUEUE_CONCURRENCY=10                    # Jobs processed simultaneously
 ```
 
 ### Advanced Configuration
 
 ```bash
 # Job retry settings
-VOILA_QUEUE_MAX_ATTEMPTS=5                    # Max retry attempts (default: 3)
-VOILA_QUEUE_RETRY_DELAY=10000                 # Base retry delay in ms (default: 5000)
-VOILA_QUEUE_RETRY_BACKOFF=exponential         # fixed|exponential (default: exponential)
+BLOOM_QUEUE_MAX_ATTEMPTS=5                    # Max retry attempts (default: 3)
+BLOOM_QUEUE_RETRY_DELAY=10000                 # Base retry delay in ms (default: 5000)
+BLOOM_QUEUE_RETRY_BACKOFF=exponential         # fixed|exponential (default: exponential)
 
 # Job cleanup
-VOILA_QUEUE_REMOVE_COMPLETE=100               # Keep last 100 completed jobs
-VOILA_QUEUE_REMOVE_FAILED=500                 # Keep last 500 failed jobs
+BLOOM_QUEUE_REMOVE_COMPLETE=100               # Keep last 100 completed jobs
+BLOOM_QUEUE_REMOVE_FAILED=500                 # Keep last 500 failed jobs
 
 # Performance tuning
-VOILA_QUEUE_DEFAULT_PRIORITY=0                # Default job priority
-VOILA_QUEUE_SHUTDOWN_TIMEOUT=30000            # Graceful shutdown timeout
+BLOOM_QUEUE_DEFAULT_PRIORITY=0                # Default job priority
+BLOOM_QUEUE_SHUTDOWN_TIMEOUT=30000            # Graceful shutdown timeout
 ```
 
 ### Transport-Specific Settings
 
 ```bash
 # Memory Transport (Development)
-VOILA_QUEUE_MEMORY_MAX_JOBS=1000              # Max jobs in memory
-VOILA_QUEUE_MEMORY_CLEANUP=30000              # Cleanup interval
+BLOOM_QUEUE_MEMORY_MAX_JOBS=1000              # Max jobs in memory
+BLOOM_QUEUE_MEMORY_CLEANUP=30000              # Cleanup interval
 
 # Redis Transport (Production)
-VOILA_QUEUE_REDIS_PREFIX=myapp                # Redis key prefix
-VOILA_QUEUE_REDIS_RETRIES=3                   # Connection retries
+BLOOM_QUEUE_REDIS_PREFIX=myapp                # Redis key prefix
+BLOOM_QUEUE_REDIS_RETRIES=3                   # Connection retries
 
 # Database Transport (Simple Persistent)
-VOILA_QUEUE_DB_TABLE=queue_jobs               # Table name
-VOILA_QUEUE_DB_POLL=5000                      # Polling interval
-VOILA_QUEUE_DB_BATCH=50                       # Batch size
+BLOOM_QUEUE_DB_TABLE=queue_jobs               # Table name
+BLOOM_QUEUE_DB_POLL=5000                      # Polling interval
+BLOOM_QUEUE_DB_BATCH=50                       # Batch size
 ```
 
 ## 💡 Real Examples
@@ -660,16 +660,16 @@ await queue.add('process-payment', { orderId: 123, amount: 99.99 });
 ```bash
 # Single server with database queue
 DATABASE_URL=postgres://...
-VOILA_QUEUE_WORKER=true
+BLOOM_QUEUE_WORKER=true
 
 # Distributed with Redis
 REDIS_URL=redis://...
-VOILA_QUEUE_WORKER=true
-VOILA_QUEUE_CONCURRENCY=20
+BLOOM_QUEUE_WORKER=true
+BLOOM_QUEUE_CONCURRENCY=20
 
 # Separate worker processes
 REDIS_URL=redis://...
-VOILA_QUEUE_WORKER=true    # Only in worker processes
+BLOOM_QUEUE_WORKER=true    # Only in worker processes
 ```
 
 ## 🎯 When to Use What

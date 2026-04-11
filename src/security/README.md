@@ -14,7 +14,7 @@ protection, rate limiting, input sanitization, and AES-256-GCM encryption.
 - **⚡ One Function** - Just `securityClass.get()`, everything else is automatic
 - **🔒 Enterprise Security** - Production-grade CSRF, rate limiting, encryption
 - **🔧 Zero Configuration** - Smart defaults with environment variable override
-- **🌍 Environment-First** - Auto-detects from `VOILA_SECURITY_*` variables
+- **🌍 Environment-First** - Auto-detects from `BLOOM_SECURITY_*` variables
 - **🛡️ Complete Protection** - CSRF, XSS, rate limiting, data encryption
 - **🎯 Framework Ready** - Express middleware with proper headers
 - **🤖 AI-Ready** - Optimized for LLM code generation
@@ -31,8 +31,8 @@ npm install @bloomneo/appkit
 
 ```bash
 # Essential security configuration
-VOILA_SECURITY_CSRF_SECRET=your-csrf-secret-key-2024-minimum-32-chars
-VOILA_SECURITY_ENCRYPTION_KEY=64-char-hex-key-for-aes256-encryption
+BLOOM_SECURITY_CSRF_SECRET=your-csrf-secret-key-2024-minimum-32-chars
+BLOOM_SECURITY_ENCRYPTION_KEY=64-char-hex-key-for-aes256-encryption
 ```
 
 ### 2. Basic Setup
@@ -407,10 +407,10 @@ securityClass.isProduction();
 
 ```bash
 # CSRF Protection
-VOILA_SECURITY_CSRF_SECRET=your-csrf-secret-key-2024-minimum-32-chars
+BLOOM_SECURITY_CSRF_SECRET=your-csrf-secret-key-2024-minimum-32-chars
 
 # Data Encryption
-VOILA_SECURITY_ENCRYPTION_KEY=64-char-hex-key-for-aes256-encryption
+BLOOM_SECURITY_ENCRYPTION_KEY=64-char-hex-key-for-aes256-encryption
 
 # Generate encryption key:
 # node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -420,15 +420,15 @@ VOILA_SECURITY_ENCRYPTION_KEY=64-char-hex-key-for-aes256-encryption
 
 ```bash
 # Rate Limiting
-VOILA_SECURITY_RATE_LIMIT=100               # Requests per window
-VOILA_SECURITY_RATE_WINDOW=900000           # Window in ms (15 min)
+BLOOM_SECURITY_RATE_LIMIT=100               # Requests per window
+BLOOM_SECURITY_RATE_WINDOW=900000           # Window in ms (15 min)
 
 # Input Sanitization
-VOILA_SECURITY_MAX_INPUT_LENGTH=1000        # Max input length
-VOILA_SECURITY_ALLOWED_TAGS=p,b,i,a         # Allowed HTML tags
+BLOOM_SECURITY_MAX_INPUT_LENGTH=1000        # Max input length
+BLOOM_SECURITY_ALLOWED_TAGS=p,b,i,a         # Allowed HTML tags
 
 # CSRF Settings
-VOILA_SECURITY_CSRF_EXPIRY=60               # Token expiry minutes
+BLOOM_SECURITY_CSRF_EXPIRY=60               # Token expiry minutes
 ```
 
 ## 🔒 Security Features
@@ -467,12 +467,12 @@ VOILA_SECURITY_CSRF_EXPIRY=60               # Token expiry minutes
 
 ```bash
 # ✅ Required in production
-VOILA_SECURITY_CSRF_SECRET=64-char-random-string
-VOILA_SECURITY_ENCRYPTION_KEY=64-char-hex-string
+BLOOM_SECURITY_CSRF_SECRET=64-char-random-string
+BLOOM_SECURITY_ENCRYPTION_KEY=64-char-hex-string
 
 # ✅ Optional but recommended
-VOILA_SECURITY_RATE_LIMIT=100
-VOILA_SECURITY_RATE_WINDOW=900000
+BLOOM_SECURITY_RATE_LIMIT=100
+BLOOM_SECURITY_RATE_WINDOW=900000
 ```
 
 ### **Security Middleware Order**
@@ -513,7 +513,7 @@ function validateInput(req, res, next) {
 ```typescript
 // ✅ Generate production keys
 const encryptionKey = securityClass.generateKey();
-console.log(`VOILA_SECURITY_ENCRYPTION_KEY=${encryptionKey}`);
+console.log(`BLOOM_SECURITY_ENCRYPTION_KEY=${encryptionKey}`);
 
 // ✅ Validate configuration at startup
 securityClass.validateRequired({ csrf: true, encryption: true });

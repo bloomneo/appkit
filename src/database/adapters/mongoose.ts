@@ -482,8 +482,8 @@ export class MongooseAdapter {
    */
   private _findAppsDirectory(): string | null {
     // Check environment variable first
-    if (process.env.VOILA_APPS_DIR && fs.existsSync(process.env.VOILA_APPS_DIR)) {
-      return process.env.VOILA_APPS_DIR;
+    if (process.env.BLOOM_APPS_DIR && fs.existsSync(process.env.BLOOM_APPS_DIR)) {
+      return process.env.BLOOM_APPS_DIR;
     }
 
     // Search upwards from current directory

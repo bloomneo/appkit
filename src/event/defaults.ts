@@ -65,31 +65,31 @@ export function getSmartDefaults(): EventConfig {
     strategy,
     
     // Namespace with service identification
-    namespace: process.env.VOILA_EVENT_NAMESPACE || process.env.VOILA_SERVICE_NAME || 'default',
+    namespace: process.env.BLOOM_EVENT_NAMESPACE || process.env.BLOOM_SERVICE_NAME || 'default',
     
     // Redis configuration (only used when strategy is 'redis')
     redis: {
       url: process.env.REDIS_URL || 'redis://localhost:6379',
       password: process.env.REDIS_PASSWORD,
-      maxRetries: parseInt(process.env.VOILA_EVENT_REDIS_RETRIES || '3'),
-      retryDelay: parseInt(process.env.VOILA_EVENT_REDIS_RETRY_DELAY || '1000'),
-      connectTimeout: parseInt(process.env.VOILA_EVENT_REDIS_CONNECT_TIMEOUT || '10000'),
-      commandTimeout: parseInt(process.env.VOILA_EVENT_REDIS_COMMAND_TIMEOUT || '5000'),
-      keyPrefix: process.env.VOILA_EVENT_REDIS_PREFIX || 'events',
+      maxRetries: parseInt(process.env.BLOOM_EVENT_REDIS_RETRIES || '3'),
+      retryDelay: parseInt(process.env.BLOOM_EVENT_REDIS_RETRY_DELAY || '1000'),
+      connectTimeout: parseInt(process.env.BLOOM_EVENT_REDIS_CONNECT_TIMEOUT || '10000'),
+      commandTimeout: parseInt(process.env.BLOOM_EVENT_REDIS_COMMAND_TIMEOUT || '5000'),
+      keyPrefix: process.env.BLOOM_EVENT_REDIS_PREFIX || 'events',
     },
     
     // Memory configuration (only used when strategy is 'memory')
     memory: {
-      maxListeners: parseInt(process.env.VOILA_EVENT_MEMORY_MAX_LISTENERS || '1000'),
-      maxHistory: parseInt(process.env.VOILA_EVENT_MEMORY_HISTORY || '100'),
-      checkInterval: parseInt(process.env.VOILA_EVENT_MEMORY_CHECK_INTERVAL || '30000'), // 30 seconds
-      enableGC: process.env.VOILA_EVENT_MEMORY_GC !== 'false',
+      maxListeners: parseInt(process.env.BLOOM_EVENT_MEMORY_MAX_LISTENERS || '1000'),
+      maxHistory: parseInt(process.env.BLOOM_EVENT_MEMORY_HISTORY || '100'),
+      checkInterval: parseInt(process.env.BLOOM_EVENT_MEMORY_CHECK_INTERVAL || '30000'), // 30 seconds
+      enableGC: process.env.BLOOM_EVENT_MEMORY_GC !== 'false',
     },
     
     // Event history configuration
     history: {
-      enabled: process.env.VOILA_EVENT_HISTORY_ENABLED !== 'false',
-      maxSize: parseInt(process.env.VOILA_EVENT_HISTORY_SIZE || (isProduction ? '50' : '100')),
+      enabled: process.env.BLOOM_EVENT_HISTORY_ENABLED !== 'false',
+      maxSize: parseInt(process.env.BLOOM_EVENT_HISTORY_SIZE || (isProduction ? '50' : '100')),
     },
     
     // Environment information
@@ -110,7 +110,7 @@ export function getSmartDefaults(): EventConfig {
  */
 function detectEventStrategy(): 'redis' | 'memory' {
   // Explicit override wins (for testing/debugging)
-  const explicit = process.env.VOILA_EVENT_STRATEGY?.toLowerCase();
+  const explicit = process.env.BLOOM_EVENT_STRATEGY?.toLowerCase();
   if (explicit === 'redis' || explicit === 'memory') {
     return explicit;
   }
@@ -140,10 +140,10 @@ function detectEventStrategy(): 'redis' | 'memory' {
  */
 function validateEnvironment(): void {
   // Validate event strategy if explicitly set
-  const strategy = process.env.VOILA_EVENT_STRATEGY;
+  const strategy = process.env.BLOOM_EVENT_STRATEGY;
   if (strategy && !['redis', 'memory'].includes(strategy.toLowerCase())) {
     throw new Error(
-      `Invalid VOILA_EVENT_STRATEGY: "${strategy}". Must be "redis" or "memory"`
+      `Invalid BLOOM_EVENT_STRATEGY: "${strategy}". Must be "redis" or "memory"`
     );
   }
 
@@ -154,28 +154,28 @@ function validateEnvironment(): void {
   }
 
   // Validate namespace
-  const namespace = process.env.VOILA_EVENT_NAMESPACE;
+  const namespace = process.env.BLOOM_EVENT_NAMESPACE;
   if (namespace && !/^[a-zA-Z0-9_-]+$/.test(namespace)) {
     throw new Error(
-      `Invalid VOILA_EVENT_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens`
+      `Invalid BLOOM_EVENT_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens`
     );
   }
 
   // Validate numeric values
-  validateNumericEnv('VOILA_EVENT_REDIS_RETRIES', 0, 10);
-  validateNumericEnv('VOILA_EVENT_REDIS_RETRY_DELAY', 100, 10000);
-  validateNumericEnv('VOILA_EVENT_REDIS_CONNECT_TIMEOUT', 1000, 60000);
-  validateNumericEnv('VOILA_EVENT_REDIS_COMMAND_TIMEOUT', 1000, 30000);
-  validateNumericEnv('VOILA_EVENT_MEMORY_MAX_LISTENERS', 10, 10000);
-  validateNumericEnv('VOILA_EVENT_MEMORY_HISTORY', 10, 1000);
-  validateNumericEnv('VOILA_EVENT_MEMORY_CHECK_INTERVAL', 5000, 300000); // 5s to 5min
-  validateNumericEnv('VOILA_EVENT_HISTORY_SIZE', 1, 1000);
+  validateNumericEnv('BLOOM_EVENT_REDIS_RETRIES', 0, 10);
+  validateNumericEnv('BLOOM_EVENT_REDIS_RETRY_DELAY', 100, 10000);
+  validateNumericEnv('BLOOM_EVENT_REDIS_CONNECT_TIMEOUT', 1000, 60000);
+  validateNumericEnv('BLOOM_EVENT_REDIS_COMMAND_TIMEOUT', 1000, 30000);
+  validateNumericEnv('BLOOM_EVENT_MEMORY_MAX_LISTENERS', 10, 10000);
+  validateNumericEnv('BLOOM_EVENT_MEMORY_HISTORY', 10, 1000);
+  validateNumericEnv('BLOOM_EVENT_MEMORY_CHECK_INTERVAL', 5000, 300000); // 5s to 5min
+  validateNumericEnv('BLOOM_EVENT_HISTORY_SIZE', 1, 1000);
 
   // Validate Redis key prefix
-  const keyPrefix = process.env.VOILA_EVENT_REDIS_PREFIX;
+  const keyPrefix = process.env.BLOOM_EVENT_REDIS_PREFIX;
   if (keyPrefix && !/^[a-zA-Z0-9_-]+$/.test(keyPrefix)) {
     throw new Error(
-      `Invalid VOILA_EVENT_REDIS_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens`
+      `Invalid BLOOM_EVENT_REDIS_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens`
     );
   }
 
@@ -242,11 +242,11 @@ function validateProductionConfig(): void {
   }
 
   // Validate namespace is set in production
-  const namespace = process.env.VOILA_EVENT_NAMESPACE;
+  const namespace = process.env.BLOOM_EVENT_NAMESPACE;
   if (!namespace) {
     console.warn(
       '[Bloomneo AppKit] No event namespace configured in production. ' +
-      'Set VOILA_EVENT_NAMESPACE for proper event isolation.'
+      'Set BLOOM_EVENT_NAMESPACE for proper event isolation.'
     );
   }
 }
@@ -339,7 +339,7 @@ export function validateStartupConfiguration(): {
     // Namespace validation
     if (!config.namespace || config.namespace === 'default') {
       if (config.environment.isProduction) {
-        warnings.push('Using default namespace in production - consider setting VOILA_EVENT_NAMESPACE');
+        warnings.push('Using default namespace in production - consider setting BLOOM_EVENT_NAMESPACE');
       }
     }
     

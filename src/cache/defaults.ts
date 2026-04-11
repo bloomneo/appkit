@@ -60,27 +60,27 @@ export function getSmartDefaults(): CacheConfig {
     strategy,
     
     // Key management with service identification
-    keyPrefix: process.env.VOILA_CACHE_PREFIX || process.env.VOILA_SERVICE_NAME || 'app',
-    namespace: process.env.VOILA_CACHE_NAMESPACE || 'default',
+    keyPrefix: process.env.BLOOM_CACHE_PREFIX || process.env.BLOOM_SERVICE_NAME || 'app',
+    namespace: process.env.BLOOM_CACHE_NAMESPACE || 'default',
     
     // TTL configuration with environment awareness
-    defaultTTL: parseInt(process.env.VOILA_CACHE_TTL || (isProduction ? '3600' : '300')), // 1hr prod, 5min dev
+    defaultTTL: parseInt(process.env.BLOOM_CACHE_TTL || (isProduction ? '3600' : '300')), // 1hr prod, 5min dev
     
     // Redis configuration (only used when strategy is 'redis')
     redis: {
       url: process.env.REDIS_URL || 'redis://localhost:6379',
       password: process.env.REDIS_PASSWORD,
-      maxRetries: parseInt(process.env.VOILA_CACHE_REDIS_RETRIES || '3'),
-      retryDelay: parseInt(process.env.VOILA_CACHE_REDIS_RETRY_DELAY || '1000'),
-      connectTimeout: parseInt(process.env.VOILA_CACHE_REDIS_CONNECT_TIMEOUT || '10000'),
-      commandTimeout: parseInt(process.env.VOILA_CACHE_REDIS_COMMAND_TIMEOUT || '5000'),
+      maxRetries: parseInt(process.env.BLOOM_CACHE_REDIS_RETRIES || '3'),
+      retryDelay: parseInt(process.env.BLOOM_CACHE_REDIS_RETRY_DELAY || '1000'),
+      connectTimeout: parseInt(process.env.BLOOM_CACHE_REDIS_CONNECT_TIMEOUT || '10000'),
+      commandTimeout: parseInt(process.env.BLOOM_CACHE_REDIS_COMMAND_TIMEOUT || '5000'),
     },
     
     // Memory configuration (only used when strategy is 'memory')
     memory: {
-      maxItems: parseInt(process.env.VOILA_CACHE_MEMORY_MAX_ITEMS || '10000'),
-      maxSizeBytes: parseInt(process.env.VOILA_CACHE_MEMORY_MAX_SIZE || '100000000'), // 100MB
-      checkInterval: parseInt(process.env.VOILA_CACHE_MEMORY_CHECK_INTERVAL || '60000'), // 1 minute
+      maxItems: parseInt(process.env.BLOOM_CACHE_MEMORY_MAX_ITEMS || '10000'),
+      maxSizeBytes: parseInt(process.env.BLOOM_CACHE_MEMORY_MAX_SIZE || '100000000'), // 100MB
+      checkInterval: parseInt(process.env.BLOOM_CACHE_MEMORY_CHECK_INTERVAL || '60000'), // 1 minute
     },
     
     // Environment information
@@ -101,7 +101,7 @@ export function getSmartDefaults(): CacheConfig {
  */
 function detectCacheStrategy(): 'redis' | 'memory' {
   // Explicit override wins (for testing/debugging)
-  const explicit = process.env.VOILA_CACHE_STRATEGY?.toLowerCase();
+  const explicit = process.env.BLOOM_CACHE_STRATEGY?.toLowerCase();
   if (explicit === 'redis' || explicit === 'memory') {
     return explicit;
   }
@@ -136,36 +136,36 @@ function validateEnvironment(): void {
   }
 
   // Validate cache strategy if explicitly set
-  const strategy = process.env.VOILA_CACHE_STRATEGY;
+  const strategy = process.env.BLOOM_CACHE_STRATEGY;
   if (strategy && !['redis', 'memory'].includes(strategy.toLowerCase())) {
     throw new Error(
-      `Invalid VOILA_CACHE_STRATEGY: "${strategy}". Must be "redis" or "memory"`
+      `Invalid BLOOM_CACHE_STRATEGY: "${strategy}". Must be "redis" or "memory"`
     );
   }
 
   // Validate numeric values
-  validateNumericEnv('VOILA_CACHE_TTL', 1, 86400 * 7); // 1 second to 1 week
-  validateNumericEnv('VOILA_CACHE_REDIS_RETRIES', 0, 10);
-  validateNumericEnv('VOILA_CACHE_REDIS_RETRY_DELAY', 100, 10000);
-  validateNumericEnv('VOILA_CACHE_REDIS_CONNECT_TIMEOUT', 1000, 60000);
-  validateNumericEnv('VOILA_CACHE_REDIS_COMMAND_TIMEOUT', 1000, 30000);
-  validateNumericEnv('VOILA_CACHE_MEMORY_MAX_ITEMS', 100, 1000000);
-  validateNumericEnv('VOILA_CACHE_MEMORY_MAX_SIZE', 1000000, 1000000000); // 1MB to 1GB
-  validateNumericEnv('VOILA_CACHE_MEMORY_CHECK_INTERVAL', 10000, 300000); // 10s to 5min
+  validateNumericEnv('BLOOM_CACHE_TTL', 1, 86400 * 7); // 1 second to 1 week
+  validateNumericEnv('BLOOM_CACHE_REDIS_RETRIES', 0, 10);
+  validateNumericEnv('BLOOM_CACHE_REDIS_RETRY_DELAY', 100, 10000);
+  validateNumericEnv('BLOOM_CACHE_REDIS_CONNECT_TIMEOUT', 1000, 60000);
+  validateNumericEnv('BLOOM_CACHE_REDIS_COMMAND_TIMEOUT', 1000, 30000);
+  validateNumericEnv('BLOOM_CACHE_MEMORY_MAX_ITEMS', 100, 1000000);
+  validateNumericEnv('BLOOM_CACHE_MEMORY_MAX_SIZE', 1000000, 1000000000); // 1MB to 1GB
+  validateNumericEnv('BLOOM_CACHE_MEMORY_CHECK_INTERVAL', 10000, 300000); // 10s to 5min
 
   // Validate key prefix
-  const keyPrefix = process.env.VOILA_CACHE_PREFIX;
+  const keyPrefix = process.env.BLOOM_CACHE_PREFIX;
   if (keyPrefix && !/^[a-zA-Z0-9_-]+$/.test(keyPrefix)) {
     throw new Error(
-      `Invalid VOILA_CACHE_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens`
+      `Invalid BLOOM_CACHE_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens`
     );
   }
 
   // Validate namespace
-  const namespace = process.env.VOILA_CACHE_NAMESPACE;
+  const namespace = process.env.BLOOM_CACHE_NAMESPACE;
   if (namespace && !/^[a-zA-Z0-9_-]+$/.test(namespace)) {
     throw new Error(
-      `Invalid VOILA_CACHE_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens`
+      `Invalid BLOOM_CACHE_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens`
     );
   }
 

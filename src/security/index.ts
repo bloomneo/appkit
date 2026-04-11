@@ -88,7 +88,7 @@ function isProduction(): boolean {
  * Generate a secure encryption key for production use
  * @llm-rule WHEN: Setting up encryption for the first time or rotating keys
  * @llm-rule AVOID: Using weak or predictable keys - always use this for key generation
- * @llm-rule NOTE: Returns 64-character hex string suitable for VOILA_SECURITY_ENCRYPTION_KEY
+ * @llm-rule NOTE: Returns 64-character hex string suitable for BLOOM_SECURITY_ENCRYPTION_KEY
  */
 function generateKey(): string {
   const security = get();
@@ -141,11 +141,11 @@ function validateRequired(checks: {
   const missing: string[] = [];
 
   if (checks.csrf && !config.csrf.secret) {
-    missing.push('VOILA_SECURITY_CSRF_SECRET or VOILA_AUTH_SECRET');
+    missing.push('BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET');
   }
 
   if (checks.encryption && !config.encryption.key) {
-    missing.push('VOILA_SECURITY_ENCRYPTION_KEY');
+    missing.push('BLOOM_SECURITY_ENCRYPTION_KEY');
   }
 
   if (missing.length > 0) {

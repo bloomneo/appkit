@@ -12,11 +12,16 @@ gh-pages
 coverage/
 *.test.js
 
-# Documentation source
-src/**/docs/
-src/**/examples/
-src/**/tests/
-src/**/*.md
+# Source code (consumers use dist/, but per-module READMEs are included separately
+# via package.json `files` because they ARE the canonical agent reference for each module)
+src/**/*.ts
+src/**/*.tsx
+src/**/*.js
+src/**/*.test.ts
+src/**/*.spec.ts
+
+# Old docs/ folder (replaced by AGENTS.md + llms.txt at the package root)
+docs/
 
 # Editor files
 .vscode/

@@ -6,7 +6,7 @@
  * - DATABASE_URL: Database connection string
  *
  * Optional Environment Variables:
- * - VOILA_DB_TENANT: Enable tenant mode (auto/true/false)
+ * - BLOOM_DB_TENANT: Enable tenant mode (auto/true/false)
  * - ORG_{NAME}: Organization-specific database URLs
  *
  * @module @bloomneo/appkit/database

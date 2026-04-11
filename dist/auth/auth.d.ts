@@ -129,14 +129,31 @@ export declare class AuthenticationClass {
      */
     hasRole(userRoleLevel: string, requiredRoleLevel: string): boolean;
     /**
-     * Checks if user has specific permission with automatic action inheritance
+     * Checks if user has specific permission with automatic action inheritance.
+     *
+     * Permission resolution rule (REPLACEMENT, not additive):
+     *   - If `user.permissions` is set (an array, even empty), it is the COMPLETE
+     *     permission set for the user. Role defaults are NOT consulted.
+     *   - If `user.permissions` is undefined / null, the role.level's default
+     *     permissions from the configured RolePermissionConfig are used.
+     *
+     * This matches AWS IAM, Casbin, OPA, Auth0 RBAC, and every mainstream
+     * permission system: explicit permissions are the truth, defaults are the
+     * fallback. To downgrade a user below their role's defaults, pass an
+     * explicit `permissions: [...]` array (even an empty `[]` is valid — it
+     * means "no permissions despite the role").
+     *
+     * Action inheritance rule (within a scope):
+     *   - `manage:<scope>` includes view, create, edit, delete for that scope
+     *   - No upward inheritance: `edit:tenant` does NOT grant `manage:tenant`
+     *
      * @llm-rule WHEN: Checking fine-grained permissions for specific actions
-     * @llm-rule AVOID: Hardcoding permission checks - this handles action inheritance
+     * @llm-rule AVOID: Hardcoding permission checks - this handles inheritance
      * @llm-rule NOTE: 'manage:scope' includes ALL other actions for that scope
-     * @llm-rule NOTE: PERMISSION INHERITANCE EXAMPLES:
+     * @llm-rule NOTE: Explicit user.permissions REPLACES role defaults (not additive)
      * @llm-rule NOTE: If user has 'manage:tenant' → can('edit:tenant') returns TRUE
-     * @llm-rule NOTE: If user has 'manage:tenant' → can('view:tenant') returns TRUE
      * @llm-rule NOTE: If user has 'edit:tenant' → can('manage:tenant') returns FALSE
+     * @llm-rule NOTE: To downgrade a user, pass permissions: [] (empty array)
      * @llm-rule NOTE: Actions hierarchy: manage > delete > edit > create > view
      */
     can(user: JwtPayload, permission: string): boolean;

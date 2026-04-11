@@ -31,7 +31,7 @@ export interface ErrorConfig {
     environment: EnvironmentConfig;
 }
 /**
- * Gets smart defaults using VOILA_ERROR_* environment variables
+ * Gets smart defaults using BLOOM_ERROR_* environment variables
  * @llm-rule WHEN: App startup to get production-ready error configuration
  * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
  * @llm-rule NOTE: Automatically configures dev vs production error behavior

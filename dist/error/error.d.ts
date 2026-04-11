@@ -83,6 +83,18 @@ export declare class ErrorClass {
      */
     serverError(message?: string): AppError;
     /**
+     * Creates a 429 Too Many Requests error
+     * @llm-rule WHEN: Client has exceeded rate limits
+     * @llm-rule NOTE: PATTERN: if (rateExceeded) throw error.tooMany('Slow down');
+     */
+    tooMany(message?: string): AppError;
+    /**
+     * Creates a 500 Internal Server Error (alias for serverError — prefer serverError())
+     * @llm-rule WHEN: Unexpected internal failures where serverError() feels too generic
+     * @llm-rule NOTE: Identical to serverError() — use either, not both in the same codebase
+     */
+    internal(message?: string): AppError;
+    /**
      * Creates a custom error with any status code
      * @llm-rule WHEN: Need custom HTTP status codes not covered by semantic methods
      * @llm-rule AVOID: Using for standard HTTP codes - use semantic methods instead

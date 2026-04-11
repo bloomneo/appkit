@@ -51,7 +51,7 @@ export interface UtilConfig {
     environment: EnvironmentConfig;
 }
 /**
- * Gets smart defaults using VOILA_UTIL_* environment variables
+ * Gets smart defaults using BLOOM_UTIL_* environment variables
  * @llm-rule WHEN: App startup to get production-ready utility configuration
  * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
  * @llm-rule NOTE: Called once at startup, cached globally for performance

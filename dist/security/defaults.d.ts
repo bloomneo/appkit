@@ -48,7 +48,7 @@ export interface SecurityError extends Error {
     [key: string]: any;
 }
 /**
- * Gets smart defaults using VOILA_SECURITY_* environment variables
+ * Gets smart defaults using BLOOM_SECURITY_* environment variables
  * @llm-rule WHEN: App startup to get production-ready security configuration
  * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
  * @llm-rule NOTE: Automatically configures CSRF, rate limiting, and encryption from environment

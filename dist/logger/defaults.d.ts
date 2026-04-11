@@ -52,7 +52,7 @@ export interface LoggingConfig {
     };
 }
 /**
- * Get smart defaults using direct VOILA_LOGGER_* environment access
+ * Get smart defaults using direct BLOOM_LOGGER_* environment access
  * @llm-rule WHEN: App startup to get production-ready logging configuration
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
  * @llm-rule NOTE: Called once at startup, cached globally for performance

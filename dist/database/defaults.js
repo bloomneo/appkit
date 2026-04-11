@@ -6,7 +6,7 @@
  * - DATABASE_URL: Database connection string
  *
  * Optional Environment Variables:
- * - VOILA_DB_TENANT: Enable tenant mode (auto/true/false)
+ * - BLOOM_DB_TENANT: Enable tenant mode (auto/true/false)
  * - ORG_{NAME}: Organization-specific database URLs
  *
  * @module @bloomneo/appkit/database
@@ -113,14 +113,14 @@ export function validateEnvironment() {
     else {
         config.hasDatabase = true;
     }
-    const tenantMode = process.env.VOILA_DB_TENANT;
+    const tenantMode = process.env.BLOOM_DB_TENANT;
     if (tenantMode) {
         const mode = tenantMode.toLowerCase();
         if (['true', 'auto'].includes(mode)) {
             config.hasTenants = true;
         }
         else if (mode !== 'false') {
-            warnings.push(`Unknown VOILA_DB_TENANT value: ${tenantMode}. Use 'auto', 'true', or 'false'`);
+            warnings.push(`Unknown BLOOM_DB_TENANT value: ${tenantMode}. Use 'auto', 'true', or 'false'`);
         }
     }
     const orgVars = getOrgEnvironmentVars();
@@ -166,7 +166,7 @@ export function getSmartDefaults() {
         },
         tenant: {
             enabled: validation.hasTenants,
-            mode: process.env.VOILA_DB_TENANT?.toLowerCase() || 'false',
+            mode: process.env.BLOOM_DB_TENANT?.toLowerCase() || 'false',
             fieldName: 'tenant_id',
         },
         org: {

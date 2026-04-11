@@ -8,6 +8,32 @@
  * @llm-rule NOTE: Auto-detects Redis vs Memory from environment, namespace passed to get() function
  */
 import type { CacheConfig } from './defaults.js';
+/**
+ * Thrown by all cache operations when the underlying strategy fails.
+ * Catch this in your route/service and decide whether to fall back to the
+ * database, re-throw, or log — the cache module never makes that call for you.
+ *
+ * @example
+ * import { CacheError } from '@bloomneo/appkit/cache';
+ *
+ * try {
+ *   const user = await cache.get<User>('user:123');
+ * } catch (err) {
+ *   if (err instanceof CacheError) {
+ *     logger.warn('Cache unavailable, falling back to DB', { code: err.code });
+ *     return await db.user.findUnique({ where: { id: 123 } });
+ *   }
+ *   throw err; // re-throw unrelated errors
+ * }
+ */
+export declare class CacheError extends Error {
+    /** Machine-readable error code, e.g. 'CACHE_GET_FAILED', 'CACHE_CONNECT_FAILED' */
+    readonly code: string;
+    constructor(message: string, options?: {
+        code?: string;
+        cause?: unknown;
+    });
+}
 export interface CacheStrategy {
     connect(): Promise<void>;
     disconnect(): Promise<void>;
@@ -52,14 +78,14 @@ export declare class CacheClass {
      * @llm-rule AVOID: Manual key management - automatic prefixing handles namespacing
      * @llm-rule NOTE: Returns null if key not found or expired
      */
-    get(key: string): Promise<any>;
+    get<T = unknown>(key: string): Promise<T | null>;
     /**
      * Sets a value in cache with TTL and automatic key prefixing
      * @llm-rule WHEN: Storing data in cache with optional expiration
      * @llm-rule AVOID: Storing large objects without TTL - can cause memory issues
      * @llm-rule NOTE: Uses default TTL from config if not specified
      */
-    set(key: string, value: any, ttl?: number): Promise<boolean>;
+    set<T = unknown>(key: string, value: T, ttl?: number): Promise<boolean>;
     /**
      * Deletes a key from cache
      * @llm-rule WHEN: Removing specific cached data or cache invalidation
@@ -79,7 +105,7 @@ export declare class CacheClass {
      * @llm-rule AVOID: Manual get/set logic - this handles race conditions properly
      * @llm-rule NOTE: Factory function only called on cache miss
      */
-    getOrSet(key: string, factory: () => Promise<any>, ttl?: number): Promise<any>;
+    getOrSet<T = unknown>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T>;
     /**
      * Gets current cache strategy name for debugging
      * @llm-rule WHEN: Debugging or health checks to see which strategy is active
@@ -110,9 +136,6 @@ export declare class CacheClass {
      * Validates cache key format and length
      */
     private validateKey;
-    /**
-     * Validates cache value
-     */
     private validateValue;
 }
 //# sourceMappingURL=cache.d.ts.map

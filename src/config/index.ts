@@ -9,14 +9,14 @@
  * @llm-rule NOTE: Common pattern - configClass.get() → config.get('path', default) → use value
  * 
  * CRITICAL UNDERSCORE CONVENTION:
- * - VOILA_* and FLUX_* = Framework internal variables (NOT parsed as app config)
+ * - BLOOM_* and FLUX_* = Framework internal variables (NOT parsed as app config)
  * - Everything else = Your app config (parsed into config object)
  * 
  * Examples:
- * ✅ VOILA_AUTH_SECRET=secret           → Framework internal (not in config object)
+ * ✅ BLOOM_AUTH_SECRET=secret           → Framework internal (not in config object)
  * ✅ DATABASE_HOST=localhost            → config.get('database.host')
  * ✅ REDIS_URL=redis://local            → config.get('redis.url')
- * ❌ VOILA_DATABASE_HOST=localhost      → Framework var (won't be parsed as app config)
+ * ❌ BLOOM_DATABASE_HOST=localhost      → Framework var (won't be parsed as app config)
  */
 
 import { ConfigClass } from './config.js';
@@ -113,7 +113,7 @@ function getEnvVars(): Record<string, string> {
   
   for (const [key, value] of Object.entries(process.env)) {
     // Skip framework variables - only show app config
-    if (!key.startsWith('VOILA_') && 
+    if (!key.startsWith('BLOOM_') && 
         !key.startsWith('FLUX_') && 
         !key.startsWith('NODE_') && 
         !key.startsWith('npm_') &&

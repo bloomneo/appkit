@@ -323,21 +323,21 @@ try {
 
 ```bash
 # ✅ SECURE - Specific file types only
-VOILA_STORAGE_ALLOWED_TYPES=image/jpeg,image/png,application/pdf,text/plain
+BLOOM_STORAGE_ALLOWED_TYPES=image/jpeg,image/png,application/pdf,text/plain
 
 # ⚠️ DEVELOPMENT ONLY - All file types
-VOILA_STORAGE_ALLOWED_TYPES=*
+BLOOM_STORAGE_ALLOWED_TYPES=*
 
 # ✅ SECURE - File size limits
-VOILA_STORAGE_MAX_SIZE=52428800  # 50MB limit
+BLOOM_STORAGE_MAX_SIZE=52428800  # 50MB limit
 ```
 
 ### **Production Checklist**
 
 - ✅ **Cloud Storage**: Set `AWS_S3_BUCKET` or `CLOUDFLARE_R2_BUCKET`
-- ✅ **File Types**: Set `VOILA_STORAGE_ALLOWED_TYPES` (never use `*`)
-- ✅ **Size Limits**: Set reasonable `VOILA_STORAGE_MAX_SIZE`
-- ✅ **CDN**: Set `VOILA_STORAGE_CDN_URL` for performance
+- ✅ **File Types**: Set `BLOOM_STORAGE_ALLOWED_TYPES` (never use `*`)
+- ✅ **Size Limits**: Set reasonable `BLOOM_STORAGE_MAX_SIZE`
+- ✅ **CDN**: Set `BLOOM_STORAGE_CDN_URL` for performance
 - ✅ **Error Handling**: Implement proper error responses
 - ✅ **Monitoring**: Log upload/download operations
 
@@ -800,22 +800,22 @@ S3_ENDPOINT=https://s3.wasabisys.com           # Custom endpoint
 S3_FORCE_PATH_STYLE=true                       # For MinIO
 
 # Local Storage (Fallback - no cloud vars needed)
-VOILA_STORAGE_DIR=./uploads                    # Default: ./uploads
-VOILA_STORAGE_BASE_URL=/uploads                # Default: /uploads
+BLOOM_STORAGE_DIR=./uploads                    # Default: ./uploads
+BLOOM_STORAGE_BASE_URL=/uploads                # Default: /uploads
 ```
 
 ### Security & Limits
 
 ```bash
 # File validation
-VOILA_STORAGE_MAX_SIZE=52428800               # 50MB default
-VOILA_STORAGE_ALLOWED_TYPES=image/*,application/pdf,text/*
+BLOOM_STORAGE_MAX_SIZE=52428800               # 50MB default
+BLOOM_STORAGE_ALLOWED_TYPES=image/*,application/pdf,text/*
 
 # Signed URL expiration
-VOILA_STORAGE_SIGNED_EXPIRY=3600              # 1 hour default
+BLOOM_STORAGE_SIGNED_EXPIRY=3600              # 1 hour default
 
 # CDN configuration
-VOILA_STORAGE_CDN_URL=https://cdn.example.com # For any strategy
+BLOOM_STORAGE_CDN_URL=https://cdn.example.com # For any strategy
 ```
 
 ## 🔄 Development vs Production

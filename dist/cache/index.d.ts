@@ -10,13 +10,19 @@
  */
 import { type CacheConfig } from './defaults.js';
 export interface Cache {
-    get(key: string): Promise<any>;
-    set(key: string, value: any, ttl?: number): Promise<boolean>;
+    get<T = unknown>(key: string): Promise<T | null>;
+    set<T = unknown>(key: string, value: T, ttl?: number): Promise<boolean>;
     delete(key: string): Promise<boolean>;
     clear(): Promise<boolean>;
-    getOrSet(key: string, factory: () => Promise<any>, ttl?: number): Promise<any>;
+    getOrSet<T = unknown>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T>;
     getStrategy(): string;
-    getConfig(): any;
+    getConfig(): {
+        strategy: string;
+        keyPrefix: string;
+        namespace: string;
+        defaultTTL: number;
+        connected: boolean;
+    };
 }
 /**
  * Get cache instance for specific namespace - the only function you need to learn
@@ -27,11 +33,14 @@ export interface Cache {
  */
 declare function get(namespace?: string): Cache;
 /**
- * Clear all cache instances and disconnect - essential for testing
- * @llm-rule WHEN: Testing cache logic with different configurations or app shutdown
- * @llm-rule AVOID: Using in production except for graceful shutdown
+ * Disconnect all cache instances and reset internal state.
+ * Use this for full teardown (e.g., end-of-suite cleanup).
+ * For clearing cached data between individual tests use flushAll().
+ *
+ * @llm-rule WHEN: End-of-test-suite teardown or app restart
+ * @llm-rule AVOID: Calling between individual tests — use flushAll() instead
  */
-declare function clear(): Promise<void>;
+declare function disconnectAll(): Promise<void>;
 /**
  * Reset cache configuration (useful for testing)
  * @llm-rule WHEN: Testing cache logic with different environment configurations
@@ -86,7 +95,7 @@ declare function shutdown(): Promise<void>;
  */
 export declare const cacheClass: {
     readonly get: typeof get;
-    readonly clear: typeof clear;
+    readonly disconnectAll: typeof disconnectAll;
     readonly reset: typeof reset;
     readonly getStrategy: typeof getStrategy;
     readonly getActiveNamespaces: typeof getActiveNamespaces;
@@ -96,6 +105,6 @@ export declare const cacheClass: {
     readonly shutdown: typeof shutdown;
 };
 export type { CacheConfig } from './defaults.js';
-export { CacheClass } from './cache.js';
+export { CacheClass, CacheError } from './cache.js';
 export default cacheClass;
 //# sourceMappingURL=index.d.ts.map

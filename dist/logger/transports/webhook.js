@@ -24,7 +24,7 @@ export class WebhookTransport {
     rateLimitWindow = 60000; // 1 minute
     /**
      * Creates webhook transport with direct environment access (like auth pattern)
-     * @llm-rule WHEN: Logger initialization with VOILA_LOGGING_WEBHOOK_URL environment variable
+     * @llm-rule WHEN: Logger initialization with BLOOM_LOGGING_WEBHOOK_URL environment variable
      * @llm-rule AVOID: Manual webhook configuration - environment detection handles this
      * @llm-rule NOTE: Auto-detects Slack URLs and formats messages appropriately
      */

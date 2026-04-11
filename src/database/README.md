@@ -64,7 +64,7 @@ const users = await database.User.find();
 
 ```bash
 # Add to .env file - code stays exactly the same
-VOILA_DB_TENANT=auto
+BLOOM_DB_TENANT=auto
 ```
 
 ```typescript
@@ -246,7 +246,7 @@ DATABASE_URL=mongodb://localhost:27017/myapp    # MongoDB
 DATABASE_URL=mysql://localhost:3306/myapp       # MySQL
 
 # Optional: Enable tenant mode (auto-detects from requests)
-VOILA_DB_TENANT=auto
+BLOOM_DB_TENANT=auto
 ```
 
 ### **Multi-Database & Multi-Organization Setup**
@@ -263,7 +263,7 @@ ORG_LOCAL=sqlite:///local/dev.db                # SQLite for development
 ORG_LEGACY=mongodb://legacy.onprem.com/data     # On-premise MongoDB
 
 # Enable tenant mode within each org
-VOILA_DB_TENANT=auto
+BLOOM_DB_TENANT=auto
 ```
 
 ### **Hot Reload Magic**
@@ -293,7 +293,7 @@ async function getBlogPosts() {
 
 /**
  * Month 6: Add team workspaces (zero code changes!)
- * Just add: VOILA_DB_TENANT=auto to .env
+ * Just add: BLOOM_DB_TENANT=auto to .env
  */
 async function getBlogPosts() {
   const database = await databaseClass.get(); // Now auto-filters by tenant
@@ -384,7 +384,7 @@ ORG_LOCAL_BUSINESS=mysql://local.gcp.com:3306/business_db
 ORG_DEV_TESTING=sqlite:///tmp/testing.db
 
 # Enable tenant mode across all orgs
-VOILA_DB_TENANT=auto
+BLOOM_DB_TENANT=auto
 `;
 
 // Code remains identical regardless of backend:
@@ -409,7 +409,7 @@ async function getUserData(orgId, userId) {
 
 ## 🔧 Automatic Context Detection
 
-### **Tenant Detection Sources** (when `VOILA_DB_TENANT=auto`)
+### **Tenant Detection Sources** (when `BLOOM_DB_TENANT=auto`)
 
 ```typescript
 // AppKit automatically detects tenant from:

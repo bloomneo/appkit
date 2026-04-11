@@ -640,38 +640,38 @@ class FormHandler {
 
 ```bash
 # Cache settings
-VOILA_UTIL_CACHE=true                    # Default: true (false in test)
-VOILA_UTIL_CACHE_SIZE=1000              # Default: 1000 items
-VOILA_UTIL_CACHE_TTL=300000             # Default: 5 minutes
+BLOOM_UTIL_CACHE=true                    # Default: true (false in test)
+BLOOM_UTIL_CACHE_SIZE=1000              # Default: 1000 items
+BLOOM_UTIL_CACHE_TTL=300000             # Default: 5 minutes
 
 # Performance optimization
-VOILA_UTIL_PERFORMANCE=true             # Default: true
-VOILA_UTIL_MEMOIZATION=true             # Default: true (false in test)
-VOILA_UTIL_ARRAY_THRESHOLD=10000        # Default: 10K items
-VOILA_UTIL_CHUNK_LIMIT=100000           # Default: 100K items
+BLOOM_UTIL_PERFORMANCE=true             # Default: true
+BLOOM_UTIL_MEMOIZATION=true             # Default: true (false in test)
+BLOOM_UTIL_ARRAY_THRESHOLD=10000        # Default: 10K items
+BLOOM_UTIL_CHUNK_LIMIT=100000           # Default: 100K items
 ```
 
 ### **Debug Configuration**
 
 ```bash
 # Debug settings (auto-enabled in development)
-VOILA_UTIL_DEBUG=false                  # Default: true in dev
-VOILA_UTIL_LOG_OPS=false                # Default: true in dev
-VOILA_UTIL_TRACK_PERF=false             # Default: true in dev
+BLOOM_UTIL_DEBUG=false                  # Default: true in dev
+BLOOM_UTIL_LOG_OPS=false                # Default: true in dev
+BLOOM_UTIL_TRACK_PERF=false             # Default: true in dev
 ```
 
 ### **Locale and Formatting**
 
 ```bash
 # Locale settings
-VOILA_UTIL_LOCALE=en-US                 # Default: en-US
-VOILA_UTIL_CURRENCY=USD                 # Default: USD
-VOILA_UTIL_NUMBER_PRECISION=2           # Default: 2 decimal places
+BLOOM_UTIL_LOCALE=en-US                 # Default: en-US
+BLOOM_UTIL_CURRENCY=USD                 # Default: USD
+BLOOM_UTIL_NUMBER_PRECISION=2           # Default: 2 decimal places
 
 # Slugify settings
-VOILA_UTIL_SLUGIFY_REPLACEMENT=-        # Default: -
-VOILA_UTIL_SLUGIFY_LOWERCASE=true       # Default: true
-VOILA_UTIL_SLUGIFY_STRICT=false         # Default: false
+BLOOM_UTIL_SLUGIFY_REPLACEMENT=-        # Default: -
+BLOOM_UTIL_SLUGIFY_LOWERCASE=true       # Default: true
+BLOOM_UTIL_SLUGIFY_STRICT=false         # Default: false
 ```
 
 ## 🧪 Testing

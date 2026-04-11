@@ -70,7 +70,7 @@ function validateEnvironment() {
     }
     // Validate common required variables in production
     if (nodeEnv === 'production') {
-        const requiredProdVars = ['VOILA_SERVICE_NAME'];
+        const requiredProdVars = ['BLOOM_SERVICE_NAME'];
         const missing = requiredProdVars.filter(varName => !process.env[varName]);
         if (missing.length > 0) {
             console.warn(`[Bloomneo AppKit] Missing recommended production environment variables: ${missing.join(', ')}`);
@@ -81,11 +81,11 @@ function validateEnvironment() {
  * Check if environment variable is a framework variable that should be ignored
  * @llm-rule WHEN: Filtering out framework variables from app config parsing
  * @llm-rule AVOID: Parsing framework variables as app config - they serve different purposes
- * @llm-rule NOTE: Bloomneo AppKit uses VOILA_* and FLUX_* for internal configuration
+ * @llm-rule NOTE: Bloomneo AppKit uses BLOOM_* and FLUX_* for internal configuration
  */
 function isFrameworkVariable(envKey) {
     const frameworkPrefixes = [
-        'VOILA_', // Bloomneo AppKit framework configuration
+        'BLOOM_', // Bloomneo AppKit framework configuration
         'FLUX_', // Flux Framework internal variables
         'NODE_', // Node.js environment variables
         'npm_', // npm variables
@@ -156,20 +156,20 @@ function validateEnvVarFormat(envKey) {
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  * @llm-rule CONVENTION: Only processes non-framework variables for user config
- * @llm-rule CONVENTION: Variables with VOILA_* and FLUX_* are AppKit internal
+ * @llm-rule CONVENTION: Variables with BLOOM_* and FLUX_* are AppKit internal
  */
 export function buildConfigFromEnv() {
     validateEnvironment();
     const config = {
         app: {
-            name: process.env.VOILA_SERVICE_NAME || process.env.npm_package_name || 'voila-app',
+            name: process.env.BLOOM_SERVICE_NAME || process.env.npm_package_name || 'voila-app',
             environment: process.env.NODE_ENV || 'development',
             port: process.env.PORT ? parseInt(process.env.PORT, 10) : undefined,
             host: process.env.HOST || undefined,
         },
     };
     // Process ONLY user configuration variables using UPPER_SNAKE_CASE convention
-    // IMPORTANT: Framework variables (VOILA_*, FLUX_*) are NOT processed as user config
+    // IMPORTANT: Framework variables (BLOOM_*, FLUX_*) are NOT processed as user config
     for (const envKey in process.env) {
         // Skip framework variables and system variables
         if (isFrameworkVariable(envKey) || isSystemVariable(envKey)) {
@@ -195,8 +195,8 @@ export function validateConfig(config) {
     // Production-specific validations
     if (environment === 'production') {
         if (!config.app.name || config.app.name === 'voila-app') {
-            throw new Error('VOILA_SERVICE_NAME is required in production. ' +
-                'Set environment variable: VOILA_SERVICE_NAME=your-app-name');
+            throw new Error('BLOOM_SERVICE_NAME is required in production. ' +
+                'Set environment variable: BLOOM_SERVICE_NAME=your-app-name');
         }
     }
     // Port validation

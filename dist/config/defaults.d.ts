@@ -25,7 +25,7 @@ export interface AppConfig extends ConfigValue {
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  * @llm-rule CONVENTION: Only processes non-framework variables for user config
- * @llm-rule CONVENTION: Variables with VOILA_* and FLUX_* are AppKit internal
+ * @llm-rule CONVENTION: Variables with BLOOM_* and FLUX_* are AppKit internal
  */
 export declare function buildConfigFromEnv(): AppConfig;
 /**

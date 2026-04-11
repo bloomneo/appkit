@@ -2,6 +2,199 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [1.5.2] - 2026-04-11
+
+### Behavior fix — `auth.can()` permission resolution
+
+**Breaking semantic change in the auth module.** The `permissions` field on
+the JWT payload now correctly **replaces** the role's default permissions
+instead of supplementing them. This matches AWS IAM, Casbin, OPA, Auth0
+RBAC, and every mainstream permission system: explicit permissions are the
+truth, defaults are the fallback.
+
+**Old (buggy) behavior:**
+```ts
+const user = auth.generateLoginToken({
+  userId: 1, role: 'admin', level: 'tenant',
+  permissions: ['view:own'],   // expected: user is restricted to view:own
+});
+auth.can(user, 'manage:tenant'); // returned TRUE (additive — bug)
+                                  // because admin.tenant defaults included it
+```
+
+**New (fixed) behavior:**
+```ts
+const user = auth.generateLoginToken({
+  userId: 1, role: 'admin', level: 'tenant',
+  permissions: ['view:own'],   // explicit permissions REPLACE role defaults
+});
+auth.can(user, 'manage:tenant'); // now FALSE — defaults are not consulted
+auth.can(user, 'view:own');      // TRUE — exact match
+```
+
+**Resolution rule:**
+- If `user.permissions` is present (any array, including `[]`), it is the
+  COMPLETE permission set. Role defaults are NOT consulted.
+- If `user.permissions` is absent, the role.level's default permissions
+  from the configured RolePermissionConfig apply.
+
+**Action inheritance still works** within whichever set is in scope:
+`manage:scope` grants `view`, `create`, `edit`, `delete` for that scope.
+**No upward inheritance**: `edit:scope` does NOT grant `manage:scope`.
+
+**Why this is a fix, not a feature:**
+- The original JSDoc on `can()` said `auth.hasRole('edit:tenant', 'manage:tenant') → FALSE`
+  meaning the author intended no upward inheritance. The implementation
+  silently bypassed this via the additive fallback. The fix aligns the code
+  with its own documented intent.
+- Documentation alone could not fix the consumer trap because the bug was
+  silent — devs writing `permissions: ['view:own']` thought they were
+  restricting the user, but the user could still do `manage:tenant`. That's
+  the worst class of security bug.
+- No deployed consumers were on `@bloomneo/appkit@1.5.1` at the time of this
+  fix, so the breaking change has zero blast radius.
+
+**Migration:** anyone who was relying on the additive behavior (passing
+`permissions: [...]` expecting it to extend role defaults) needs to either:
+1. Remove the explicit `permissions` array entirely (defaults will apply)
+2. Add the role's defaults to the explicit array manually if you want the union
+
+**Tests:** `src/auth/auth.test.ts` now has 8 `can()` tests covering
+explicit replacement, no upward inheritance, empty-array downgrade, and
+no-explicit-permissions fallback. 55/55 vitest passing.
+
+### error / logger / database / config module audit
+
+- **error**: Added `tooMany()` (429) and `internal()` (500 alias for `serverError()`) as real
+  methods on `ErrorClass` and as shortcuts on `errorClass`. Both were previously in example
+  comments only — examples referenced them as if callable.
+- **logger**: Added `fatal(message, meta?)` to the `Logger` interface and `LoggerClass`.
+  Delegates to `error()` with `{ fatal: true }` in meta. Was in `examples/logger.ts` line 24
+  but not in the interface — would throw "not a function" at runtime.
+- **config**: Fixed `examples/config.ts` — `config.isDevelopment()` / `config.isProduction()`
+  do NOT exist on the `ConfigClass` instance; they live on `configClass` (the module-level
+  object). Fixed to `configClass.isDevelopment()` with a comment explaining the distinction.
+  Also fixed `config.getNumber()` / `config.getBoolean()` — neither exist on `ConfigClass`;
+  examples now use `Number(config.get(...))` / `config.get(...) === 'true'`.
+- **database**: `disconnect()` error prefix changed to `[@bloomneo/appkit/database]` for
+  consistency with other modules.
+- Added test files: `src/error/error.test.ts` (31 tests), `src/logger/logger.test.ts`
+  (25 tests), `src/config/config.test.ts` (31 tests), `src/database/database.test.ts`
+  (9 tests). **Total: 216/216 vitest passing.**
+
+### Cache module audit
+
+- Fixed `examples/cache.ts`: `cache.del()` → `cache.delete()` (wrong name), removed
+  `cache.has()` (internal `CacheStrategy` method, not on the public `Cache` interface)
+- Fixed `src/cache/README.md` testing section: `cacheClass.clear()` (disconnects all
+  instances) → `cacheClass.flushAll()` (clears cached data — the right call between tests)
+- Added `src/cache/cache.test.ts` (49 vitest tests, full public API coverage, drift-check
+  section asserting hallucinated method names `del` and `has` don't exist on the public
+  `Cache` interface)
+- Score block added to `src/cache/README.md`: **75.3/100 🟡 Solid** (no cap).
+- Added `CacheError` class (exported from `@bloomneo/appkit/cache`) — all cache
+  operations now throw `CacheError` instead of swallowing errors via `console.error`.
+  Use `instanceof CacheError` to distinguish infrastructure failures from your own
+  errors and decide whether to fall back or re-throw. Error codes: `CACHE_GET_FAILED`,
+  `CACHE_SET_FAILED`, `CACHE_DELETE_FAILED`, `CACHE_CLEAR_FAILED`, `CACHE_CONNECT_FAILED`,
+  `CACHE_INVALID_KEY`, `CACHE_INVALID_VALUE`.
+- `cacheClass.clear()` renamed to `cacheClass.disconnectAll()` — eliminates the naming
+  collision with `cache.clear()` (which clears data in a namespace). The two methods had
+  opposite effects under the same name.
+- Added generics to `Cache` interface: `get<T>()`, `set<T>()`, `getOrSet<T>()` — no more
+  `any` casts when working with typed values.
+- All error messages use `[@bloomneo/appkit/cache]` prefix (consistent with auth module).
+
+### Other fixes (auth-only revamp)
+
+- Added `src/auth/auth.test.ts` (55 tests, full public API coverage,
+  drift-check section asserting hallucinated method names don't exist)
+- Added `vitest.setup.ts` for env var bootstrapping before module init
+- Updated `vitest.config.js` to wire the setup file
+- Fixed README hero example: `auth.requireRole` → `auth.requireLoginToken()` +
+  `auth.requireUserRoles([...])` (was hallucinated)
+- Fixed AGENTS.md `auth.requireLogin()` / `requireRole()` / `signToken()` →
+  real method names
+- Fixed llms.txt auth section: rewrote 12 method signatures, role hierarchy,
+  middleware chaining rules, and 2 worked examples to match runtime
+- Fixed src/auth/README.md `service.webhook` / `api.external` examples to use
+  valid `admin.system` role.level (the old examples threw at runtime)
+- Fixed `examples/auth.ts` to demonstrate all 12 public methods (added
+  `verifyTokenManually` + `permissionCheckHandler`)
+- Improved auth.ts runtime errors: now `[@bloomneo/appkit/auth] message + DOCS_URL#anchor`
+  format so devs and AI agents can self-correct from the error alone
+- Added `AGENT_DEV_SCORING_ALGORITHM.md` at repo root: 15-dimension rubric
+  for scoring AI-agent + dev friendliness, applied to the auth module first
+- Added agent-dev friendliness score block to `src/auth/README.md`
+  (current: 83.6/100 uncapped, 50/100 capped due to broken cookbook files
+  pending repair in a follow-up release)
+- Added "Which case is your app?" decision tree to `src/auth/README.md`
+  mapping the 9-level default hierarchy to three real-world app shapes:
+  Case 1 (admin + users, ~50% of apps), Case 2 (admin + orgs + users, ~30%),
+  Case 3 (admin + orgs + tenants, ~20%). Establishes a 3-role core
+  (`user.basic` + `moderator.manage` + `admin.system`) shared by all cases,
+  with pricing tiers (`user.pro`, `user.max`) and admin level scoping
+  (`admin.tenant`, `admin.org`) marked optional. Multi-tenancy is reframed
+  as a database concern (`BLOOM_DB_TENANT=auto`), not an auth concern.
+  Lifts the auth README's Reading Order score 9 → 10 and Learning Curve 7 → 9.
+
+### security / util / queue / storage / email / event module audit
+
+- **security**: Fixed `examples/security.ts` — removed hallucinated `csrf()`, `requireCsrf()`,
+  `email()`, `url()`. Real CSRF method is `forms()` (single middleware handles both injection
+  and validation). Added `html()` and `escape()` examples. Noted that email/URL validation
+  should use zod or validator.js.
+- **util**: Fixed `examples/util.ts` — removed `util.set()`, `util.omit()`, `util.throttle()`,
+  `util.retry()` (none exist). Added real methods: `util.unique()`, `util.clamp()`,
+  `util.truncate()`. Added note that `util.get()` is read-only (no `set()`), `util.pick()` is
+  the correct "exclude keys" approach (no `omit()`).
+- **queue**: Fixed `examples/queue.ts` — `retries: 3` → `attempts: 3` in `JobOptions`.
+  `queue.schedule('name', '0 3 * * *', {})` (cron-style, wrong) → `queue.schedule('name', {}, delayMs)`
+  (delay in milliseconds — there is no built-in cron scheduler; use node-cron to call `queue.add()`).
+- **storage**: Fixed `examples/storage.ts` — `storage.has(key)` → `storage.exists(key)`.
+- **email**: Fixed `examples/email.ts` — `email.send({ template, data })` → `email.sendTemplate(name, data)`.
+  Added note that `EmailData` has no `template` or `data` fields.
+- **event**: `examples/event.ts` was already correct — no changes.
+- Added test files for all 6 modules: `src/security/security.test.ts`, `src/util/util.test.ts`,
+  `src/queue/queue.test.ts`, `src/storage/storage.test.ts`, `src/email/email.test.ts`,
+  `src/event/event.test.ts`. Each includes a drift-check section asserting hallucinated
+  method names do not exist at runtime.
+
+### Cookbook fixes
+
+All 5 cookbook files corrected — the two root hallucinations that had propagated everywhere:
+- `auth.requireLogin()` → `auth.requireLoginToken()` (5 occurrences across 4 files)
+- `auth.requireRole('admin.tenant')` → `auth.requireUserRoles(['admin.tenant'])` (6 occurrences)
+- `cache.del()` → `cache.delete()` (`multi-tenant-saas.ts`)
+- `{ retries: 3 }` → `{ attempts: 3 }` + updated inline comment (`file-upload-pipeline.ts`)
+
+### llms.txt and AGENTS.md
+
+- Added `AGENTS.md` (new file): concise agent rules — always/never lists, canonical patterns,
+  CLI reference, migration notes. Ships with the package for consumption by AI coding agents.
+- Fixed `llms.txt` — 7 sections with stale or hallucinated API:
+  - Security: corrected to `forms()`, `html()`, `escape()`; removed `csrf()`, `requireCsrf()`,
+    `email()`, `url()`
+  - Cache: `del()` → `delete()`; removed `has()` with null-check pattern documented
+  - Storage: `del()` → `delete()`; `has()` → `exists()`; added `list()`, `copy()`
+  - Queue: `retries` → `attempts`; `schedule(name, cron, data)` → `schedule(name, data, delayMs)`
+  - Email: removed `template`/`data` from `EmailData`; added `sendTemplate()` signature
+  - Util: removed `set()`, `omit()`, `throttle()`, `retry()`; added `isEmpty()`, `unique()`,
+    `clamp()`, `truncate()`
+  - Config: split instance methods (`get`, `has`, `getRequired`, `getMany`, `getAll`) vs
+    module-level helpers (`configClass.isDevelopment()` / `isProduction()` / `isTest()`);
+    documented `getNumber()`/`getBoolean()` pattern via `Number()` / `=== 'true'`
+
+### VOILA_* env var prefix removed (breaking change)
+
+The legacy `VOILA_*` env var prefix is gone entirely. Rename in your `.env` files:
+- `VOILA_AUTH_SECRET` → `BLOOM_AUTH_SECRET`
+- `VOILA_SECURITY_CSRF_SECRET` → `BLOOM_SECURITY_CSRF_SECRET`
+- `VOILA_SECURITY_ENCRYPTION_KEY` → `BLOOM_SECURITY_ENCRYPTION_KEY`
+- And so on for all other `VOILA_*` vars.
+
+There is no fallback, no deprecation warning, no compatibility shim.
+
 ## [1.5.1] - 2026-04-11
 
 > **Note on version jump.** Previous releases of `@bloomneo/appkit` were `1.2.9`
@@ -35,13 +228,14 @@ All notable changes to AppKit will be documented in this file.
     all renamed to `Bloomneo` equivalents
   - Module README license footers `MIT © [VoilaJSX]` → `MIT © [Bloomneo]`
 
-### Not changed
+### Not changed (in 1.5.1 — see 1.5.2 for the env var rename)
 
-- **`VOILA_*` environment variable prefix is unchanged.** AppKit still reads
-  `VOILA_AUTH_SECRET`, `VOILA_DB_URL`, etc. Renaming the prefix would be a
-  breaking change for every consumer with deployed `.env` files, so it stays.
-  The prefix is a schema convention, not a brand mention. A future major
-  release may introduce a `BLOOMNEO_*` alias with a deprecation period.
+- **`VOILA_*` environment variable prefix was unchanged in 1.5.1.** At the
+  time, AppKit still read `VOILA_AUTH_SECRET`, `VOILA_DB_URL`, etc. Renaming
+  the prefix was deferred from this release. The prefix was treated as a
+  schema convention, not a brand mention.
+- **The `VOILA_*` prefix was removed entirely in the next release (1.5.2).**
+  See the 1.5.2 entry below for migration instructions.
 
 ### Verification
 

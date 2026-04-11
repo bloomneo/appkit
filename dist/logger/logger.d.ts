@@ -64,6 +64,14 @@ export declare class LoggerClass implements Logger {
      */
     debug(message: string, meta?: LogMeta): void;
     /**
+     * Log fatal message — process is about to exit or is in an unrecoverable state.
+     * Delegates to error() so it goes through the same visual formatting and transports.
+     * @llm-rule WHEN: Unrecoverable failures (OOM, missing required config, corrupted state)
+     * @llm-rule AVOID: Using for normal errors — fatal implies the process cannot continue
+     * @llm-rule NOTE: PATTERN: logger.fatal('OOM', { rss }); process.exit(1);
+     */
+    fatal(message: string, meta?: LogMeta): void;
+    /**
      * Create child logger with additional context
      * @llm-rule WHEN: Adding component context or request-specific data
      * @llm-rule AVOID: Creating many child loggers - reuse component loggers

@@ -25,6 +25,7 @@ export interface Logger {
   error(message: string, meta?: LogMeta): void;  // Enhanced with automatic visual formatting
   warn(message: string, meta?: LogMeta): void;
   debug(message: string, meta?: LogMeta): void;
+  fatal(message: string, meta?: LogMeta): void;  // Critical — process is about to exit
   child(bindings: LogMeta): Logger;
   flush(): Promise<void>;
   close(): Promise<void>;

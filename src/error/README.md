@@ -343,8 +343,8 @@ app.post(
 
 ```bash
 # Error handling behavior (optional)
-VOILA_ERROR_STACK=false          # Show stack traces (default: true in dev, false in prod)
-VOILA_ERROR_LOG=true             # Enable error logging (default: true)
+BLOOM_ERROR_STACK=false          # Show stack traces (default: true in dev, false in prod)
+BLOOM_ERROR_LOG=true             # Enable error logging (default: true)
 
 # Framework detection
 NODE_ENV=production              # Environment mode (development, production, test, staging)
@@ -359,7 +359,7 @@ API_KEY=your-api-key
 SESSION_SECRET=your-session-secret
 
 # Note: Use any naming convention for your app config
-# Bloomneo only reads VOILA_* prefixed variables
+# Bloomneo only reads BLOOM_* prefixed variables
 ```
 
 ### **Configuration Separation**
@@ -377,13 +377,13 @@ The error module follows **clear separation**:
 ```bash
 # ✅ Production settings
 NODE_ENV=production              # Enables production mode
-VOILA_ERROR_STACK=false          # Hide stack traces for security
-VOILA_ERROR_LOG=true             # Enable error logging for monitoring
+BLOOM_ERROR_STACK=false          # Hide stack traces for security
+BLOOM_ERROR_LOG=true             # Enable error logging for monitoring
 
 # ✅ Development settings
 NODE_ENV=development             # Enables development mode
-VOILA_ERROR_STACK=true           # Show stack traces for debugging
-VOILA_ERROR_LOG=true             # Enable error logging
+BLOOM_ERROR_STACK=true           # Show stack traces for debugging
+BLOOM_ERROR_LOG=true             # Enable error logging
 ```
 
 ### **Framework-Specific Setup**
@@ -464,7 +464,7 @@ try {
   console.log(`Development mode: ${env.isDevelopment}`);
 
   // Production security check
-  if (env.isProduction && process.env.VOILA_ERROR_STACK === 'true') {
+  if (env.isProduction && process.env.BLOOM_ERROR_STACK === 'true') {
     console.warn('⚠️ Stack traces enabled in production - security risk!');
   }
 } catch (setupError) {
@@ -477,7 +477,7 @@ try {
 
 - **"Error not caught"** → Ensure error middleware is LAST in Express
 - **"Stack traces in production"** → Check `NODE_ENV=production` and
-  `VOILA_ERROR_STACK=false`
+  `BLOOM_ERROR_STACK=false`
 - **"Async errors not handled"** → Use `error.asyncRoute()` wrapper for async
   routes
 - **"Wrong error types"** → Review error type selection guide above

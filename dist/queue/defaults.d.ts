@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/queue
  * @file src/queue/defaults.ts
  *
- * @llm-rule WHEN: App startup - need to parse VOILA_QUEUE_* environment variables and detect transports
+ * @llm-rule WHEN: App startup - need to parse BLOOM_QUEUE_* environment variables and detect transports
  * @llm-rule AVOID: Calling multiple times - expensive validation, use lazy loading in get()
  * @llm-rule NOTE: Called once at startup, cached globally for performance like auth/logging modules
  */
@@ -45,7 +45,7 @@ export interface QueueConfig {
     };
 }
 /**
- * Get smart defaults using direct VOILA_QUEUE_* environment access
+ * Get smart defaults using direct BLOOM_QUEUE_* environment access
  * @llm-rule WHEN: App startup to get production-ready queue configuration
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
  * @llm-rule NOTE: Called once at startup, cached globally for performance

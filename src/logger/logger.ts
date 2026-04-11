@@ -163,6 +163,17 @@ export class LoggerClass implements Logger {
   }
 
   /**
+   * Log fatal message — process is about to exit or is in an unrecoverable state.
+   * Delegates to error() so it goes through the same visual formatting and transports.
+   * @llm-rule WHEN: Unrecoverable failures (OOM, missing required config, corrupted state)
+   * @llm-rule AVOID: Using for normal errors — fatal implies the process cannot continue
+   * @llm-rule NOTE: PATTERN: logger.fatal('OOM', { rss }); process.exit(1);
+   */
+  fatal(message: string, meta: LogMeta = {}): void {
+    this.error(message, { ...meta, fatal: true });
+  }
+
+  /**
    * Create child logger with additional context
    * @llm-rule WHEN: Adding component context or request-specific data
    * @llm-rule AVOID: Creating many child loggers - reuse component loggers
@@ -181,7 +192,7 @@ export class LoggerClass implements Logger {
     // Show visual output in development or when explicitly enabled
     return this.config.service.environment === 'development' || 
            this.config.minimal === false ||
-           process.env.VOILA_VISUAL_ERRORS === 'true';
+           process.env.BLOOM_VISUAL_ERRORS === 'true';
   }
 
   private renderVisualError(message: string, meta: LogMeta): void {
@@ -980,8 +991,8 @@ export class LoggerClass implements Logger {
       environment: {
         NODE_ENV: process.env.NODE_ENV,
         hasDbUrl: !!process.env.DATABASE_URL,
-        hasHttpUrl: !!process.env.VOILA_LOGGER_HTTP_URL,
-        hasWebhookUrl: !!process.env.VOILA_LOGGER_WEBHOOK_URL,
+        hasHttpUrl: !!process.env.BLOOM_LOGGER_HTTP_URL,
+        hasWebhookUrl: !!process.env.BLOOM_LOGGER_WEBHOOK_URL,
       },
     };
   }

@@ -125,7 +125,7 @@ const DEFAULT_PERMISSIONS: PermissionDefaults = {
 };
 
 /**
- * Gets smart defaults using VOILA_AUTH_* environment variables
+ * Gets smart defaults using BLOOM_AUTH_* environment variables
  * @llm-rule WHEN: App startup to get production-ready auth configuration
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
  * @llm-rule AVOID: Calling in request handlers - expensive environment parsing
@@ -139,12 +139,12 @@ export function getSmartDefaults(): AuthConfig {
 
   return {
     jwt: {
-      secret: process.env.VOILA_AUTH_SECRET!,
-      expiresIn: process.env.VOILA_AUTH_EXPIRES_IN || '7d',
+      secret: process.env.BLOOM_AUTH_SECRET!,
+      expiresIn: process.env.BLOOM_AUTH_EXPIRES_IN || '7d',
       algorithm: 'HS256',
     },
     password: {
-      saltRounds: parseInt(process.env.VOILA_AUTH_BCRYPT_ROUNDS || '10'),
+      saltRounds: parseInt(process.env.BLOOM_AUTH_BCRYPT_ROUNDS || '10'),
     },
     roles: parseRoleHierarchy(),
     permissions: {
@@ -153,8 +153,8 @@ export function getSmartDefaults(): AuthConfig {
       defaults: parseDefaultPermissions(),
     },
     user: {
-      defaultRole: process.env.VOILA_AUTH_DEFAULT_ROLE || 'user',
-      defaultLevel: process.env.VOILA_AUTH_DEFAULT_LEVEL || 'basic',
+      defaultRole: process.env.BLOOM_AUTH_DEFAULT_ROLE || 'user',
+      defaultLevel: process.env.BLOOM_AUTH_DEFAULT_LEVEL || 'basic',
     },
     middleware: {
       tokenSources: ['header', 'cookie', 'query'],
@@ -176,12 +176,12 @@ export function getSmartDefaults(): AuthConfig {
 
 /**
  * Parses role hierarchy from environment variable or uses defaults
- * @llm-rule WHEN: App startup to build role configuration from VOILA_AUTH_ROLES
+ * @llm-rule WHEN: App startup to build role configuration from BLOOM_AUTH_ROLES
  * @llm-rule AVOID: Using invalid role.level format - must be role.level:number
- * @llm-rule NOTE: Format: VOILA_AUTH_ROLES=user.basic:1,admin.tenant:5,admin.system:9
+ * @llm-rule NOTE: Format: BLOOM_AUTH_ROLES=user.basic:1,admin.tenant:5,admin.system:9
  */
 function parseRoleHierarchy(): RoleHierarchy {
-  const envRoles = process.env.VOILA_AUTH_ROLES;
+  const envRoles = process.env.BLOOM_AUTH_ROLES;
   
   if (!envRoles) {
     return DEFAULT_ROLE_HIERARCHY;
@@ -195,7 +195,7 @@ function parseRoleHierarchy(): RoleHierarchy {
     
     if (!roleLevel || !levelStr) {
       throw new Error(
-        `Invalid VOILA_AUTH_ROLES format: "${rolePair}". Expected format: "role.level:number"`
+        `Invalid BLOOM_AUTH_ROLES format: "${rolePair}". Expected format: "role.level:number"`
       );
     }
 
@@ -235,12 +235,12 @@ function parseRoleHierarchy(): RoleHierarchy {
 
 /**
  * Parses permission defaults from environment variable or uses defaults
- * @llm-rule WHEN: App startup to build permission configuration from VOILA_AUTH_PERMISSIONS
+ * @llm-rule WHEN: App startup to build permission configuration from BLOOM_AUTH_PERMISSIONS
  * @llm-rule AVOID: Using invalid permission format - must be action:scope
- * @llm-rule NOTE: Format: VOILA_AUTH_PERMISSIONS=user.basic:view:own,admin.tenant:manage:tenant
+ * @llm-rule NOTE: Format: BLOOM_AUTH_PERMISSIONS=user.basic:view:own,admin.tenant:manage:tenant
  */
 function parseDefaultPermissions(): PermissionDefaults {
-  const envPermissions = process.env.VOILA_AUTH_PERMISSIONS;
+  const envPermissions = process.env.BLOOM_AUTH_PERMISSIONS;
   
   if (!envPermissions) {
     return DEFAULT_PERMISSIONS;
@@ -254,7 +254,7 @@ function parseDefaultPermissions(): PermissionDefaults {
     
     if (parts.length !== 3) {
       throw new Error(
-        `Invalid VOILA_AUTH_PERMISSIONS format: "${permissionPair}". Expected format: "role.level:action:scope"`
+        `Invalid BLOOM_AUTH_PERMISSIONS format: "${permissionPair}". Expected format: "role.level:action:scope"`
       );
     }
 
@@ -295,11 +295,11 @@ export function validateSecret(secret: string): void {
     console.error('\n🚨 ============================================');
     console.error('❌ CRITICAL AUTH CONFIGURATION ERROR');
     console.error('🚨 ============================================');
-    console.error('🔑 MISSING REQUIRED ENVIRONMENT VARIABLE: VOILA_AUTH_SECRET');
+    console.error('🔑 MISSING REQUIRED ENVIRONMENT VARIABLE: BLOOM_AUTH_SECRET');
     console.error('🚨 ============================================\n');
 
     throw new Error(
-      'VOILA_AUTH_SECRET is required. Set environment variable: VOILA_AUTH_SECRET=your-jwt-secret-key'
+      'BLOOM_AUTH_SECRET is required. Set environment variable: BLOOM_AUTH_SECRET=your-jwt-secret-key'
     );
   }
 
@@ -311,7 +311,7 @@ export function validateSecret(secret: string): void {
     console.error('🚨 ============================================\n');
 
     throw new Error(
-      `VOILA_AUTH_SECRET must be at least 32 characters for security. Current length: ${secret.length}`
+      `BLOOM_AUTH_SECRET must be at least 32 characters for security. Current length: ${secret.length}`
     );
   }
 
@@ -319,16 +319,16 @@ export function validateSecret(secret: string): void {
     console.error('\n🚨 ============================================');
     console.error('❌ INSECURE AUTH SECRET DETECTED');
     console.error('🚨 ============================================');
-    console.error('🔑 VOILA_AUTH_SECRET appears to be a default/example value');
+    console.error('🔑 BLOOM_AUTH_SECRET appears to be a default/example value');
     console.error('⚠️  This is a security risk in production!');
     console.error('');
     console.error('💡 SOLUTION:');
     console.error('   Generate a strong, random secret:');
-    console.error('   VOILA_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
+    console.error('   BLOOM_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
     console.error('🚨 ============================================\n');
 
     throw new Error(
-      'VOILA_AUTH_SECRET appears to be a default/example value. Use a strong, random secret'
+      'BLOOM_AUTH_SECRET appears to be a default/example value. Use a strong, random secret'
     );
   }
 }
@@ -409,18 +409,18 @@ function validatePermissionFormat(permission: string): boolean {
  * Enhanced environment validation with better error messages
  */
 function validateEnvironment(): void {
-  const secret = process.env.VOILA_AUTH_SECRET;
+  const secret = process.env.BLOOM_AUTH_SECRET;
 
   // Enhanced validation with clear console logging and better error messages
   if (!secret) {
     console.error('\n🚨 ============================================');
     console.error('❌ CRITICAL AUTH CONFIGURATION ERROR');
     console.error('🚨 ============================================');
-    console.error('🔑 MISSING REQUIRED ENVIRONMENT VARIABLE: VOILA_AUTH_SECRET');
+    console.error('🔑 MISSING REQUIRED ENVIRONMENT VARIABLE: BLOOM_AUTH_SECRET');
     console.error('');
     console.error('💡 SOLUTION:');
     console.error('   Add the following to your .env file:');
-    console.error('   VOILA_AUTH_SECRET=your-secure-32-character-secret-key-here');
+    console.error('   BLOOM_AUTH_SECRET=your-secure-32-character-secret-key-here');
     console.error('');
     console.error('📋 REQUIREMENTS:');
     console.error('   - Must be at least 32 characters long');
@@ -428,13 +428,13 @@ function validateEnvironment(): void {
     console.error('   - Do not use default values like "secret" or "supersecret"');
     console.error('');
     console.error('🔧 EXAMPLE:');
-    console.error('   VOILA_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
+    console.error('   BLOOM_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
     console.error('');
     console.error('⚠️  Without this variable, authentication features will not work');
     console.error('🚨 ============================================\n');
 
     throw new Error(
-      'VOILA_AUTH_SECRET is required. Set environment variable: VOILA_AUTH_SECRET=your-jwt-secret-key'
+      'BLOOM_AUTH_SECRET is required. Set environment variable: BLOOM_AUTH_SECRET=your-jwt-secret-key'
     );
   }
 
@@ -442,50 +442,50 @@ function validateEnvironment(): void {
     console.error('\n🚨 ============================================');
     console.error('❌ AUTH SECRET TOO SHORT');
     console.error('🚨 ============================================');
-    console.error(`🔑 Current VOILA_AUTH_SECRET length: ${secret.length} characters`);
+    console.error(`🔑 Current BLOOM_AUTH_SECRET length: ${secret.length} characters`);
     console.error('⚠️  Minimum required: 32 characters');
     console.error('');
     console.error('💡 SOLUTION:');
     console.error('   Generate a stronger secret with at least 32 characters');
     console.error('');
     console.error('🔧 EXAMPLE:');
-    console.error('   VOILA_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
+    console.error('   BLOOM_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
     console.error('🚨 ============================================\n');
 
     throw new Error(
-      `VOILA_AUTH_SECRET must be at least 32 characters for security. Current length: ${secret.length}`
+      `BLOOM_AUTH_SECRET must be at least 32 characters for security. Current length: ${secret.length}`
     );
   }
   
   validateSecret(secret);
 
-  const rounds = process.env.VOILA_AUTH_BCRYPT_ROUNDS;
+  const rounds = process.env.BLOOM_AUTH_BCRYPT_ROUNDS;
   if (rounds) {
     const roundsNum = parseInt(rounds);
     if (isNaN(roundsNum)) {
       throw new Error(
-        `Invalid VOILA_AUTH_BCRYPT_ROUNDS: "${rounds}". Must be a number between 8 and 15`
+        `Invalid BLOOM_AUTH_BCRYPT_ROUNDS: "${rounds}". Must be a number between 8 and 15`
       );
     }
     validateRounds(roundsNum);
   }
 
-  const expiresIn = process.env.VOILA_AUTH_EXPIRES_IN;
+  const expiresIn = process.env.BLOOM_AUTH_EXPIRES_IN;
   if (expiresIn && !isValidTimespan(expiresIn)) {
     throw new Error(
-      `Invalid VOILA_AUTH_EXPIRES_IN: "${expiresIn}". Must be a valid time span (e.g., '7d', '1h', '30m')`
+      `Invalid BLOOM_AUTH_EXPIRES_IN: "${expiresIn}". Must be a valid time span (e.g., '7d', '1h', '30m')`
     );
   }
 
-  const defaultRole = process.env.VOILA_AUTH_DEFAULT_ROLE;
-  const defaultLevel = process.env.VOILA_AUTH_DEFAULT_LEVEL;
+  const defaultRole = process.env.BLOOM_AUTH_DEFAULT_ROLE;
+  const defaultLevel = process.env.BLOOM_AUTH_DEFAULT_LEVEL;
   if (defaultRole && defaultLevel) {
     const roleLevel = `${defaultRole}.${defaultLevel}`;
     const roles = parseRoleHierarchy();
     if (!validateRoleLevel(roleLevel, roles)) {
       const validRoles = Object.keys(roles).join(', ');
       throw new Error(
-        `Invalid VOILA_AUTH_DEFAULT_ROLE.LEVEL: "${roleLevel}". Must be one of: ${validRoles}`
+        `Invalid BLOOM_AUTH_DEFAULT_ROLE.LEVEL: "${roleLevel}". Must be one of: ${validRoles}`
       );
     }
   }

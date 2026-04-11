@@ -27,11 +27,11 @@ export function getSmartDefaults() {
         strategy,
         // Local configuration (only used when strategy is 'local')
         local: {
-            dir: process.env.VOILA_STORAGE_DIR || './uploads',
-            baseUrl: process.env.VOILA_STORAGE_BASE_URL || '/uploads',
-            maxFileSize: parseInt(process.env.VOILA_STORAGE_MAX_SIZE || '52428800'), // 50MB default
+            dir: process.env.BLOOM_STORAGE_DIR || './uploads',
+            baseUrl: process.env.BLOOM_STORAGE_BASE_URL || '/uploads',
+            maxFileSize: parseInt(process.env.BLOOM_STORAGE_MAX_SIZE || '52428800'), // 50MB default
             allowedTypes: parseAllowedTypes(),
-            createDirs: process.env.VOILA_STORAGE_CREATE_DIRS !== 'false',
+            createDirs: process.env.BLOOM_STORAGE_CREATE_DIRS !== 'false',
         },
         // S3 configuration (only used when strategy is 's3')
         s3: {
@@ -41,8 +41,8 @@ export function getSmartDefaults() {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY_ID || '',
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.S3_SECRET_ACCESS_KEY || '',
             forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
-            signedUrlExpiry: parseInt(process.env.VOILA_STORAGE_SIGNED_EXPIRY || '3600'), // 1 hour
-            cdnUrl: process.env.VOILA_STORAGE_CDN_URL,
+            signedUrlExpiry: parseInt(process.env.BLOOM_STORAGE_SIGNED_EXPIRY || '3600'), // 1 hour
+            cdnUrl: process.env.BLOOM_STORAGE_CDN_URL,
         },
         // R2 configuration (only used when strategy is 'r2')
         r2: {
@@ -51,7 +51,7 @@ export function getSmartDefaults() {
             accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
             secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
             cdnUrl: process.env.CLOUDFLARE_R2_CDN_URL,
-            signedUrlExpiry: parseInt(process.env.VOILA_STORAGE_SIGNED_EXPIRY || '3600'), // 1 hour
+            signedUrlExpiry: parseInt(process.env.BLOOM_STORAGE_SIGNED_EXPIRY || '3600'), // 1 hour
         },
         // Environment information
         environment: {
@@ -70,7 +70,7 @@ export function getSmartDefaults() {
  */
 function detectStorageStrategy() {
     // Explicit override wins (for testing/debugging)
-    const explicit = process.env.VOILA_STORAGE_STRATEGY?.toLowerCase();
+    const explicit = process.env.BLOOM_STORAGE_STRATEGY?.toLowerCase();
     if (explicit && ['local', 's3', 'r2'].includes(explicit)) {
         return explicit;
     }
@@ -95,7 +95,7 @@ function detectStorageStrategy() {
  * @llm-rule AVOID: Allowing all file types in production - security risk
  */
 function parseAllowedTypes() {
-    const envTypes = process.env.VOILA_STORAGE_ALLOWED_TYPES;
+    const envTypes = process.env.BLOOM_STORAGE_ALLOWED_TYPES;
     if (!envTypes) {
         // Safe defaults - common web file types
         return [
@@ -108,7 +108,7 @@ function parseAllowedTypes() {
     if (envTypes === '*') {
         if (process.env.NODE_ENV === 'production') {
             console.warn('[Bloomneo AppKit] SECURITY WARNING: All file types allowed in production. ' +
-                'Set VOILA_STORAGE_ALLOWED_TYPES to specific types for security.');
+                'Set BLOOM_STORAGE_ALLOWED_TYPES to specific types for security.');
         }
         return ['*']; // Allow all types (use with caution)
     }
@@ -122,13 +122,13 @@ function parseAllowedTypes() {
  */
 function validateEnvironment() {
     // Validate storage strategy if explicitly set
-    const strategy = process.env.VOILA_STORAGE_STRATEGY;
+    const strategy = process.env.BLOOM_STORAGE_STRATEGY;
     if (strategy && !['local', 's3', 'r2'].includes(strategy.toLowerCase())) {
-        throw new Error(`Invalid VOILA_STORAGE_STRATEGY: "${strategy}". Must be "local", "s3", or "r2"`);
+        throw new Error(`Invalid BLOOM_STORAGE_STRATEGY: "${strategy}". Must be "local", "s3", or "r2"`);
     }
     // Validate numeric values
-    validateNumericEnv('VOILA_STORAGE_MAX_SIZE', 1048576, 1073741824); // 1MB to 1GB
-    validateNumericEnv('VOILA_STORAGE_SIGNED_EXPIRY', 60, 604800); // 1 minute to 7 days
+    validateNumericEnv('BLOOM_STORAGE_MAX_SIZE', 1048576, 1073741824); // 1MB to 1GB
+    validateNumericEnv('BLOOM_STORAGE_SIGNED_EXPIRY', 60, 604800); // 1 minute to 7 days
     // Validate S3 configuration if S3 strategy detected
     if (shouldValidateS3()) {
         validateS3Config();
@@ -214,14 +214,14 @@ function validateR2Config() {
  * Validates local configuration
  */
 function validateLocalConfig() {
-    const dir = process.env.VOILA_STORAGE_DIR;
+    const dir = process.env.BLOOM_STORAGE_DIR;
     if (dir && (dir.includes('..') || dir.startsWith('/') && process.env.NODE_ENV === 'production')) {
         console.warn(`[Bloomneo AppKit] Potentially unsafe storage directory: "${dir}". ` +
             `Consider using a relative path for security.`);
     }
-    const baseUrl = process.env.VOILA_STORAGE_BASE_URL;
+    const baseUrl = process.env.BLOOM_STORAGE_BASE_URL;
     if (baseUrl && !baseUrl.startsWith('/') && !isValidUrl(baseUrl)) {
-        throw new Error(`Invalid VOILA_STORAGE_BASE_URL: "${baseUrl}". Must be a path or valid URL`);
+        throw new Error(`Invalid BLOOM_STORAGE_BASE_URL: "${baseUrl}". Must be a path or valid URL`);
     }
 }
 /**
@@ -237,10 +237,10 @@ function validateProductionConfig() {
             'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for distributed storage.');
     }
     // Warn about missing CDN in production
-    const cdnUrl = process.env.VOILA_STORAGE_CDN_URL || process.env.CLOUDFLARE_R2_CDN_URL;
+    const cdnUrl = process.env.BLOOM_STORAGE_CDN_URL || process.env.CLOUDFLARE_R2_CDN_URL;
     if (!cdnUrl && strategy !== 'local') {
         console.warn('[Bloomneo AppKit] No CDN URL configured in production. ' +
-            'Set VOILA_STORAGE_CDN_URL for better performance.');
+            'Set BLOOM_STORAGE_CDN_URL for better performance.');
     }
 }
 /**

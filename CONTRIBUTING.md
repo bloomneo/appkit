@@ -205,6 +205,52 @@ export function functionName(paramName) {
 }
 ```
 
+### LLM-friendly comment annotations
+
+AppKit source uses a structured `@llm-rule` annotation in JSDoc to give AI
+coding agents prescriptive guidance directly inside the source files. When
+adding or modifying public APIs, add these to the function or file header:
+
+```typescript
+/**
+ * Brief description
+ * @module @bloomneo/appkit/auth
+ * @file src/auth/auth.ts
+ *
+ * @llm-rule WHEN: Building apps with user roles and permissions
+ * @llm-rule AVOID: Simple login apps — adds unnecessary complexity
+ * @llm-rule NOTE: Token expiry is configurable via BLOOM_AUTH_EXPIRY (optional)
+ */
+```
+
+**Three categories:**
+- `@llm-rule WHEN:` — concrete trigger conditions for using this API
+- `@llm-rule AVOID:` — common mistakes or anti-patterns this API shouldn't be used for
+- `@llm-rule NOTE:` — non-obvious behavior or critical context (optional)
+
+**Guidelines:**
+- Maximum 3 rules per item
+- One line per rule, action-oriented
+- Be specific (not "Need to call this function" — that's useless)
+- Cover both the happy path (`WHEN`) and the failure mode (`AVOID`)
+
+**Bad example (don't do this):**
+```typescript
+@llm-rule WHEN: Need to call this function
+@llm-rule PURPOSE: Returns user data
+@llm-rule USAGE: This function should be used when...
+```
+
+**Good example:**
+```typescript
+@llm-rule WHEN: Building apps with user roles and permissions
+@llm-rule AVOID: Simple login apps — adds unnecessary complexity
+```
+
+These annotations are read by `@bloomneo/appkit`'s `llms.txt` generator and
+surfaced to AI coding agents as canonical guidance. Inconsistent or vague
+annotations make the agent-facing docs worse.
+
 ### Error Handling
 
 - Use descriptive error messages

@@ -24,7 +24,7 @@ export class HttpTransport {
     serviceType;
     /**
      * Creates HTTP transport with direct environment access (like auth pattern)
-     * @llm-rule WHEN: Logger initialization with VOILA_LOGGING_HTTP_URL environment variable
+     * @llm-rule WHEN: Logger initialization with BLOOM_LOGGING_HTTP_URL environment variable
      * @llm-rule AVOID: Manual HTTP configuration - environment detection handles this
      * @llm-rule NOTE: Auto-detects service type from URL and formats payloads accordingly
      */

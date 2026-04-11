@@ -95,10 +95,10 @@ FEATURES_ANALYTICS_ENABLED=true           → config.get('features.analytics.ena
 ### **Framework vs Application Variables**
 
 ```bash
-# 🔧 Framework Configuration (VOILA_* prefix)
-VOILA_AUTH_SECRET=jwt-secret-key           # AppKit auth module
-VOILA_ERROR_STACK=false                    # AppKit error module
-VOILA_SERVICE_NAME=my-app                  # AppKit service identification
+# 🔧 Framework Configuration (BLOOM_* prefix)
+BLOOM_AUTH_SECRET=jwt-secret-key           # AppKit auth module
+BLOOM_ERROR_STACK=false                    # AppKit error module
+BLOOM_SERVICE_NAME=my-app                  # AppKit service identification
 
 # 🎯 Application Configuration (everything else)
 DATABASE_HOST=localhost                    # Your database connection
@@ -132,8 +132,8 @@ USER_ID=0123456789                        → "0123456789" (keeps leading zero)
 
 ```bash
 # ✅ CORRECT - Framework variables
-VOILA_AUTH_SECRET=your-secret-key
-VOILA_SERVICE_NAME=my-app
+BLOOM_AUTH_SECRET=your-secret-key
+BLOOM_SERVICE_NAME=my-app
 NODE_ENV=production
 
 # ✅ CORRECT - Application variables
@@ -282,9 +282,9 @@ function getDatabaseConfig() {
 
 ```bash
 # Framework variables (handled by Bloomneo internally)
-VOILA_AUTH_SECRET=your-super-secure-jwt-secret-key
-VOILA_SERVICE_NAME=my-awesome-app
-VOILA_ERROR_STACK=false
+BLOOM_AUTH_SECRET=your-super-secure-jwt-secret-key
+BLOOM_SERVICE_NAME=my-awesome-app
+BLOOM_ERROR_STACK=false
 
 # Application variables (your configuration)
 DATABASE_HOST=localhost
@@ -472,7 +472,7 @@ DATABASE_SSL=true
 
 ```bash
 # ✅ Framework variables
-VOILA_SERVICE_NAME=my-production-app
+BLOOM_SERVICE_NAME=my-production-app
 NODE_ENV=production
 
 # ✅ Application variables
@@ -506,7 +506,7 @@ CMD ["npm", "start"]
 # Docker run with environment variables
 docker run -d \
   -e NODE_ENV=production \
-  -e VOILA_SERVICE_NAME=my-app \
+  -e BLOOM_SERVICE_NAME=my-app \
   -e DATABASE_HOST=postgres.internal \
   -e DATABASE_PORT=5432 \
   -e DATABASE_CREDENTIALS_USER=app_user \

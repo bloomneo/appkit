@@ -555,13 +555,13 @@ async function generateFromTemplate(
       const envPath = path.join(currentDir, '.env');
       const envContent = await fs.readFile(envPath, 'utf8');
       const keyMatch = envContent.match(
-        /VOILA_FRONTEND_KEY\s*=\s*["']?([^"'\n\r]+)["']?/
+        /BLOOM_FRONTEND_KEY\s*=\s*["']?([^"'\n\r]+)["']?/
       );
       if (keyMatch) {
         frontendKey = keyMatch[1];
       }
       const authMatch = envContent.match(
-        /VOILA_AUTH_SECRET\s*=\s*["']?([^"'\n\r]+)["']?/
+        /BLOOM_AUTH_SECRET\s*=\s*["']?([^"'\n\r]+)["']?/
       );
       if (authMatch) {
         authSecret = authMatch[1];
@@ -989,7 +989,7 @@ async function generateUserSeedingFiles(templatesPath, projectDir) {
 }
 
 /**
- * Ensure DATABASE_URL, VOILA_AUTH_SECRET, and DEFAULT_USER_PASSWORD exist in .env
+ * Ensure DATABASE_URL, BLOOM_AUTH_SECRET, and DEFAULT_USER_PASSWORD exist in .env
  */
 async function ensureDatabaseUrl(projectDir) {
   const envPath = path.join(projectDir, '.env');
@@ -1013,17 +1013,17 @@ async function ensureDatabaseUrl(projectDir) {
       console.log(`✅ Added DATABASE_URL to .env`);
     }
 
-    // Check if VOILA_AUTH_SECRET already exists
-    if (!envContent.includes('VOILA_AUTH_SECRET=')) {
+    // Check if BLOOM_AUTH_SECRET already exists
+    if (!envContent.includes('BLOOM_AUTH_SECRET=')) {
       const authSecret =
         'auth_' +
         Math.random().toString(36).substring(2, 15) +
         Math.random().toString(36).substring(2, 15) +
         Math.random().toString(36).substring(2, 15);
-      const authSecretLine = '\nVOILA_AUTH_SECRET=' + authSecret + '\n';
+      const authSecretLine = '\nBLOOM_AUTH_SECRET=' + authSecret + '\n';
       envContent += authSecretLine;
       updated = true;
-      console.log(`✅ Added VOILA_AUTH_SECRET to .env`);
+      console.log(`✅ Added BLOOM_AUTH_SECRET to .env`);
     }
 
     // Check if DEFAULT_USER_PASSWORD already exists

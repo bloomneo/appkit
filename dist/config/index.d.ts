@@ -9,14 +9,14 @@
  * @llm-rule NOTE: Common pattern - configClass.get() → config.get('path', default) → use value
  *
  * CRITICAL UNDERSCORE CONVENTION:
- * - VOILA_* and FLUX_* = Framework internal variables (NOT parsed as app config)
+ * - BLOOM_* and FLUX_* = Framework internal variables (NOT parsed as app config)
  * - Everything else = Your app config (parsed into config object)
  *
  * Examples:
- * ✅ VOILA_AUTH_SECRET=secret           → Framework internal (not in config object)
+ * ✅ BLOOM_AUTH_SECRET=secret           → Framework internal (not in config object)
  * ✅ DATABASE_HOST=localhost            → config.get('database.host')
  * ✅ REDIS_URL=redis://local            → config.get('redis.url')
- * ❌ VOILA_DATABASE_HOST=localhost      → Framework var (won't be parsed as app config)
+ * ❌ BLOOM_DATABASE_HOST=localhost      → Framework var (won't be parsed as app config)
  */
 import { ConfigClass } from './config.js';
 import { type ConfigValue } from './defaults.js';

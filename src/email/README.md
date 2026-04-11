@@ -335,7 +335,7 @@ await emailClass.send({
 });
 
 // ✅ DO configure verified FROM address
-process.env.VOILA_EMAIL_FROM_EMAIL = 'noreply@yourdomain.com'; // Verified
+process.env.BLOOM_EMAIL_FROM_EMAIL = 'noreply@yourdomain.com'; // Verified
 // FROM automatically set from config
 ```
 
@@ -483,10 +483,10 @@ async function validateProductionSetup() {
   }
 
   // Validate FROM address is set
-  if (!process.env.VOILA_EMAIL_FROM_EMAIL) {
+  if (!process.env.BLOOM_EMAIL_FROM_EMAIL) {
     console.warn(
       '⚠️ No FROM email configured. Using default. ' +
-        'Set VOILA_EMAIL_FROM_EMAIL for professional emails.'
+        'Set BLOOM_EMAIL_FROM_EMAIL for professional emails.'
     );
   }
 
@@ -530,8 +530,8 @@ app.get('/health/email', emailHealthCheck);
 RESEND_API_KEY=re_your_api_key_here
 
 # Optional: Custom FROM address
-VOILA_EMAIL_FROM_EMAIL=noreply@yourdomain.com
-VOILA_EMAIL_FROM_NAME="Your App Name"
+BLOOM_EMAIL_FROM_EMAIL=noreply@yourdomain.com
+BLOOM_EMAIL_FROM_NAME="Your App Name"
 ```
 
 ### **SMTP (Universal)**
@@ -554,8 +554,8 @@ SMTP_SECURE=false  # true for port 465, false for 587
 # Automatically used when no email provider is set
 
 # Optional: Customize console output
-VOILA_EMAIL_CONSOLE_FORMAT=detailed  # or 'simple'
-VOILA_EMAIL_CONSOLE_PREVIEW=true     # Show email content
+BLOOM_EMAIL_CONSOLE_FORMAT=detailed  # or 'simple'
+BLOOM_EMAIL_CONSOLE_PREVIEW=true     # Show email content
 ```
 
 ## 🔧 Platform Setup
@@ -610,7 +610,7 @@ SMTP_SECURE=false
 ```bash
 # Add to Vercel environment variables
 RESEND_API_KEY=re_your_api_key
-VOILA_EMAIL_FROM_EMAIL=noreply@yourdomain.com
+BLOOM_EMAIL_FROM_EMAIL=noreply@yourdomain.com
 ```
 
 ### **Railway/Heroku**
@@ -629,7 +629,7 @@ services:
     image: my-app
     environment:
       RESEND_API_KEY: re_your_api_key
-      VOILA_EMAIL_FROM_EMAIL: noreply@yourdomain.com
+      BLOOM_EMAIL_FROM_EMAIL: noreply@yourdomain.com
 ```
 
 ### **AWS/VPS**
@@ -637,7 +637,7 @@ services:
 ```bash
 # Add to your deployment script
 export RESEND_API_KEY=re_your_api_key
-export VOILA_EMAIL_FROM_EMAIL=noreply@yourdomain.com
+export BLOOM_EMAIL_FROM_EMAIL=noreply@yourdomain.com
 ```
 
 ## 🤖 LLM Guidelines

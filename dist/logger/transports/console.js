@@ -82,7 +82,7 @@ export class ConsoleTransport {
         // we can skip the regular console output to avoid duplication
         const shouldShowVisual = isDevelopment ||
             !this.minimal ||
-            process.env.VOILA_VISUAL_ERRORS === 'true';
+            process.env.BLOOM_VISUAL_ERRORS === 'true';
         return shouldShowVisual && hasVisualFormatting;
     }
     /**

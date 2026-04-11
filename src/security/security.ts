@@ -105,7 +105,7 @@ export class SecurityClass {
 
     if (!csrfSecret) {
       throw createSecurityError(
-        'CSRF secret required. Set VOILA_SECURITY_CSRF_SECRET or VOILA_AUTH_SECRET environment variable',
+        'CSRF secret required. Set BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET environment variable',
         500
       );
     }
@@ -358,7 +358,7 @@ export class SecurityClass {
 
     if (!encryptionKey) {
       throw createSecurityError(
-        'Encryption key required. Provide as argument or set VOILA_SECURITY_ENCRYPTION_KEY environment variable',
+        'Encryption key required. Provide as argument or set BLOOM_SECURITY_ENCRYPTION_KEY environment variable',
         500
       );
     }
@@ -412,7 +412,7 @@ export class SecurityClass {
 
     if (!decryptionKey) {
       throw createSecurityError(
-        'Decryption key required. Provide as argument or set VOILA_SECURITY_ENCRYPTION_KEY environment variable',
+        'Decryption key required. Provide as argument or set BLOOM_SECURITY_ENCRYPTION_KEY environment variable',
         500
       );
     }
@@ -476,7 +476,7 @@ export class SecurityClass {
    * Generates a cryptographically secure 256-bit encryption key
    * @llm-rule WHEN: Setting up encryption for the first time or rotating keys
    * @llm-rule AVOID: Using weak or predictable keys - always use this method for key generation
-   * @llm-rule NOTE: Returns 64-character hex string suitable for VOILA_SECURITY_ENCRYPTION_KEY
+   * @llm-rule NOTE: Returns 64-character hex string suitable for BLOOM_SECURITY_ENCRYPTION_KEY
    */
   generateKey(): string {
     try {

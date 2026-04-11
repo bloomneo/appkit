@@ -9,7 +9,7 @@
  * @llm-rule NOTE: Now includes visual error configuration for enhanced developer experience
  */
 /**
- * Get smart defaults using direct VOILA_LOGGER_* environment access
+ * Get smart defaults using direct BLOOM_LOGGER_* environment access
  * @llm-rule WHEN: App startup to get production-ready logging configuration
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
  * @llm-rule NOTE: Called once at startup, cached globally for performance
@@ -34,39 +34,39 @@ export function getSmartDefaults() {
         transports,
         // Console config - direct env access
         console: {
-            colorize: process.env.VOILA_LOGGER_CONSOLE_COLOR !== 'false' && !isProduction,
-            timestamps: process.env.VOILA_LOGGER_CONSOLE_TIME !== 'false',
+            colorize: process.env.BLOOM_LOGGER_CONSOLE_COLOR !== 'false' && !isProduction,
+            timestamps: process.env.BLOOM_LOGGER_CONSOLE_TIME !== 'false',
             prettyPrint: isDevelopment && !minimal,
         },
         // File config - direct env access
         file: {
-            dir: process.env.VOILA_LOGGER_DIR || 'logs',
-            filename: process.env.VOILA_LOGGER_FILE_NAME || 'app.log',
-            maxSize: parseInt(process.env.VOILA_LOGGER_FILE_SIZE || (isProduction ? '50000000' : '10000000')),
-            retentionDays: parseInt(process.env.VOILA_LOGGER_FILE_RETENTION || (isProduction ? '30' : '7')),
+            dir: process.env.BLOOM_LOGGER_DIR || 'logs',
+            filename: process.env.BLOOM_LOGGER_FILE_NAME || 'app.log',
+            maxSize: parseInt(process.env.BLOOM_LOGGER_FILE_SIZE || (isProduction ? '50000000' : '10000000')),
+            retentionDays: parseInt(process.env.BLOOM_LOGGER_FILE_RETENTION || (isProduction ? '30' : '7')),
         },
         // Database config - direct env access
         database: {
             url: process.env.DATABASE_URL || null,
-            table: process.env.VOILA_LOGGER_DB_TABLE || 'logs',
-            batchSize: parseInt(process.env.VOILA_LOGGER_DB_BATCH || (minimal ? '50' : '100')),
+            table: process.env.BLOOM_LOGGER_DB_TABLE || 'logs',
+            batchSize: parseInt(process.env.BLOOM_LOGGER_DB_BATCH || (minimal ? '50' : '100')),
         },
         // HTTP config - direct env access
         http: {
-            url: process.env.VOILA_LOGGER_HTTP_URL || null,
-            batchSize: parseInt(process.env.VOILA_LOGGER_HTTP_BATCH || (minimal ? '25' : '50')),
-            timeout: parseInt(process.env.VOILA_LOGGER_HTTP_TIMEOUT || '30000'),
+            url: process.env.BLOOM_LOGGER_HTTP_URL || null,
+            batchSize: parseInt(process.env.BLOOM_LOGGER_HTTP_BATCH || (minimal ? '25' : '50')),
+            timeout: parseInt(process.env.BLOOM_LOGGER_HTTP_TIMEOUT || '30000'),
         },
         // Webhook config - direct env access
         webhook: {
-            url: process.env.VOILA_LOGGER_WEBHOOK_URL || null,
-            level: process.env.VOILA_LOGGER_WEBHOOK_LEVEL || 'error',
-            rateLimit: parseInt(process.env.VOILA_LOGGER_WEBHOOK_RATE || (minimal ? '5' : '10')),
+            url: process.env.BLOOM_LOGGER_WEBHOOK_URL || null,
+            level: process.env.BLOOM_LOGGER_WEBHOOK_LEVEL || 'error',
+            rateLimit: parseInt(process.env.BLOOM_LOGGER_WEBHOOK_RATE || (minimal ? '5' : '10')),
         },
         // Service identification - direct env access
         service: {
-            name: process.env.VOILA_SERVICE_NAME || process.env.npm_package_name || 'app',
-            version: process.env.VOILA_SERVICE_VERSION || process.env.npm_package_version || '1.0.0',
+            name: process.env.BLOOM_SERVICE_NAME || process.env.npm_package_name || 'app',
+            version: process.env.BLOOM_SERVICE_VERSION || process.env.npm_package_version || '1.0.0',
             environment: nodeEnv,
         },
     };
@@ -78,7 +78,7 @@ export function getSmartDefaults() {
  */
 function getScope() {
     // Manual override wins (like auth module pattern)
-    const manual = process.env.VOILA_LOGGER_SCOPE?.toLowerCase();
+    const manual = process.env.BLOOM_LOGGER_SCOPE?.toLowerCase();
     if (manual === 'minimal' || manual === 'full') {
         return manual;
     }
@@ -87,7 +87,7 @@ function getScope() {
         return 'minimal'; // CI/CD pipelines
     if (process.env.NODE_ENV === 'production')
         return 'minimal'; // Production efficiency
-    if (process.env.DEBUG || process.env.VOILA_DEBUG)
+    if (process.env.DEBUG || process.env.BLOOM_DEBUG)
         return 'full'; // Debug sessions
     return 'minimal'; // Safe default for clean logs
 }
@@ -98,7 +98,7 @@ function getScope() {
  */
 function getLevel(isProduction, isDevelopment) {
     // Manual override wins (like auth module)
-    const manual = process.env.VOILA_LOGGER_LEVEL?.toLowerCase();
+    const manual = process.env.BLOOM_LOGGER_LEVEL?.toLowerCase();
     if (manual && ['debug', 'info', 'warn', 'error'].includes(manual)) {
         return manual;
     }
@@ -118,15 +118,15 @@ function getLevel(isProduction, isDevelopment) {
 function getEnabledTransports(isTest) {
     return {
         // Console: default on (except test)
-        console: process.env.VOILA_LOGGER_CONSOLE !== 'false' && !isTest,
+        console: process.env.BLOOM_LOGGER_CONSOLE !== 'false' && !isTest,
         // File: default on (except test)
-        file: process.env.VOILA_LOGGER_FILE !== 'false' && !isTest,
+        file: process.env.BLOOM_LOGGER_FILE !== 'false' && !isTest,
         // Database: auto-enable if DATABASE_URL exists
-        database: process.env.VOILA_LOGGER_DATABASE === 'true' && !!process.env.DATABASE_URL,
+        database: process.env.BLOOM_LOGGER_DATABASE === 'true' && !!process.env.DATABASE_URL,
         // HTTP: auto-enable if URL provided
-        http: !!process.env.VOILA_LOGGER_HTTP_URL,
+        http: !!process.env.BLOOM_LOGGER_HTTP_URL,
         // Webhook: auto-enable if URL provided
-        webhook: !!process.env.VOILA_LOGGER_WEBHOOK_URL,
+        webhook: !!process.env.BLOOM_LOGGER_WEBHOOK_URL,
     };
 }
 /**
@@ -136,42 +136,42 @@ function getEnabledTransports(isTest) {
  */
 export function validateEnvironment() {
     // Validate log level
-    const level = process.env.VOILA_LOGGER_LEVEL;
+    const level = process.env.BLOOM_LOGGER_LEVEL;
     if (level && !['debug', 'info', 'warn', 'error'].includes(level)) {
-        throw new Error(`Invalid VOILA_LOGGER_LEVEL: "${level}". Must be: debug, info, warn, error`);
+        throw new Error(`Invalid BLOOM_LOGGER_LEVEL: "${level}". Must be: debug, info, warn, error`);
     }
     // Validate scope
-    const scope = process.env.VOILA_LOGGER_SCOPE;
+    const scope = process.env.BLOOM_LOGGER_SCOPE;
     if (scope && !['minimal', 'full'].includes(scope.toLowerCase())) {
-        throw new Error(`Invalid VOILA_LOGGER_SCOPE: "${scope}". Must be: minimal, full`);
+        throw new Error(`Invalid BLOOM_LOGGER_SCOPE: "${scope}". Must be: minimal, full`);
     }
     // Validate visual errors setting
-    const visualErrors = process.env.VOILA_VISUAL_ERRORS;
+    const visualErrors = process.env.BLOOM_VISUAL_ERRORS;
     if (visualErrors && !['true', 'false'].includes(visualErrors)) {
-        throw new Error(`Invalid VOILA_VISUAL_ERRORS: "${visualErrors}". Must be: true, false`);
+        throw new Error(`Invalid BLOOM_VISUAL_ERRORS: "${visualErrors}". Must be: true, false`);
     }
     // Validate URLs if provided
-    const httpUrl = process.env.VOILA_LOGGER_HTTP_URL;
+    const httpUrl = process.env.BLOOM_LOGGER_HTTP_URL;
     if (httpUrl && !isValidUrl(httpUrl)) {
-        throw new Error(`Invalid VOILA_LOGGER_HTTP_URL: "${httpUrl}"`);
+        throw new Error(`Invalid BLOOM_LOGGER_HTTP_URL: "${httpUrl}"`);
     }
-    const webhookUrl = process.env.VOILA_LOGGER_WEBHOOK_URL;
+    const webhookUrl = process.env.BLOOM_LOGGER_WEBHOOK_URL;
     if (webhookUrl && !isValidUrl(webhookUrl)) {
-        throw new Error(`Invalid VOILA_LOGGER_WEBHOOK_URL: "${webhookUrl}"`);
+        throw new Error(`Invalid BLOOM_LOGGER_WEBHOOK_URL: "${webhookUrl}"`);
     }
     // Validate database URL if database logging enabled
-    const dbEnabled = process.env.VOILA_LOGGER_DATABASE === 'true';
+    const dbEnabled = process.env.BLOOM_LOGGER_DATABASE === 'true';
     const dbUrl = process.env.DATABASE_URL;
     if (dbEnabled && !dbUrl) {
-        throw new Error('VOILA_LOGGER_DATABASE=true but DATABASE_URL not provided');
+        throw new Error('BLOOM_LOGGER_DATABASE=true but DATABASE_URL not provided');
     }
     if (dbUrl && !isValidDatabaseUrl(dbUrl)) {
         throw new Error(`Invalid DATABASE_URL: "${dbUrl}"`);
     }
     // Validate numeric values
-    validateNumericEnv('VOILA_LOGGER_FILE_SIZE', 1000000, 100000000); // 1MB to 100MB
-    validateNumericEnv('VOILA_LOGGER_FILE_RETENTION', 1, 365); // 1 to 365 days
-    validateNumericEnv('VOILA_LOGGER_HTTP_TIMEOUT', 1000, 300000); // 1s to 5min
+    validateNumericEnv('BLOOM_LOGGER_FILE_SIZE', 1000000, 100000000); // 1MB to 100MB
+    validateNumericEnv('BLOOM_LOGGER_FILE_RETENTION', 1, 365); // 1 to 365 days
+    validateNumericEnv('BLOOM_LOGGER_HTTP_TIMEOUT', 1000, 300000); // 1s to 5min
 }
 /**
  * Validate numeric environment variable

@@ -10,6 +10,36 @@
 import { RedisStrategy } from './strategies/redis.js';
 import { MemoryStrategy } from './strategies/memory.js';
 /**
+ * Thrown by all cache operations when the underlying strategy fails.
+ * Catch this in your route/service and decide whether to fall back to the
+ * database, re-throw, or log — the cache module never makes that call for you.
+ *
+ * @example
+ * import { CacheError } from '@bloomneo/appkit/cache';
+ *
+ * try {
+ *   const user = await cache.get<User>('user:123');
+ * } catch (err) {
+ *   if (err instanceof CacheError) {
+ *     logger.warn('Cache unavailable, falling back to DB', { code: err.code });
+ *     return await db.user.findUnique({ where: { id: 123 } });
+ *   }
+ *   throw err; // re-throw unrelated errors
+ * }
+ */
+export class CacheError extends Error {
+    /** Machine-readable error code, e.g. 'CACHE_GET_FAILED', 'CACHE_CONNECT_FAILED' */
+    code;
+    constructor(message, options) {
+        super(`[@bloomneo/appkit/cache] ${message}`);
+        this.name = 'CacheError';
+        this.code = options?.code ?? 'CACHE_ERROR';
+        if (options?.cause) {
+            this.cause = options.cause;
+        }
+    }
+}
+/**
  * Cache class with automatic strategy selection and ultra-simple API
  */
 export class CacheClass {
@@ -49,12 +79,11 @@ export class CacheClass {
             await this.strategy.connect();
             this.connected = true;
             if (this.config.environment.isDevelopment) {
-                console.log(`✅ [AppKit] Cache connected using ${this.config.strategy} strategy`);
+                console.log(`[@bloomneo/appkit/cache] Connected using ${this.config.strategy} strategy.`);
             }
         }
-        catch (error) {
-            console.error(`❌ [AppKit] Cache connection failed:`, error.message);
-            throw error;
+        catch (cause) {
+            throw new CacheError(`Failed to connect using ${this.config.strategy} strategy: ${cause.message}`, { code: 'CACHE_CONNECT_FAILED', cause });
         }
     }
     /**
@@ -69,11 +98,13 @@ export class CacheClass {
             await this.strategy.disconnect();
             this.connected = false;
             if (this.config.environment.isDevelopment) {
-                console.log(`👋 [AppKit] Cache disconnected`);
+                console.log(`[@bloomneo/appkit/cache] Disconnected.`);
             }
         }
-        catch (error) {
-            console.error(`⚠️ [AppKit] Cache disconnect error:`, error.message);
+        catch (cause) {
+            // Disconnect errors are non-fatal — log a warning but don't throw.
+            // Throwing during shutdown can mask the original reason the app is shutting down.
+            console.warn(`[@bloomneo/appkit/cache] Disconnect warning:`, cause.message);
         }
     }
     /**
@@ -85,13 +116,15 @@ export class CacheClass {
     async get(key) {
         this.validateKey(key);
         await this.ensureConnected();
+        const prefixedKey = this.buildKey(key);
         try {
-            const prefixedKey = this.buildKey(key);
             return await this.strategy.get(prefixedKey);
         }
-        catch (error) {
-            console.error(`[AppKit] Cache get error for key "${key}":`, error.message);
-            return null; // Graceful degradation
+        catch (cause) {
+            throw new CacheError(`get failed for key "${key}": ${cause.message}`, {
+                code: 'CACHE_GET_FAILED',
+                cause,
+            });
         }
     }
     /**
@@ -104,14 +137,16 @@ export class CacheClass {
         this.validateKey(key);
         this.validateValue(value);
         await this.ensureConnected();
+        const prefixedKey = this.buildKey(key);
+        const cacheTTL = ttl ?? this.config.defaultTTL;
         try {
-            const prefixedKey = this.buildKey(key);
-            const cacheTTL = ttl ?? this.config.defaultTTL;
             return await this.strategy.set(prefixedKey, value, cacheTTL);
         }
-        catch (error) {
-            console.error(`[AppKit] Cache set error for key "${key}":`, error.message);
-            return false; // Graceful degradation
+        catch (cause) {
+            throw new CacheError(`set failed for key "${key}": ${cause.message}`, {
+                code: 'CACHE_SET_FAILED',
+                cause,
+            });
         }
     }
     /**
@@ -122,13 +157,15 @@ export class CacheClass {
     async delete(key) {
         this.validateKey(key);
         await this.ensureConnected();
+        const prefixedKey = this.buildKey(key);
         try {
-            const prefixedKey = this.buildKey(key);
             return await this.strategy.delete(prefixedKey);
         }
-        catch (error) {
-            console.error(`[AppKit] Cache delete error for key "${key}":`, error.message);
-            return false;
+        catch (cause) {
+            throw new CacheError(`delete failed for key "${key}": ${cause.message}`, {
+                code: 'CACHE_DELETE_FAILED',
+                cause,
+            });
         }
     }
     /**
@@ -140,7 +177,6 @@ export class CacheClass {
     async clear() {
         await this.ensureConnected();
         try {
-            // Get all keys in this namespace and delete them
             const pattern = this.buildKey('*');
             const keys = await this.strategy.keys(pattern);
             if (keys.length === 0)
@@ -148,9 +184,11 @@ export class CacheClass {
             const deleted = await this.strategy.deleteMany(keys);
             return deleted === keys.length;
         }
-        catch (error) {
-            console.error(`[AppKit] Cache clear error:`, error.message);
-            return false;
+        catch (cause) {
+            throw new CacheError(`clear failed for namespace "${this.namespace}": ${cause.message}`, {
+                code: 'CACHE_CLEAR_FAILED',
+                cause,
+            });
         }
     }
     /**
@@ -166,15 +204,9 @@ export class CacheClass {
             return existing;
         }
         // Generate new value and cache it
-        try {
-            const value = await factory();
-            await this.set(key, value, ttl);
-            return value;
-        }
-        catch (error) {
-            console.error(`[AppKit] Cache getOrSet factory error for key "${key}":`, error.message);
-            throw error; // Re-throw factory errors
-        }
+        const value = await factory(); // factory errors propagate as-is — not wrapped in CacheError
+        await this.set(key, value, ttl);
+        return value;
     }
     /**
      * Gets current cache strategy name for debugging
@@ -218,31 +250,27 @@ export class CacheClass {
      */
     validateKey(key) {
         if (!key || typeof key !== 'string') {
-            throw new Error('Cache key must be a non-empty string');
+            throw new CacheError('Cache key must be a non-empty string', { code: 'CACHE_INVALID_KEY' });
         }
         if (key.length > 250) {
-            throw new Error('Cache key too long (max 250 characters)');
+            throw new CacheError('Cache key too long (max 250 characters)', { code: 'CACHE_INVALID_KEY' });
         }
         if (key.includes('\n') || key.includes('\r')) {
-            throw new Error('Cache key cannot contain newline characters');
+            throw new CacheError('Cache key cannot contain newline characters', { code: 'CACHE_INVALID_KEY' });
         }
         if (key.includes(':')) {
-            throw new Error('Cache key cannot contain colon characters (reserved for namespacing)');
+            throw new CacheError('Cache key cannot contain colon characters (reserved for namespacing)', { code: 'CACHE_INVALID_KEY' });
         }
     }
-    /**
-     * Validates cache value
-     */
     validateValue(value) {
         if (value === undefined) {
-            throw new Error('Cannot cache undefined values');
+            throw new CacheError('Cannot cache undefined values', { code: 'CACHE_INVALID_VALUE' });
         }
-        // Check if value can be serialized
         try {
             JSON.stringify(value);
         }
-        catch (error) {
-            throw new Error('Value must be JSON serializable');
+        catch {
+            throw new CacheError('Value must be JSON serializable', { code: 'CACHE_INVALID_VALUE' });
         }
     }
 }

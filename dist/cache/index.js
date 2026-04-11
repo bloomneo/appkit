@@ -40,21 +40,24 @@ function get(namespace = 'app') {
     const cacheInstance = new CacheClass(globalConfig, namespace);
     // Auto-connect on first use
     cacheInstance.connect().catch((error) => {
-        console.error(`[AppKit] Cache auto-connect failed for namespace "${namespace}":`, error.message);
+        console.error(`[@bloomneo/appkit/cache] Auto-connect failed for namespace "${namespace}":`, error.message);
     });
     namedCaches.set(namespace, cacheInstance);
     return cacheInstance;
 }
 /**
- * Clear all cache instances and disconnect - essential for testing
- * @llm-rule WHEN: Testing cache logic with different configurations or app shutdown
- * @llm-rule AVOID: Using in production except for graceful shutdown
+ * Disconnect all cache instances and reset internal state.
+ * Use this for full teardown (e.g., end-of-suite cleanup).
+ * For clearing cached data between individual tests use flushAll().
+ *
+ * @llm-rule WHEN: End-of-test-suite teardown or app restart
+ * @llm-rule AVOID: Calling between individual tests — use flushAll() instead
  */
-async function clear() {
+async function disconnectAll() {
     const disconnectPromises = [];
     for (const [namespace, cache] of namedCaches) {
         disconnectPromises.push(cache.disconnect().catch((error) => {
-            console.error(`[AppKit] Cache disconnect failed for namespace "${namespace}":`, error.message);
+            console.error(`[@bloomneo/appkit/cache] Disconnect failed for namespace "${namespace}":`, error.message);
         }));
     }
     await Promise.all(disconnectPromises);
@@ -67,8 +70,8 @@ async function clear() {
  * @llm-rule AVOID: Using in production - only for tests and development
  */
 async function reset(newConfig) {
-    // Clear existing instances
-    await clear();
+    // Disconnect existing instances before reconfiguring
+    await disconnectAll();
     // Reset configuration
     if (newConfig) {
         const defaults = getSmartDefaults();
@@ -138,7 +141,7 @@ async function flushAll() {
         return results.every(result => result === true);
     }
     catch (error) {
-        console.error('[AppKit] Cache flushAll error:', error.message);
+        console.error('[@bloomneo/appkit/cache] flushAll error:', error.message);
         return false;
     }
 }
@@ -148,13 +151,13 @@ async function flushAll() {
  * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data loss
  */
 async function shutdown() {
-    console.log('🔄 [AppKit] Cache graceful shutdown...');
+    console.log('[@bloomneo/appkit/cache] Graceful shutdown starting...');
     try {
-        await clear();
-        console.log('✅ [AppKit] Cache shutdown complete');
+        await disconnectAll();
+        console.log('[@bloomneo/appkit/cache] Shutdown complete.');
     }
     catch (error) {
-        console.error('❌ [AppKit] Cache shutdown error:', error.message);
+        console.error('[@bloomneo/appkit/cache] Shutdown error:', error.message);
     }
 }
 /**
@@ -164,16 +167,16 @@ export const cacheClass = {
     // Core method (like auth.get())
     get,
     // Utility methods
-    clear,
+    disconnectAll, // Disconnects all instances + resets state. Use flushAll() to clear data between tests.
     reset,
     getStrategy,
     getActiveNamespaces,
     getConfig,
     hasRedis,
-    flushAll,
+    flushAll, // Clears cached data across all namespaces. Use between individual tests.
     shutdown,
 };
-export { CacheClass } from './cache.js';
+export { CacheClass, CacheError } from './cache.js';
 // Default export
 export default cacheClass;
 // Auto-setup graceful shutdown handlers
@@ -188,13 +191,13 @@ if (typeof process !== 'undefined') {
     process.on('SIGINT', shutdownHandler);
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
-        console.error('[AppKit] Uncaught exception during cache operation:', error);
+        console.error('[@bloomneo/appkit/cache] Uncaught exception:', error);
         shutdown().finally(() => {
             process.exit(1);
         });
     });
     process.on('unhandledRejection', (reason) => {
-        console.error('[AppKit] Unhandled rejection during cache operation:', reason);
+        console.error('[@bloomneo/appkit/cache] Unhandled rejection:', reason);
         shutdown().finally(() => {
             process.exit(1);
         });

@@ -12,6 +12,13 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { validateRounds, validateRoleLevel, validatePermission, } from './defaults.js';
 /**
+ * Canonical doc URL appended to runtime errors so devs (and AI agents)
+ * can self-correct without grepping the codebase. Points at the auth
+ * module README on GitHub which has the LLM Quick Reference + Common
+ * Mistakes sections that match the most-hit error scenarios.
+ */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/auth/README.md';
+/**
  * Authentication class with JWT, password, and role-level-permission system
  */
 export class AuthenticationClass {
@@ -51,33 +58,33 @@ export class AuthenticationClass {
      */
     signToken(payload, expiresIn) {
         if (!payload || typeof payload !== 'object') {
-            throw new Error('Payload must be an object');
+            throw new Error(`[@bloomneo/appkit/auth] Payload must be an object. See: ${DOCS_URL}#token-generation`);
         }
         // Validate based on token type
         if (payload.type === 'login') {
             if (!payload.userId) {
-                throw new Error('Login token must include userId');
+                throw new Error(`[@bloomneo/appkit/auth] Login token must include userId. Use auth.generateLoginToken({ userId, role, level }). See: ${DOCS_URL}#token-generation`);
             }
         }
         else if (payload.type === 'api_key') {
             if (!payload.keyId) {
-                throw new Error('API token must include keyId');
+                throw new Error(`[@bloomneo/appkit/auth] API token must include keyId. Use auth.generateApiToken({ keyId, role, level }). See: ${DOCS_URL}#token-generation`);
             }
         }
         else {
-            throw new Error('Token type must be "login" or "api_key"');
+            throw new Error(`[@bloomneo/appkit/auth] Token type must be "login" or "api_key". Use auth.generateLoginToken() or auth.generateApiToken(). See: ${DOCS_URL}#token-generation`);
         }
         if (!payload.role || !payload.level) {
-            throw new Error('Payload must include both role and level');
+            throw new Error(`[@bloomneo/appkit/auth] Payload must include both role and level (e.g. role: 'admin', level: 'tenant'). See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         // Validate role.level exists
         const roleLevel = `${payload.role}.${payload.level}`;
         if (!validateRoleLevel(roleLevel, this.config.roles)) {
-            throw new Error(`Invalid role.level: "${roleLevel}"`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid role.level: "${roleLevel}". The default hierarchy ships with user.basic, user.pro, user.max, moderator.review, moderator.approve, moderator.manage, admin.tenant, admin.org, admin.system. To register custom roles, set BLOOM_AUTH_ROLES env var. See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         const jwtSecret = this.config.jwt.secret;
         if (!jwtSecret) {
-            throw new Error('JWT secret required. Set VOILA_AUTH_SECRET environment variable');
+            throw new Error('JWT secret required. Set BLOOM_AUTH_SECRET environment variable');
         }
         const tokenExpiration = expiresIn || this.config.jwt.expiresIn;
         try {
@@ -101,7 +108,7 @@ export class AuthenticationClass {
         }
         const jwtSecret = this.config.jwt.secret;
         if (!jwtSecret) {
-            throw new Error('JWT secret required. Set VOILA_AUTH_SECRET environment variable');
+            throw new Error('JWT secret required. Set BLOOM_AUTH_SECRET environment variable');
         }
         try {
             const decoded = jwt.verify(token, jwtSecret, {
@@ -223,54 +230,59 @@ export class AuthenticationClass {
         return userLevel >= requiredLevel;
     }
     /**
-     * Checks if user has specific permission with automatic action inheritance
+     * Checks if user has specific permission with automatic action inheritance.
+     *
+     * Permission resolution rule (REPLACEMENT, not additive):
+     *   - If `user.permissions` is set (an array, even empty), it is the COMPLETE
+     *     permission set for the user. Role defaults are NOT consulted.
+     *   - If `user.permissions` is undefined / null, the role.level's default
+     *     permissions from the configured RolePermissionConfig are used.
+     *
+     * This matches AWS IAM, Casbin, OPA, Auth0 RBAC, and every mainstream
+     * permission system: explicit permissions are the truth, defaults are the
+     * fallback. To downgrade a user below their role's defaults, pass an
+     * explicit `permissions: [...]` array (even an empty `[]` is valid — it
+     * means "no permissions despite the role").
+     *
+     * Action inheritance rule (within a scope):
+     *   - `manage:<scope>` includes view, create, edit, delete for that scope
+     *   - No upward inheritance: `edit:tenant` does NOT grant `manage:tenant`
+     *
      * @llm-rule WHEN: Checking fine-grained permissions for specific actions
-     * @llm-rule AVOID: Hardcoding permission checks - this handles action inheritance
+     * @llm-rule AVOID: Hardcoding permission checks - this handles inheritance
      * @llm-rule NOTE: 'manage:scope' includes ALL other actions for that scope
-     * @llm-rule NOTE: PERMISSION INHERITANCE EXAMPLES:
+     * @llm-rule NOTE: Explicit user.permissions REPLACES role defaults (not additive)
      * @llm-rule NOTE: If user has 'manage:tenant' → can('edit:tenant') returns TRUE
-     * @llm-rule NOTE: If user has 'manage:tenant' → can('view:tenant') returns TRUE
      * @llm-rule NOTE: If user has 'edit:tenant' → can('manage:tenant') returns FALSE
+     * @llm-rule NOTE: To downgrade a user, pass permissions: [] (empty array)
      * @llm-rule NOTE: Actions hierarchy: manage > delete > edit > create > view
      */
     can(user, permission) {
-        // PERMISSION INHERITANCE: 'manage:tenant' automatically includes:
-        // - view:tenant, create:tenant, edit:tenant, delete:tenant
-        // Example: if user has 'manage:tenant', they can do 'edit:tenant'
         if (!user || !permission) {
             return false;
         }
         if (!validatePermission(permission)) {
-            throw new Error(`Invalid permission format: "${permission}"`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid permission format: "${permission}". ` +
+                `Permissions must be in "action:scope" form (e.g. "edit:tenant", "manage:users"). ` +
+                `See: https://github.com/bloomneo/appkit/blob/main/src/auth/README.md#role-level-permission-architecture`);
         }
-        // Check if user has the specific permission
-        if (user.permissions && Array.isArray(user.permissions)) {
-            if (user.permissions.includes(permission)) {
-                return true;
-            }
-            // Check for manage permission (includes all other actions)
-            const [action, scope] = permission.split(':');
-            if (action !== 'manage') {
-                const managePermission = `manage:${scope}`;
-                if (user.permissions.includes(managePermission)) {
-                    return true;
-                }
-            }
+        // PERMISSION RESOLUTION: explicit user.permissions REPLACES role defaults.
+        // If you want a user to have ONLY a narrow set of permissions, pass them
+        // explicitly. If you want the role's defaults, omit user.permissions entirely.
+        const effectivePermissions = user.permissions && Array.isArray(user.permissions)
+            ? user.permissions
+            : this.config.permissions.defaults[`${user.role}.${user.level}`] ?? [];
+        // Direct match
+        if (effectivePermissions.includes(permission)) {
+            return true;
         }
-        // Fallback: check default permissions for user's role.level
-        const userRoleLevel = `${user.role}.${user.level}`;
-        const defaultPermissions = this.config.permissions.defaults[userRoleLevel];
-        if (defaultPermissions && Array.isArray(defaultPermissions)) {
-            if (defaultPermissions.includes(permission)) {
+        // Action inheritance: manage:<scope> grants all other actions for that scope.
+        // No upward inheritance — edit:scope does NOT grant manage:scope.
+        const [action, scope] = permission.split(':');
+        if (action !== 'manage') {
+            const managePermission = `manage:${scope}`;
+            if (effectivePermissions.includes(managePermission)) {
                 return true;
-            }
-            // Check for manage permission in defaults
-            const [action, scope] = permission.split(':');
-            if (action !== 'manage') {
-                const managePermission = `manage:${scope}`;
-                if (defaultPermissions.includes(managePermission)) {
-                    return true;
-                }
             }
         }
         return false;

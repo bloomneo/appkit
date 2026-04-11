@@ -59,7 +59,7 @@ function detectOrg(req) {
 function detectTenant(req) {
     if (!req)
         return null;
-    if (!process.env.VOILA_DB_TENANT)
+    if (!process.env.BLOOM_DB_TENANT)
         return null;
     return (req.headers?.['x-tenant-id'] ||
         req.user?.tenant_id ||
@@ -338,7 +338,7 @@ export const databaseClass = {
     async disconnect() {
         const disconnectPromises = [];
         for (const [key, connection] of connections) {
-            disconnectPromises.push(this._closeConnection(connection).catch((error) => console.warn(`Error disconnecting ${key}:`, error.message)));
+            disconnectPromises.push(this._closeConnection(connection).catch((error) => console.warn(`[@bloomneo/appkit/database] Disconnect warning for "${key}":`, error.message)));
         }
         await Promise.all(disconnectPromises);
         connections.clear();

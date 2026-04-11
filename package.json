@@ -1,6 +1,6 @@
 {
   "name": "@bloomneo/appkit",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Minimal and framework agnostic Node.js toolkit designed for AI agentic backend development. Previously published as @voilajsx/appkit.",
   "main": "dist/index.js",
   "type": "module",
@@ -62,7 +62,24 @@
   "files": [
     "dist/",
     "bin/",
+    "examples/",
+    "cookbook/",
+    "src/auth/README.md",
+    "src/cache/README.md",
+    "src/config/README.md",
+    "src/database/README.md",
+    "src/email/README.md",
+    "src/error/README.md",
+    "src/event/README.md",
+    "src/logger/README.md",
+    "src/queue/README.md",
+    "src/security/README.md",
+    "src/storage/README.md",
+    "src/util/README.md",
     "README.md",
+    "AGENTS.md",
+    "llms.txt",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
@@ -126,15 +143,7 @@
     "fbca",
     "code-generation"
   ],
-  "author": "Bloomneo",
-  "contributors": [
-    {
-      "name": "Krishna Teja GS",
-      "email": "kt@voilacode.com",
-      "url": "https://bloomneo.com"
-    }
-  ],
-  "creator": "Krishna Teja GS",
+  "author": "Krishna Teja GS <kt@voilacode.com> (https://github.com/ktvoilacode)",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.16.2",

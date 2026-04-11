@@ -8,7 +8,7 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 /**
- * Gets smart defaults using VOILA_ERROR_* environment variables
+ * Gets smart defaults using BLOOM_ERROR_* environment variables
  * @llm-rule WHEN: App startup to get production-ready error configuration
  * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
  * @llm-rule NOTE: Automatically configures dev vs production error behavior
@@ -23,7 +23,7 @@ export function getSmartDefaults() {
         // Error message defaults with environment awareness
         messages: {
             badRequest: 'Bad Request',
-            unauthorized: process.env.VOILA_AUTH_MESSAGE || 'Authentication required',
+            unauthorized: process.env.BLOOM_AUTH_MESSAGE || 'Authentication required',
             forbidden: 'Access denied',
             notFound: 'Not found',
             conflict: 'Conflict',
@@ -31,8 +31,8 @@ export function getSmartDefaults() {
         },
         // Error handling behavior with smart defaults
         middleware: {
-            showStack: process.env.VOILA_ERROR_STACK === 'true' || isDevelopment,
-            logErrors: process.env.VOILA_ERROR_LOG !== 'false',
+            showStack: process.env.BLOOM_ERROR_STACK === 'true' || isDevelopment,
+            logErrors: process.env.BLOOM_ERROR_LOG !== 'false',
         },
         // Environment information
         environment: {
@@ -50,15 +50,15 @@ export function getSmartDefaults() {
  * @llm-rule NOTE: Validates essential boolean environment variables and NODE_ENV only
  */
 function validateEnvironment() {
-    // Validate VOILA_ERROR_STACK (essential for security)
-    const errorStack = process.env.VOILA_ERROR_STACK;
+    // Validate BLOOM_ERROR_STACK (essential for security)
+    const errorStack = process.env.BLOOM_ERROR_STACK;
     if (errorStack && !['true', 'false'].includes(errorStack.toLowerCase())) {
-        throw new Error(`Invalid VOILA_ERROR_STACK: "${errorStack}". Must be "true" or "false"`);
+        throw new Error(`Invalid BLOOM_ERROR_STACK: "${errorStack}". Must be "true" or "false"`);
     }
-    // Validate VOILA_ERROR_LOG (essential for debugging)
-    const errorLog = process.env.VOILA_ERROR_LOG;
+    // Validate BLOOM_ERROR_LOG (essential for debugging)
+    const errorLog = process.env.BLOOM_ERROR_LOG;
     if (errorLog && !['true', 'false'].includes(errorLog.toLowerCase())) {
-        throw new Error(`Invalid VOILA_ERROR_LOG: "${errorLog}". Must be "true" or "false"`);
+        throw new Error(`Invalid BLOOM_ERROR_LOG: "${errorLog}". Must be "true" or "false"`);
     }
     // Validate NODE_ENV (essential for environment detection)
     const nodeEnv = process.env.NODE_ENV;
@@ -67,8 +67,8 @@ function validateEnvironment() {
             `Expected: development, production, test, or staging`);
     }
     // Essential production safety check
-    if (nodeEnv === 'production' && process.env.VOILA_ERROR_STACK === 'true') {
-        console.warn(`[Bloomneo AppKit] Security warning: VOILA_ERROR_STACK=true in production. ` +
+    if (nodeEnv === 'production' && process.env.BLOOM_ERROR_STACK === 'true') {
+        console.warn(`[Bloomneo AppKit] Security warning: BLOOM_ERROR_STACK=true in production. ` +
             `Stack traces may expose internal application structure. Consider setting to false.`);
     }
 }

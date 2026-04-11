@@ -96,25 +96,25 @@ await sessionCache.set('123', sessionData); // Different from user:123
 ### **Error Handling (Copy This Pattern)**
 
 ```typescript
-// ✅ CORRECT - Graceful cache degradation
-async function getUser(id) {
+import { cacheClass, CacheError } from '@bloomneo/appkit/cache';
+
+// ✅ CORRECT - Distinguish cache failures from other errors
+async function getUser(id: number) {
   try {
-    // Try cache first
-    let user = await userCache.get(`user:${id}`);
+    const user = await userCache.get<User>(`user:${id}`);
+    if (user) return user;
 
-    if (!user) {
-      // Cache miss - get from database
-      user = await database.getUser(id);
-
-      // Cache for 1 hour (ignore cache errors)
-      await userCache.set(`user:${id}`, user, 3600);
+    // Cache miss — fetch from DB and populate cache
+    const fresh = await database.getUser(id);
+    await userCache.set(`user:${id}`, fresh, 3600);
+    return fresh;
+  } catch (err) {
+    if (err instanceof CacheError) {
+      // Cache infrastructure failed — fall back silently
+      logger.warn('Cache unavailable', { code: err.code, message: err.message });
+      return await database.getUser(id);
     }
-
-    return user;
-  } catch (error) {
-    console.error('Cache error:', error.message);
-    // Fallback to database on cache failure
-    return await database.getUser(id);
+    throw err; // DB error or other — caller's problem
   }
 }
 ```
@@ -173,128 +173,96 @@ test('should cache user', async () => {
 
 // ✅ CORRECT - Proper test cleanup
 afterEach(async () => {
-  await cacheClass.clear(); // Clean up between tests
+  await cacheClass.flushAll(); // flushAll() clears data; clear() disconnects instances
 });
 ```
 
 ## 🚨 Error Handling Patterns
 
+Cache operations throw `CacheError` when the underlying strategy fails (Redis
+down, serialization error, connection timeout). Use `instanceof CacheError` to
+distinguish cache infrastructure failures from your own errors.
+
+```typescript
+import { cacheClass, CacheError } from '@bloomneo/appkit/cache';
+```
+
 ### **Cache-Aside with Fallback**
 
 ```typescript
-async function getUserProfile(userId) {
+async function getUserProfile(userId: number) {
   const cache = cacheClass.get('profiles');
-
   try {
-    // Try cache first
-    let profile = await cache.get(`profile:${userId}`);
+    const profile = await cache.get<UserProfile>(`profile:${userId}`);
+    if (profile) return profile;
 
-    if (!profile) {
-      // Cache miss - get from database
-      profile = await database.getUserProfile(userId);
-
-      if (profile) {
-        // Cache for 30 minutes
-        await cache.set(`profile:${userId}`, profile, 1800);
-      }
+    const fresh = await database.getUserProfile(userId);
+    if (fresh) await cache.set(`profile:${userId}`, fresh, 1800);
+    return fresh;
+  } catch (err) {
+    if (err instanceof CacheError) {
+      logger.warn('Cache unavailable, falling back to DB', { code: err.code });
+      return database.getUserProfile(userId);
     }
-
-    return profile;
-  } catch (error) {
-    console.error('Cache error:', error.message);
-
-    // Always fallback to database on cache failure
-    return await database.getUserProfile(userId);
+    throw err;
   }
 }
 ```
 
-### **Session Management with Error Recovery**
+### **Session Management**
 
 ```typescript
-async function getSession(sessionId) {
+async function getSession(sessionId: string) {
   const cache = cacheClass.get('sessions');
-
   try {
-    const session = await cache.get(`session:${sessionId}`);
-
-    if (!session) {
-      throw new Error('Session not found or expired');
+    return await cache.get<Session>(`session:${sessionId}`);
+    // Returns null if not found — handle that in the caller, not here
+  } catch (err) {
+    if (err instanceof CacheError) {
+      logger.warn('Session cache unavailable', { code: err.code });
+      return null; // safe to degrade — caller will redirect to login
     }
-
-    return session;
-  } catch (error) {
-    if (error.message.includes('Session not found')) {
-      throw error; // Re-throw session errors
-    }
-
-    console.error('Cache error:', error.message);
-    // For cache infrastructure errors, return null
-    return null;
+    throw err;
   }
 }
 
-async function createSession(userId) {
+async function createSession(userId: number): Promise<string> {
   const cache = cacheClass.get('sessions');
   const sessionId = crypto.randomUUID();
-  const sessionData = { userId, loginTime: Date.now() };
-
   try {
-    // Store for 2 hours
-    await cache.set(`session:${sessionId}`, sessionData, 7200);
-    return sessionId;
-  } catch (error) {
-    console.error('Failed to cache session:', error.message);
-    // Continue without cache - session creation still succeeds
-    return sessionId;
+    await cache.set(`session:${sessionId}`, { userId, loginTime: Date.now() }, 7200);
+  } catch (err) {
+    if (err instanceof CacheError) {
+      logger.warn('Session not cached — Redis unavailable', { code: err.code });
+      // Session is still valid — just not cached. Return it.
+    } else {
+      throw err;
+    }
   }
+  return sessionId;
 }
 ```
 
 ### **API Response Caching**
 
 ```typescript
-async function getWeatherData(city) {
+async function getWeather(city: string) {
   const cache = cacheClass.get('weather');
-  const cacheKey = `weather:${city.toLowerCase()}`;
+  const key = `weather:${city.toLowerCase()}`;
 
   try {
-    // Try cache first
-    const cached = await cache.get(cacheKey);
-    if (cached) {
-      return { ...cached, source: 'cache' };
+    const cached = await cache.get<WeatherData>(key);
+    if (cached) return cached;
+
+    const data = await fetchWeatherFromApi(city);
+    await cache.set(key, data, 1800); // 30 min
+    return data;
+  } catch (err) {
+    if (err instanceof CacheError) {
+      logger.warn('Cache unavailable for weather data', { code: err.code });
+      return fetchWeatherFromApi(city); // bypass cache entirely
     }
-
-    // Fetch fresh data
-    const response = await fetch(
-      `https://api.weather.com/v1/weather?q=${city}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`Weather API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Cache for 30 minutes
-    await cache.set(cacheKey, data, 1800);
-
-    return { ...data, source: 'api' };
-  } catch (error) {
-    console.error('Weather fetch error:', error.message);
-
-    // Try to return stale cache data
-    try {
-      const staleData = await cache.get(cacheKey);
-      if (staleData) {
-        console.warn('Returning stale weather data due to API error');
-        return { ...staleData, source: 'stale' };
-      }
-    } catch (cacheError) {
-      console.error('Stale cache retrieval failed:', cacheError.message);
-    }
-
-    throw error; // No fallback available
+    throw err; // API error — let it propagate
   }
 }
 ```
@@ -311,15 +279,15 @@ REDIS_URL=redis://username:password@redis-host:6379/0
 REDIS_URL=rediss://username:password@redis-host:6380/0
 
 # ✅ PERFORMANCE - Custom timeouts
-VOILA_CACHE_TTL=3600                    # 1 hour default TTL
-VOILA_CACHE_REDIS_CONNECT_TIMEOUT=10000 # 10 second connect timeout
-VOILA_CACHE_REDIS_COMMAND_TIMEOUT=5000  # 5 second command timeout
+BLOOM_CACHE_TTL=3600                    # 1 hour default TTL
+BLOOM_CACHE_REDIS_CONNECT_TIMEOUT=10000 # 10 second connect timeout
+BLOOM_CACHE_REDIS_COMMAND_TIMEOUT=5000  # 5 second command timeout
 ```
 
 ### **Production Checklist**
 
 - ✅ **Redis Connection**: Set secure `REDIS_URL` with authentication
-- ✅ **TTL Strategy**: Set appropriate `VOILA_CACHE_TTL` for your use case
+- ✅ **TTL Strategy**: Set appropriate `BLOOM_CACHE_TTL` for your use case
 - ✅ **Error Handling**: Implement fallback logic for cache failures
 - ✅ **Monitoring**: Log cache hit/miss rates and errors
 - ✅ **Memory Limits**: Configure Redis memory limits and eviction policies
@@ -349,8 +317,8 @@ try {
 
 ```bash
 # ✅ SECURE - Memory limits for development
-VOILA_CACHE_MEMORY_MAX_ITEMS=10000      # Max items in memory
-VOILA_CACHE_MEMORY_MAX_SIZE=100000000   # 100MB memory limit
+BLOOM_CACHE_MEMORY_MAX_ITEMS=10000      # Max items in memory
+BLOOM_CACHE_MEMORY_MAX_SIZE=100000000   # 100MB memory limit
 ```
 
 ## 📖 Complete API
@@ -604,7 +572,9 @@ import { cacheClass } from '@bloomneo/appkit/cache';
 
 describe('Cache Tests', () => {
   afterEach(async () => {
-    await cacheClass.clear(); // Clean up between tests
+    // flushAll() clears cached data. clear() disconnects all instances
+    // (use only for full teardown, not between individual tests).
+    await cacheClass.flushAll();
   });
 
   test('basic caching', async () => {
@@ -616,15 +586,9 @@ describe('Cache Tests', () => {
     expect(result).toBe('value');
   });
 
-  test('cache expiration', async () => {
+  test('cache miss returns null', async () => {
     const cache = cacheClass.get('test');
-
-    await cache.set('temp', 'data', 1); // 1 second TTL
-
-    // Wait for expiration
-    await new Promise((resolve) => setTimeout(resolve, 1100));
-
-    const result = await cache.get('temp');
+    const result = await cache.get('nonexistent');
     expect(result).toBeNull();
   });
 
@@ -641,12 +605,12 @@ describe('Cache Tests', () => {
 });
 ```
 
-### **Mock Redis for Tests**
+### **Force Memory Strategy for Tests**
 
 ```typescript
 describe('Cache with Memory Strategy', () => {
   beforeEach(async () => {
-    // Force memory strategy for tests
+    // Force memory strategy — no Redis required in CI
     await cacheClass.reset({
       strategy: 'memory',
       memory: {
@@ -658,7 +622,7 @@ describe('Cache with Memory Strategy', () => {
   });
 
   afterEach(async () => {
-    await cacheClass.clear();
+    await cacheClass.flushAll(); // clear data, keep instances alive
   });
 });
 ```
@@ -682,18 +646,38 @@ describe('Cache with Memory Strategy', () => {
 ## 🔍 TypeScript Support
 
 ```typescript
+import { cacheClass, CacheError } from '@bloomneo/appkit/cache';
 import type { Cache } from '@bloomneo/appkit/cache';
 
-// Strongly typed cache operations
+// Generics — no casting needed
 const cache: Cache = cacheClass.get('users');
-const user: User | null = await cache.get('user:123');
+const user = await cache.get<User>('user:123');           // User | null
+const ok   = await cache.set<User>('user:123', userData); // boolean
+const list = await cache.getOrSet<User[]>('all', fetchUsers, 60); // User[]
 
-// Typed namespace operations
-interface UserCache extends Cache {
-  getUser(id: string): Promise<User | null>;
-  setUser(id: string, user: User, ttl?: number): Promise<boolean>;
+// Type-narrow infrastructure errors
+try {
+  await cache.set('key', value);
+} catch (err) {
+  if (err instanceof CacheError) {
+    console.error(err.code);    // 'CACHE_SET_FAILED' | 'CACHE_INVALID_KEY' | ...
+    console.error(err.message); // '[@bloomneo/appkit/cache] set failed for key ...'
+  }
 }
 ```
+
+### **CacheError codes**
+
+| Code | When |
+|---|---|
+| `CACHE_CONNECT_FAILED` | Strategy failed to connect (Redis unreachable) |
+| `CACHE_GET_FAILED` | Strategy threw during `get` |
+| `CACHE_SET_FAILED` | Strategy threw during `set` |
+| `CACHE_DELETE_FAILED` | Strategy threw during `delete` |
+| `CACHE_CLEAR_FAILED` | Strategy threw during `clear` |
+| `CACHE_INVALID_KEY` | Key is empty, too long, has colons or newlines |
+| `CACHE_INVALID_VALUE` | Value is `undefined` or not JSON-serializable |
+| `CACHE_ERROR` | Generic fallback (use when no specific code fits) |
 
 ## 🆚 Why Not Redis directly?
 
@@ -719,6 +703,46 @@ await cache.set('user:123', userData, 3600);
 ```
 
 **Same features, 90% less code, automatic strategy selection.**
+
+## Agent-Dev Friendliness Score
+
+**Score: 75.3/100 — 🟡 Solid** *(no cap)*
+*Scored 2026-04-11 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **9** | `examples/cache.ts` had `cache.has()` (not public) and `cache.del()` (wrong name) — both fixed. |
+| 2 | Doc consistency | **9** | README now matches source after fixing test-cleanup pattern (`flushAll` vs `clear`). |
+| 3 | Runtime verification | **9** | 49 vitest tests covering all public methods + drift-check section. |
+| 4 | Type safety | **5** | `Cache` interface uses `any` for all values — no generics like `cache.get<T>()`. |
+| 5 | Discoverability | **8** | Quick Start is clear and concise. |
+| 6 | Example completeness | **7** | `examples/cache.ts` covers main patterns. Utility methods (`getConfig`, `getActiveNamespaces`) not shown. |
+| 7 | Composability | **8** | `examples/cache.ts` now compiles. Patterns compose naturally. |
+| 8 | Educational errors | **5** | Errors are plain English but missing `[@bloomneo/appkit/cache]` prefix + DOCS_URL anchor format used by auth module. |
+| 9 | Convention enforcement | **9** | One canonical entry point: `cacheClass.get(namespace)`. Consistent across all examples. |
+| 10 | Drift prevention | **5** | Drift-check section in test catches runtime drift. No scripted doc-vs-source checker. |
+| 11 | Reading order | **8** | Quick Start → LLM ref → errors → API → examples → testing — no dead ends. |
+| **12** | **Simplicity** | **8** | 5 core ops on instance + 9 class utilities. Dual surface is minimal. |
+| **13** | **Clarity** | **6** | `cacheClass.clear()` (disconnects all instances) vs `cache.clear()` (clears namespace data) — same name, different effects. Confusing. |
+| **14** | **Unambiguity** | **5** | The `clear()` collision is the dominant ambiguity — easy to call the wrong one in teardown. Also: `getOrSet` miss-then-throw behavior (does not cache error path) could surprise users. |
+| **15** | **Learning curve** | **9** | Zero config. `cacheClass.get(ns) → cache.set/get/delete`. First call in < 2 minutes. |
+
+### Weighted (v1.1)
+
+```
+(9×.12)+(9×.08)+(9×.09)+(5×.06)+(8×.06)+(7×.08)+(8×.06)+(5×.05)+(9×.05)+(5×.04)+(8×.03)
++(8×.09)+(6×.09)+(5×.05)+(9×.05) = 7.53 → 75.3/100
+No anti-pattern cap (examples compile after fixes).
+```
+
+### Gaps to reach 🟢 90+
+
+1. **D13/D14 → 9**: Rename `cacheClass.clear()` → `cacheClass.disconnect()` (or `shutdown()` — already exists) to eliminate the collision with `cache.clear()`. The two `clear()` callsites should behave consistently.
+2. **D4 Type safety → 9**: Add generic overload `get<T>(key: string): Promise<T | null>` and `set<T>(key, value: T, ttl?)`.
+3. **D8 Educational errors → 9**: Adopt `[@bloomneo/appkit/cache] message + DOCS_URL#anchor` format from auth module.
+4. **D10 Drift prevention → 8**: Scripted doc-vs-source drift checker.
+
+**Realistic ceiling:** ~88/100 with fixes 1–4.
 
 ## 📄 License
 

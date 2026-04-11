@@ -8,10 +8,21 @@ export default defineConfig({
     // Your existing configuration
     globals: true,
     environment: 'node',
+
+    // Setup file runs once before any test file is loaded — used to set
+    // env vars that modules validate at import time (e.g. BLOOM_AUTH_SECRET).
+    setupFiles: ['./vitest.setup.ts'],
+
     coverage: {
       reporter: ['text', 'json', 'html'],
-      include: ['src/**/*.js'],
-      exclude: ['node_modules', 'src/**/examples/**', 'src/**/tests/**'],
+      include: ['src/**/*.ts'],
+      exclude: [
+        'node_modules',
+        'dist',
+        'src/**/examples/**',
+        'src/**/tests/**',
+        'src/**/*.test.ts',
+      ],
     },
   },
 });

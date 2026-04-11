@@ -16,6 +16,7 @@ export interface Logger {
     error(message: string, meta?: LogMeta): void;
     warn(message: string, meta?: LogMeta): void;
     debug(message: string, meta?: LogMeta): void;
+    fatal(message: string, meta?: LogMeta): void;
     child(bindings: LogMeta): Logger;
     flush(): Promise<void>;
     close(): Promise<void>;

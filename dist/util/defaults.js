@@ -8,7 +8,7 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance like other modules
  */
 /**
- * Gets smart defaults using VOILA_UTIL_* environment variables
+ * Gets smart defaults using BLOOM_UTIL_* environment variables
  * @llm-rule WHEN: App startup to get production-ready utility configuration
  * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
  * @llm-rule NOTE: Called once at startup, cached globally for performance
@@ -23,36 +23,36 @@ export function getSmartDefaults() {
         version: process.env.npm_package_version || '1.0.0',
         // Cache configuration with direct environment access
         cache: {
-            enabled: process.env.VOILA_UTIL_CACHE !== 'false' && !isTest,
-            maxSize: parseInt(process.env.VOILA_UTIL_CACHE_SIZE || '1000'),
-            ttl: parseInt(process.env.VOILA_UTIL_CACHE_TTL || '300000'), // 5 minutes
+            enabled: process.env.BLOOM_UTIL_CACHE !== 'false' && !isTest,
+            maxSize: parseInt(process.env.BLOOM_UTIL_CACHE_SIZE || '1000'),
+            ttl: parseInt(process.env.BLOOM_UTIL_CACHE_TTL || '300000'), // 5 minutes
         },
         // Performance optimization settings
         performance: {
-            enabled: process.env.VOILA_UTIL_PERFORMANCE !== 'false',
-            memoization: process.env.VOILA_UTIL_MEMOIZATION !== 'false' && !isTest,
-            largeArrayThreshold: parseInt(process.env.VOILA_UTIL_ARRAY_THRESHOLD || '10000'),
-            chunkSizeLimit: parseInt(process.env.VOILA_UTIL_CHUNK_LIMIT || '100000'),
+            enabled: process.env.BLOOM_UTIL_PERFORMANCE !== 'false',
+            memoization: process.env.BLOOM_UTIL_MEMOIZATION !== 'false' && !isTest,
+            largeArrayThreshold: parseInt(process.env.BLOOM_UTIL_ARRAY_THRESHOLD || '10000'),
+            chunkSizeLimit: parseInt(process.env.BLOOM_UTIL_CHUNK_LIMIT || '100000'),
         },
         // Debug configuration - enabled in development
         debug: {
-            enabled: process.env.VOILA_UTIL_DEBUG === 'true' || isDevelopment,
-            logOperations: process.env.VOILA_UTIL_LOG_OPS === 'true' || isDevelopment,
-            trackPerformance: process.env.VOILA_UTIL_TRACK_PERF === 'true' || isDevelopment,
+            enabled: process.env.BLOOM_UTIL_DEBUG === 'true' || isDevelopment,
+            logOperations: process.env.BLOOM_UTIL_LOG_OPS === 'true' || isDevelopment,
+            trackPerformance: process.env.BLOOM_UTIL_TRACK_PERF === 'true' || isDevelopment,
         },
         // Slugify configuration with locale support
         slugify: {
-            lowercase: process.env.VOILA_UTIL_SLUGIFY_LOWERCASE !== 'false',
-            strict: process.env.VOILA_UTIL_SLUGIFY_STRICT === 'true',
-            locale: process.env.VOILA_UTIL_LOCALE || 'en',
-            replacement: process.env.VOILA_UTIL_SLUGIFY_REPLACEMENT || '-',
+            lowercase: process.env.BLOOM_UTIL_SLUGIFY_LOWERCASE !== 'false',
+            strict: process.env.BLOOM_UTIL_SLUGIFY_STRICT === 'true',
+            locale: process.env.BLOOM_UTIL_LOCALE || 'en',
+            replacement: process.env.BLOOM_UTIL_SLUGIFY_REPLACEMENT || '-',
         },
         // Format configuration for locale-aware formatting
         format: {
-            locale: process.env.VOILA_UTIL_LOCALE || 'en-US',
-            currency: process.env.VOILA_UTIL_CURRENCY || 'USD',
-            dateFormat: process.env.VOILA_UTIL_DATE_FORMAT || 'YYYY-MM-DD',
-            numberPrecision: parseInt(process.env.VOILA_UTIL_NUMBER_PRECISION || '2'),
+            locale: process.env.BLOOM_UTIL_LOCALE || 'en-US',
+            currency: process.env.BLOOM_UTIL_CURRENCY || 'USD',
+            dateFormat: process.env.BLOOM_UTIL_DATE_FORMAT || 'YYYY-MM-DD',
+            numberPrecision: parseInt(process.env.BLOOM_UTIL_NUMBER_PRECISION || '2'),
         },
         // Environment information
         environment: {
@@ -72,69 +72,69 @@ export function getSmartDefaults() {
 function validateEnvironment() {
     const nodeEnv = process.env.NODE_ENV || 'development';
     // Validate cache configuration
-    const cacheSize = process.env.VOILA_UTIL_CACHE_SIZE;
+    const cacheSize = process.env.BLOOM_UTIL_CACHE_SIZE;
     if (cacheSize) {
         const cacheSizeNum = parseInt(cacheSize);
         if (isNaN(cacheSizeNum) || cacheSizeNum <= 0) {
-            throw new Error(`Invalid VOILA_UTIL_CACHE_SIZE: "${cacheSize}". Must be a positive number.`);
+            throw new Error(`Invalid BLOOM_UTIL_CACHE_SIZE: "${cacheSize}". Must be a positive number.`);
         }
         if (cacheSizeNum > 100000) {
             console.warn(`[Bloomneo AppKit] Large cache size: ${cacheSizeNum}. This may impact memory usage.`);
         }
     }
     // Validate cache TTL
-    const cacheTTL = process.env.VOILA_UTIL_CACHE_TTL;
+    const cacheTTL = process.env.BLOOM_UTIL_CACHE_TTL;
     if (cacheTTL) {
         const cacheTTLNum = parseInt(cacheTTL);
         if (isNaN(cacheTTLNum) || cacheTTLNum <= 0) {
-            throw new Error(`Invalid VOILA_UTIL_CACHE_TTL: "${cacheTTL}". Must be a positive number (milliseconds).`);
+            throw new Error(`Invalid BLOOM_UTIL_CACHE_TTL: "${cacheTTL}". Must be a positive number (milliseconds).`);
         }
     }
     // Validate array threshold
-    const arrayThreshold = process.env.VOILA_UTIL_ARRAY_THRESHOLD;
+    const arrayThreshold = process.env.BLOOM_UTIL_ARRAY_THRESHOLD;
     if (arrayThreshold) {
         const thresholdNum = parseInt(arrayThreshold);
         if (isNaN(thresholdNum) || thresholdNum <= 0) {
-            throw new Error(`Invalid VOILA_UTIL_ARRAY_THRESHOLD: "${arrayThreshold}". Must be a positive number.`);
+            throw new Error(`Invalid BLOOM_UTIL_ARRAY_THRESHOLD: "${arrayThreshold}". Must be a positive number.`);
         }
     }
     // Validate chunk size limit
-    const chunkLimit = process.env.VOILA_UTIL_CHUNK_LIMIT;
+    const chunkLimit = process.env.BLOOM_UTIL_CHUNK_LIMIT;
     if (chunkLimit) {
         const chunkLimitNum = parseInt(chunkLimit);
         if (isNaN(chunkLimitNum) || chunkLimitNum <= 0) {
-            throw new Error(`Invalid VOILA_UTIL_CHUNK_LIMIT: "${chunkLimit}". Must be a positive number.`);
+            throw new Error(`Invalid BLOOM_UTIL_CHUNK_LIMIT: "${chunkLimit}". Must be a positive number.`);
         }
     }
     // Validate number precision
-    const numberPrecision = process.env.VOILA_UTIL_NUMBER_PRECISION;
+    const numberPrecision = process.env.BLOOM_UTIL_NUMBER_PRECISION;
     if (numberPrecision) {
         const precisionNum = parseInt(numberPrecision);
         if (isNaN(precisionNum) || precisionNum < 0 || precisionNum > 20) {
-            throw new Error(`Invalid VOILA_UTIL_NUMBER_PRECISION: "${numberPrecision}". Must be between 0 and 20.`);
+            throw new Error(`Invalid BLOOM_UTIL_NUMBER_PRECISION: "${numberPrecision}". Must be between 0 and 20.`);
         }
     }
     // Validate locale if provided
-    const locale = process.env.VOILA_UTIL_LOCALE;
+    const locale = process.env.BLOOM_UTIL_LOCALE;
     if (locale && !isValidLocale(locale)) {
         console.warn(`[Bloomneo AppKit] Invalid locale: "${locale}". Using default 'en-US'.`);
     }
     // Validate currency if provided
-    const currency = process.env.VOILA_UTIL_CURRENCY;
+    const currency = process.env.BLOOM_UTIL_CURRENCY;
     if (currency && !isValidCurrency(currency)) {
         console.warn(`[Bloomneo AppKit] Invalid currency: "${currency}". Using default 'USD'.`);
     }
     // Validate slugify replacement
-    const replacement = process.env.VOILA_UTIL_SLUGIFY_REPLACEMENT;
+    const replacement = process.env.BLOOM_UTIL_SLUGIFY_REPLACEMENT;
     if (replacement && replacement.length > 5) {
         console.warn(`[Bloomneo AppKit] Long slugify replacement: "${replacement}". Consider using shorter replacement.`);
     }
     // Production-specific warnings
     if (nodeEnv === 'production') {
-        if (process.env.VOILA_UTIL_DEBUG === 'true') {
+        if (process.env.BLOOM_UTIL_DEBUG === 'true') {
             console.warn('[Bloomneo AppKit] Debug mode enabled in production. This may impact performance.');
         }
-        if (process.env.VOILA_UTIL_LOG_OPS === 'true') {
+        if (process.env.BLOOM_UTIL_LOG_OPS === 'true') {
             console.warn('[Bloomneo AppKit] Operation logging enabled in production. This may impact performance.');
         }
     }

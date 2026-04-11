@@ -27,14 +27,14 @@ export function getSmartDefaults() {
         strategy,
         // Default sender with service identification
         from: {
-            name: process.env.VOILA_EMAIL_FROM_NAME || process.env.VOILA_SERVICE_NAME || 'App',
-            email: process.env.VOILA_EMAIL_FROM_EMAIL || getDefaultFromEmail(strategy),
+            name: process.env.BLOOM_EMAIL_FROM_NAME || process.env.BLOOM_SERVICE_NAME || 'App',
+            email: process.env.BLOOM_EMAIL_FROM_EMAIL || getDefaultFromEmail(strategy),
         },
         // Resend configuration (only used when strategy is 'resend')
         resend: {
             apiKey: process.env.RESEND_API_KEY || '',
             baseURL: process.env.RESEND_BASE_URL || 'https://api.resend.com',
-            timeout: parseInt(process.env.VOILA_EMAIL_RESEND_TIMEOUT || '30000'),
+            timeout: parseInt(process.env.BLOOM_EMAIL_RESEND_TIMEOUT || '30000'),
         },
         // SMTP configuration (only used when strategy is 'smtp')
         smtp: {
@@ -45,14 +45,14 @@ export function getSmartDefaults() {
                 user: process.env.SMTP_USER || '',
                 pass: process.env.SMTP_PASS || '',
             },
-            timeout: parseInt(process.env.VOILA_EMAIL_SMTP_TIMEOUT || '30000'),
+            timeout: parseInt(process.env.BLOOM_EMAIL_SMTP_TIMEOUT || '30000'),
             pool: process.env.SMTP_POOL !== 'false', // Default to true for performance
         },
         // Console configuration (only used when strategy is 'console')
         console: {
-            colorize: process.env.VOILA_EMAIL_CONSOLE_COLOR !== 'false' && !isProduction,
-            showPreview: process.env.VOILA_EMAIL_CONSOLE_PREVIEW !== 'false' && isDevelopment,
-            format: process.env.VOILA_EMAIL_CONSOLE_FORMAT || 'simple',
+            colorize: process.env.BLOOM_EMAIL_CONSOLE_COLOR !== 'false' && !isProduction,
+            showPreview: process.env.BLOOM_EMAIL_CONSOLE_PREVIEW !== 'false' && isDevelopment,
+            format: process.env.BLOOM_EMAIL_CONSOLE_FORMAT || 'simple',
         },
         // Environment information
         environment: {
@@ -71,7 +71,7 @@ export function getSmartDefaults() {
  */
 function detectEmailStrategy() {
     // Explicit override wins (for testing/debugging)
-    const explicit = process.env.VOILA_EMAIL_STRATEGY?.toLowerCase();
+    const explicit = process.env.BLOOM_EMAIL_STRATEGY?.toLowerCase();
     if (explicit === 'resend' || explicit === 'smtp' || explicit === 'console') {
         return explicit;
     }
@@ -139,9 +139,9 @@ function isDefaultSecurePort() {
  */
 function validateEnvironment() {
     // Validate email strategy if explicitly set
-    const strategy = process.env.VOILA_EMAIL_STRATEGY;
+    const strategy = process.env.BLOOM_EMAIL_STRATEGY;
     if (strategy && !['resend', 'smtp', 'console'].includes(strategy.toLowerCase())) {
-        throw new Error(`Invalid VOILA_EMAIL_STRATEGY: "${strategy}". Must be "resend", "smtp", or "console"`);
+        throw new Error(`Invalid BLOOM_EMAIL_STRATEGY: "${strategy}". Must be "resend", "smtp", or "console"`);
     }
     // Validate Resend API key format if provided
     const resendApiKey = process.env.RESEND_API_KEY;
@@ -154,18 +154,18 @@ function validateEnvironment() {
         validateSmtpConfig();
     }
     // Validate FROM email if provided
-    const fromEmail = process.env.VOILA_EMAIL_FROM_EMAIL;
+    const fromEmail = process.env.BLOOM_EMAIL_FROM_EMAIL;
     if (fromEmail && !isValidEmail(fromEmail)) {
-        throw new Error(`Invalid VOILA_EMAIL_FROM_EMAIL: "${fromEmail}". Must be a valid email address`);
+        throw new Error(`Invalid BLOOM_EMAIL_FROM_EMAIL: "${fromEmail}". Must be a valid email address`);
     }
     // Validate numeric values
     validateNumericEnv('SMTP_PORT', 1, 65535);
-    validateNumericEnv('VOILA_EMAIL_RESEND_TIMEOUT', 1000, 300000); // 1s to 5min
-    validateNumericEnv('VOILA_EMAIL_SMTP_TIMEOUT', 1000, 300000); // 1s to 5min
+    validateNumericEnv('BLOOM_EMAIL_RESEND_TIMEOUT', 1000, 300000); // 1s to 5min
+    validateNumericEnv('BLOOM_EMAIL_SMTP_TIMEOUT', 1000, 300000); // 1s to 5min
     // Validate console format if provided
-    const consoleFormat = process.env.VOILA_EMAIL_CONSOLE_FORMAT;
+    const consoleFormat = process.env.BLOOM_EMAIL_CONSOLE_FORMAT;
     if (consoleFormat && !['simple', 'detailed'].includes(consoleFormat)) {
-        throw new Error(`Invalid VOILA_EMAIL_CONSOLE_FORMAT: "${consoleFormat}". Must be "simple" or "detailed"`);
+        throw new Error(`Invalid BLOOM_EMAIL_CONSOLE_FORMAT: "${consoleFormat}". Must be "simple" or "detailed"`);
     }
     // Production-specific validations
     const nodeEnv = process.env.NODE_ENV;
@@ -215,10 +215,10 @@ function validateProductionConfig() {
             'Set RESEND_API_KEY or SMTP_HOST for production email sending.');
     }
     // Validate FROM email is set in production
-    const fromEmail = process.env.VOILA_EMAIL_FROM_EMAIL;
+    const fromEmail = process.env.BLOOM_EMAIL_FROM_EMAIL;
     if (!fromEmail) {
         console.warn('[Bloomneo AppKit] No FROM email configured in production. ' +
-            'Set VOILA_EMAIL_FROM_EMAIL for professional email sending.');
+            'Set BLOOM_EMAIL_FROM_EMAIL for professional email sending.');
     }
 }
 /**
@@ -325,10 +325,10 @@ export function validateStartupConfiguration() {
         // FROM email validation
         if (!config.from.email || config.from.email.includes('example.com')) {
             if (config.environment.isProduction) {
-                errors.push('VOILA_EMAIL_FROM_EMAIL must be set in production');
+                errors.push('BLOOM_EMAIL_FROM_EMAIL must be set in production');
             }
             else {
-                warnings.push('VOILA_EMAIL_FROM_EMAIL not configured - using default');
+                warnings.push('BLOOM_EMAIL_FROM_EMAIL not configured - using default');
             }
         }
         // Environment-specific warnings

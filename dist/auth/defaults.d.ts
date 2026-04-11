@@ -69,7 +69,7 @@ declare const CORE_SCOPES: string[];
  */
 declare const DEFAULT_PERMISSIONS: PermissionDefaults;
 /**
- * Gets smart defaults using VOILA_AUTH_* environment variables
+ * Gets smart defaults using BLOOM_AUTH_* environment variables
  * @llm-rule WHEN: App startup to get production-ready auth configuration
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
  * @llm-rule AVOID: Calling in request handlers - expensive environment parsing

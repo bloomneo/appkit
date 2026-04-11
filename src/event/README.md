@@ -468,12 +468,12 @@ REDIS_URL=redis://localhost:6379        # Enables Redis strategy
 # No REDIS_URL = Memory strategy
 
 # Service identification
-VOILA_SERVICE_NAME=my-app               # Used in namespacing
-VOILA_EVENT_NAMESPACE=production        # Custom namespace
+BLOOM_SERVICE_NAME=my-app               # Used in namespacing
+BLOOM_EVENT_NAMESPACE=production        # Custom namespace
 
 # Event history
-VOILA_EVENT_HISTORY_ENABLED=true       # Default: true
-VOILA_EVENT_HISTORY_SIZE=100           # Default: 100
+BLOOM_EVENT_HISTORY_ENABLED=true       # Default: true
+BLOOM_EVENT_HISTORY_SIZE=100           # Default: 100
 ```
 
 ### Redis Configuration (Advanced)
@@ -484,21 +484,21 @@ REDIS_URL=redis://localhost:6379
 REDIS_PASSWORD=your-redis-password
 
 # Redis event settings
-VOILA_EVENT_REDIS_RETRIES=3            # Default: 3
-VOILA_EVENT_REDIS_RETRY_DELAY=1000     # Default: 1000ms
-VOILA_EVENT_REDIS_CONNECT_TIMEOUT=10000 # Default: 10s
-VOILA_EVENT_REDIS_COMMAND_TIMEOUT=5000  # Default: 5s
-VOILA_EVENT_REDIS_PREFIX=events        # Default: events
+BLOOM_EVENT_REDIS_RETRIES=3            # Default: 3
+BLOOM_EVENT_REDIS_RETRY_DELAY=1000     # Default: 1000ms
+BLOOM_EVENT_REDIS_CONNECT_TIMEOUT=10000 # Default: 10s
+BLOOM_EVENT_REDIS_COMMAND_TIMEOUT=5000  # Default: 5s
+BLOOM_EVENT_REDIS_PREFIX=events        # Default: events
 ```
 
 ### Memory Configuration (Advanced)
 
 ```bash
 # Memory strategy settings
-VOILA_EVENT_MEMORY_MAX_LISTENERS=1000  # Default: 1000
-VOILA_EVENT_MEMORY_HISTORY=100         # Default: 100
-VOILA_EVENT_MEMORY_CHECK_INTERVAL=30000 # Default: 30s
-VOILA_EVENT_MEMORY_GC=true             # Default: true
+BLOOM_EVENT_MEMORY_MAX_LISTENERS=1000  # Default: 1000
+BLOOM_EVENT_MEMORY_HISTORY=100         # Default: 100
+BLOOM_EVENT_MEMORY_CHECK_INTERVAL=30000 # Default: 30s
+BLOOM_EVENT_MEMORY_GC=true             # Default: true
 ```
 
 ## 🎨 Event Patterns

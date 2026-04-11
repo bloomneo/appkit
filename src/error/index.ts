@@ -156,10 +156,23 @@ export const errorClass = {
   serverError: (message?: string) => get().serverError(message),
   
   /**
+   * Creates 429 Too Many Requests error
+   * @llm-rule WHEN: Client exceeded rate limit
+   * @llm-rule NOTE: PATTERN: if (rateExceeded) throw error.tooMany('Slow down');
+   */
+  tooMany: (message?: string) => get().tooMany(message),
+
+  /**
+   * Creates 500 Internal Server Error (alias for serverError)
+   * @llm-rule WHEN: Unexpected internal failures
+   * @llm-rule NOTE: Identical to serverError() — use either, not both in the same codebase
+   */
+  internal: (message?: string) => get().internal(message),
+
+  /**
    * Creates custom error with any status code
-   * @llm-rule WHEN: Need non-standard HTTP status codes
-   * @llm-rule NOTE: EXAMPLES: 429 rate limit, 503 maintenance, 418 teapot
-   * @llm-rule NOTE: PATTERN: error.createError(429, 'Rate limited', 'RATE_LIMIT');
+   * @llm-rule WHEN: Need non-standard HTTP status codes not covered above
+   * @llm-rule NOTE: PATTERN: error.createError(503, 'Maintenance mode', 'MAINTENANCE');
    */
   createError: (statusCode: number, message: string, type?: string) => get().createError(statusCode, message, type),
 
