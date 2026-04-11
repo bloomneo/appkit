@@ -79,7 +79,7 @@ function validateEnvironment() {
             throw new Error(`Invalid VOILA_UTIL_CACHE_SIZE: "${cacheSize}". Must be a positive number.`);
         }
         if (cacheSizeNum > 100000) {
-            console.warn(`[VoilaJSX AppKit] Large cache size: ${cacheSizeNum}. This may impact memory usage.`);
+            console.warn(`[Bloomneo AppKit] Large cache size: ${cacheSizeNum}. This may impact memory usage.`);
         }
     }
     // Validate cache TTL
@@ -117,30 +117,30 @@ function validateEnvironment() {
     // Validate locale if provided
     const locale = process.env.VOILA_UTIL_LOCALE;
     if (locale && !isValidLocale(locale)) {
-        console.warn(`[VoilaJSX AppKit] Invalid locale: "${locale}". Using default 'en-US'.`);
+        console.warn(`[Bloomneo AppKit] Invalid locale: "${locale}". Using default 'en-US'.`);
     }
     // Validate currency if provided
     const currency = process.env.VOILA_UTIL_CURRENCY;
     if (currency && !isValidCurrency(currency)) {
-        console.warn(`[VoilaJSX AppKit] Invalid currency: "${currency}". Using default 'USD'.`);
+        console.warn(`[Bloomneo AppKit] Invalid currency: "${currency}". Using default 'USD'.`);
     }
     // Validate slugify replacement
     const replacement = process.env.VOILA_UTIL_SLUGIFY_REPLACEMENT;
     if (replacement && replacement.length > 5) {
-        console.warn(`[VoilaJSX AppKit] Long slugify replacement: "${replacement}". Consider using shorter replacement.`);
+        console.warn(`[Bloomneo AppKit] Long slugify replacement: "${replacement}". Consider using shorter replacement.`);
     }
     // Production-specific warnings
     if (nodeEnv === 'production') {
         if (process.env.VOILA_UTIL_DEBUG === 'true') {
-            console.warn('[VoilaJSX AppKit] Debug mode enabled in production. This may impact performance.');
+            console.warn('[Bloomneo AppKit] Debug mode enabled in production. This may impact performance.');
         }
         if (process.env.VOILA_UTIL_LOG_OPS === 'true') {
-            console.warn('[VoilaJSX AppKit] Operation logging enabled in production. This may impact performance.');
+            console.warn('[Bloomneo AppKit] Operation logging enabled in production. This may impact performance.');
         }
     }
     // Validate NODE_ENV
     if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
-        console.warn(`[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+        console.warn(`[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
             `Expected: development, production, test, or staging`);
     }
 }

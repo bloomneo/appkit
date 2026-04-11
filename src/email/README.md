@@ -750,7 +750,7 @@ const result: EmailResult = await emailClass.send(emailData);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

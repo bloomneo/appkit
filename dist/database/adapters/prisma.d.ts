@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/database
  * @file src/database/adapters/prisma.ts
  *
- * @llm-rule WHEN: Using Prisma ORM with PostgreSQL, MySQL, or SQLite databases in VoilaJSX framework
+ * @llm-rule WHEN: Using Prisma ORM with PostgreSQL, MySQL, or SQLite databases in Bloomneo framework
  * @llm-rule AVOID: Using with MongoDB - use mongoose adapter instead
  * @llm-rule NOTE: Auto-discovers apps from /apps directory structure, applies tenant filtering
  */
@@ -33,7 +33,7 @@ interface PrismaClient {
     [key: string]: any;
 }
 /**
- * Simplified Prisma adapter with VoilaJSX app discovery
+ * Simplified Prisma adapter with Bloomneo app discovery
  */
 export declare class PrismaAdapter {
     private options;
@@ -50,7 +50,7 @@ export declare class PrismaAdapter {
      */
     applyTenantMiddleware(client: PrismaClient, tenantId: string, options?: TenantMiddlewareOptions): Promise<PrismaClient>;
     /**
-     * Auto-discover VoilaJSX apps with Prisma clients
+     * Auto-discover Bloomneo apps with Prisma clients
      */
     discoverApps(): Promise<DiscoveredApp[]>;
     /**
@@ -78,7 +78,7 @@ export declare class PrismaAdapter {
      */
     disconnect(): Promise<void>;
     /**
-     * Detect current app from file path (VoilaJSX structure)
+     * Detect current app from file path (Bloomneo structure)
      */
     private _detectCurrentApp;
     /**

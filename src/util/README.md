@@ -945,7 +945,7 @@ const debouncedFn: Function & { cancel: () => void } = util.debounce(fn, 300);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

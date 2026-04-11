@@ -86,7 +86,7 @@ function validateEnvironment(): void {
   
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
       `Expected: development, production, test, or staging.`
     );
   }
@@ -98,7 +98,7 @@ function validateEnvironment(): void {
     
     if (missing.length > 0) {
       console.warn(
-        `[VoilaJSX AppKit] Missing recommended production environment variables: ${missing.join(', ')}`
+        `[Bloomneo AppKit] Missing recommended production environment variables: ${missing.join(', ')}`
       );
     }
   }
@@ -108,11 +108,11 @@ function validateEnvironment(): void {
  * Check if environment variable is a framework variable that should be ignored
  * @llm-rule WHEN: Filtering out framework variables from app config parsing
  * @llm-rule AVOID: Parsing framework variables as app config - they serve different purposes
- * @llm-rule NOTE: VoilaJSX AppKit uses VOILA_* and FLUX_* for internal configuration
+ * @llm-rule NOTE: Bloomneo AppKit uses VOILA_* and FLUX_* for internal configuration
  */
 function isFrameworkVariable(envKey: string): boolean {
   const frameworkPrefixes = [
-    'VOILA_',      // VoilaJSX AppKit framework configuration
+    'VOILA_',      // Bloomneo AppKit framework configuration
     'FLUX_',       // Flux Framework internal variables
     'NODE_',       // Node.js environment variables
     'npm_',        // npm variables
@@ -181,7 +181,7 @@ function validateEnvVarFormat(envKey: string): boolean {
   // Check for proper UPPER_SNAKE_CASE format
   if (envKey !== envKey.toUpperCase()) {
     console.warn(
-      `[VoilaJSX AppKit] Environment variable "${envKey}" should be uppercase for consistency`
+      `[Bloomneo AppKit] Environment variable "${envKey}" should be uppercase for consistency`
     );
   }
   

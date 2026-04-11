@@ -112,7 +112,7 @@ export class ConsoleTransport implements Transport {
       second: '2-digit' 
     });
 
-    // Special handling for VoilaJSX startup messages (keep them prominent)
+    // Special handling for Bloomneo startup messages (keep them prominent)
     if (message && (message.includes('✨') || message.includes('🚀') || message.includes('👋'))) {
       return `${cleanTime} ${message}`;
     }

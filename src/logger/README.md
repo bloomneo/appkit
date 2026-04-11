@@ -425,7 +425,7 @@ const meta: LogMeta = { userId: 123, action: 'login' };
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

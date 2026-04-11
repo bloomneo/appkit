@@ -998,7 +998,7 @@ await storageClass.get().put('file.jpg', buffer);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

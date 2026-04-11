@@ -83,7 +83,7 @@ function detectStorageStrategy() {
     }
     // Default to local for development/single server
     if (process.env.NODE_ENV === 'production') {
-        console.warn('[VoilaJSX AppKit] No cloud storage configured in production. ' +
+        console.warn('[Bloomneo AppKit] No cloud storage configured in production. ' +
             'Using local filesystem which may not scale. ' +
             'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for cloud storage.');
     }
@@ -107,7 +107,7 @@ function parseAllowedTypes() {
     }
     if (envTypes === '*') {
         if (process.env.NODE_ENV === 'production') {
-            console.warn('[VoilaJSX AppKit] SECURITY WARNING: All file types allowed in production. ' +
+            console.warn('[Bloomneo AppKit] SECURITY WARNING: All file types allowed in production. ' +
                 'Set VOILA_STORAGE_ALLOWED_TYPES to specific types for security.');
         }
         return ['*']; // Allow all types (use with caution)
@@ -148,7 +148,7 @@ function validateEnvironment() {
     }
     // Validate NODE_ENV
     if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
-        console.warn(`[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+        console.warn(`[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
             `Expected: development, production, test, or staging`);
     }
 }
@@ -216,7 +216,7 @@ function validateR2Config() {
 function validateLocalConfig() {
     const dir = process.env.VOILA_STORAGE_DIR;
     if (dir && (dir.includes('..') || dir.startsWith('/') && process.env.NODE_ENV === 'production')) {
-        console.warn(`[VoilaJSX AppKit] Potentially unsafe storage directory: "${dir}". ` +
+        console.warn(`[Bloomneo AppKit] Potentially unsafe storage directory: "${dir}". ` +
             `Consider using a relative path for security.`);
     }
     const baseUrl = process.env.VOILA_STORAGE_BASE_URL;
@@ -232,14 +232,14 @@ function validateLocalConfig() {
 function validateProductionConfig() {
     const strategy = detectStorageStrategy();
     if (strategy === 'local') {
-        console.warn('[VoilaJSX AppKit] Using local storage in production. ' +
+        console.warn('[Bloomneo AppKit] Using local storage in production. ' +
             'Files will only exist on single server instance. ' +
             'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for distributed storage.');
     }
     // Warn about missing CDN in production
     const cdnUrl = process.env.VOILA_STORAGE_CDN_URL || process.env.CLOUDFLARE_R2_CDN_URL;
     if (!cdnUrl && strategy !== 'local') {
-        console.warn('[VoilaJSX AppKit] No CDN URL configured in production. ' +
+        console.warn('[Bloomneo AppKit] No CDN URL configured in production. ' +
             'Set VOILA_STORAGE_CDN_URL for better performance.');
     }
 }
@@ -339,7 +339,7 @@ export function getDeploymentConfig(type) {
         case 'production':
             const strategy = detectStorageStrategy();
             if (strategy === 'local') {
-                console.warn('[VoilaJSX AppKit] Local storage not recommended for production');
+                console.warn('[Bloomneo AppKit] Local storage not recommended for production');
             }
             return {
                 strategy,

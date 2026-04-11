@@ -806,7 +806,7 @@ console.log(getConfigSummary());
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

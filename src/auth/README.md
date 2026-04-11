@@ -574,7 +574,7 @@ A: Roles are hierarchical (admin.org > admin.tenant), permissions are specific a
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

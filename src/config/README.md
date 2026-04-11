@@ -281,7 +281,7 @@ function getDatabaseConfig() {
 ## 🌍 Environment Variables
 
 ```bash
-# Framework variables (handled by VoilaJSX internally)
+# Framework variables (handled by Bloomneo internally)
 VOILA_AUTH_SECRET=your-super-secure-jwt-secret-key
 VOILA_SERVICE_NAME=my-awesome-app
 VOILA_ERROR_STACK=false
@@ -595,7 +595,7 @@ const dbConfig: DatabaseConfig = config.getModuleConfig('database');
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

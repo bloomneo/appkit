@@ -603,7 +603,7 @@ const encrypted: string = secure.encrypt(sensitiveData);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

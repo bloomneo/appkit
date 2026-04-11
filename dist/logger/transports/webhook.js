@@ -316,7 +316,7 @@ export class WebhookTransport {
                 {
                     color: color,
                     fields: fields,
-                    footer: 'VoilaJSX AppKit Logging',
+                    footer: 'Bloomneo AppKit Logging',
                     ts: Math.floor(new Date(entry.timestamp).getTime() / 1000),
                 },
             ],
@@ -405,7 +405,7 @@ export class WebhookTransport {
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(payload),
-                    'User-Agent': 'VoilaJSX-AppKit-Logging/1.0.0',
+                    'User-Agent': 'Bloomneo-AppKit-Logging/1.0.0',
                 },
                 timeout: 10000, // 10 second timeout for webhooks
             };

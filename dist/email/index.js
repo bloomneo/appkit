@@ -126,13 +126,13 @@ function validateConfig() {
     try {
         const validation = validateStartupConfiguration();
         if (validation.errors.length > 0) {
-            console.error('[VoilaJSX AppKit] Email configuration errors:', validation.errors);
+            console.error('[Bloomneo AppKit] Email configuration errors:', validation.errors);
         }
         if (validation.warnings.length > 0) {
-            console.warn('[VoilaJSX AppKit] Email configuration warnings:', validation.warnings);
+            console.warn('[Bloomneo AppKit] Email configuration warnings:', validation.warnings);
         }
         if (validation.ready) {
-            console.log(`✅ [VoilaJSX AppKit] Email configured with ${validation.strategy} strategy`);
+            console.log(`✅ [Bloomneo AppKit] Email configured with ${validation.strategy} strategy`);
         }
         return {
             valid: validation.errors.length === 0,
@@ -144,7 +144,7 @@ function validateConfig() {
     }
     catch (error) {
         const errorMessage = error.message;
-        console.error('[VoilaJSX AppKit] Email configuration validation failed:', errorMessage);
+        console.error('[Bloomneo AppKit] Email configuration validation failed:', errorMessage);
         return {
             valid: false,
             strategy: 'unknown',
@@ -164,13 +164,13 @@ function validateProduction() {
     try {
         validateProductionRequirements();
         if (process.env.NODE_ENV === 'production' && !hasProvider()) {
-            console.warn('[VoilaJSX AppKit] No email provider configured in production. ' +
+            console.warn('[Bloomneo AppKit] No email provider configured in production. ' +
                 'Set RESEND_API_KEY or SMTP_HOST to send real emails.');
         }
-        console.log('✅ [VoilaJSX AppKit] Production email requirements validated');
+        console.log('✅ [Bloomneo AppKit] Production email requirements validated');
     }
     catch (error) {
-        console.error('[VoilaJSX AppKit] Production email validation failed:', error.message);
+        console.error('[Bloomneo AppKit] Production email validation failed:', error.message);
         throw error;
     }
 }

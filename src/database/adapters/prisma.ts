@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/database
  * @file src/database/adapters/prisma.ts
  * 
- * @llm-rule WHEN: Using Prisma ORM with PostgreSQL, MySQL, or SQLite databases in VoilaJSX framework
+ * @llm-rule WHEN: Using Prisma ORM with PostgreSQL, MySQL, or SQLite databases in Bloomneo framework
  * @llm-rule AVOID: Using with MongoDB - use mongoose adapter instead
  * @llm-rule NOTE: Auto-discovers apps from /apps directory structure, applies tenant filtering
  */
@@ -45,7 +45,7 @@ interface PrismaClient {
 type PrismaClientConstructor = new (config: any) => PrismaClient;
 
 /**
- * Simplified Prisma adapter with VoilaJSX app discovery
+ * Simplified Prisma adapter with Bloomneo app discovery
  */
 export class PrismaAdapter {
   private options: Record<string, any>;
@@ -209,7 +209,7 @@ export class PrismaAdapter {
   }
 
   /**
-   * Auto-discover VoilaJSX apps with Prisma clients
+   * Auto-discover Bloomneo apps with Prisma clients
    */
   async discoverApps(): Promise<DiscoveredApp[]> {
     if (this.discoveredApps) return this.discoveredApps;
@@ -232,7 +232,7 @@ export class PrismaAdapter {
         .map((dirent) => dirent.name);
 
       for (const appName of appFolders) {
-        // VoilaJSX standard: apps/{appName}/prisma/generated/client
+        // Bloomneo standard: apps/{appName}/prisma/generated/client
         const clientPath = path.join(appsDir, appName, 'prisma/generated/client/index.js');
         
         if (fs.existsSync(clientPath)) {
@@ -396,7 +396,7 @@ export class PrismaAdapter {
   // Private helper methods
 
   /**
-   * Detect current app from file path (VoilaJSX structure)
+   * Detect current app from file path (Bloomneo structure)
    */
   private async _detectCurrentApp(): Promise<string> {
     try {

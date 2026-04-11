@@ -113,7 +113,7 @@ function detectCacheStrategy(): 'redis' | 'memory' {
 
   if (process.env.NODE_ENV === 'production') {
     console.warn(
-      '[VoilaJSX AppKit] No REDIS_URL found in production. ' +
+      '[Bloomneo AppKit] No REDIS_URL found in production. ' +
       'Using memory cache which will not persist across server restarts. ' +
       'Set REDIS_URL for production caching.'
     );
@@ -174,7 +174,7 @@ function validateEnvironment(): void {
   if (nodeEnv === 'production') {
     if (!redisUrl) {
       console.warn(
-        '[VoilaJSX AppKit] Production environment detected without REDIS_URL. ' +
+        '[Bloomneo AppKit] Production environment detected without REDIS_URL. ' +
         'Memory cache will not persist across server restarts. ' +
         'Consider setting REDIS_URL for production deployments.'
       );
@@ -184,7 +184,7 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
       `Expected: development, production, test, or staging`
     );
   }
@@ -257,7 +257,7 @@ export function validateProductionRequirements(): void {
   if (config.environment.isProduction) {
     if (config.strategy === 'memory') {
       console.warn(
-        '[VoilaJSX AppKit] Using memory cache in production. ' +
+        '[Bloomneo AppKit] Using memory cache in production. ' +
         'Data will not persist across server restarts. ' +
         'Set REDIS_URL for persistent caching.'
       );

@@ -70,7 +70,7 @@ function detectCacheStrategy() {
         return 'redis'; // Redis URL available
     }
     if (process.env.NODE_ENV === 'production') {
-        console.warn('[VoilaJSX AppKit] No REDIS_URL found in production. ' +
+        console.warn('[Bloomneo AppKit] No REDIS_URL found in production. ' +
             'Using memory cache which will not persist across server restarts. ' +
             'Set REDIS_URL for production caching.');
     }
@@ -116,14 +116,14 @@ function validateEnvironment() {
     const nodeEnv = process.env.NODE_ENV;
     if (nodeEnv === 'production') {
         if (!redisUrl) {
-            console.warn('[VoilaJSX AppKit] Production environment detected without REDIS_URL. ' +
+            console.warn('[Bloomneo AppKit] Production environment detected without REDIS_URL. ' +
                 'Memory cache will not persist across server restarts. ' +
                 'Consider setting REDIS_URL for production deployments.');
         }
     }
     // Validate NODE_ENV
     if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
-        console.warn(`[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+        console.warn(`[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
             `Expected: development, production, test, or staging`);
     }
 }
@@ -180,7 +180,7 @@ export function validateProductionRequirements() {
     const config = getSmartDefaults();
     if (config.environment.isProduction) {
         if (config.strategy === 'memory') {
-            console.warn('[VoilaJSX AppKit] Using memory cache in production. ' +
+            console.warn('[Bloomneo AppKit] Using memory cache in production. ' +
                 'Data will not persist across server restarts. ' +
                 'Set REDIS_URL for persistent caching.');
         }

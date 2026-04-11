@@ -339,7 +339,7 @@ app.post(
 
 ## 🌍 Environment Variables
 
-### **Framework Configuration (VoilaJSX Internal)**
+### **Framework Configuration (Bloomneo Internal)**
 
 ```bash
 # Error handling behavior (optional)
@@ -359,7 +359,7 @@ API_KEY=your-api-key
 SESSION_SECRET=your-session-secret
 
 # Note: Use any naming convention for your app config
-# VoilaJSX only reads VOILA_* prefixed variables
+# Bloomneo only reads VOILA_* prefixed variables
 ```
 
 ### **Configuration Separation**
@@ -651,7 +651,7 @@ const env = error.getEnvironmentInfo();
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/bloomneo)
+MIT © [Bloomneo](https://github.com/bloomneo)
 
 ---
 

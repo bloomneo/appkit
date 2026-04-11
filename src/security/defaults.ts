@@ -126,7 +126,7 @@ function validateEnvironment(): void {
   const csrfSecret = process.env.VOILA_SECURITY_CSRF_SECRET || process.env.VOILA_AUTH_SECRET;
   if (!csrfSecret && nodeEnv === 'production') {
     console.warn(
-      '[VoilaJSX AppKit] VOILA_SECURITY_CSRF_SECRET not set. ' +
+      '[Bloomneo AppKit] VOILA_SECURITY_CSRF_SECRET not set. ' +
       'CSRF protection will not work in production. ' +
       'Set VOILA_SECURITY_CSRF_SECRET or VOILA_AUTH_SECRET environment variable.'
     );
@@ -185,7 +185,7 @@ function validateEnvironment(): void {
   if (nodeEnv === 'production') {
     if (!encryptionKey) {
       console.warn(
-        '[VoilaJSX AppKit] VOILA_SECURITY_ENCRYPTION_KEY not set. ' +
+        '[Bloomneo AppKit] VOILA_SECURITY_ENCRYPTION_KEY not set. ' +
         'Data encryption will not be available in production.'
       );
     }
@@ -194,7 +194,7 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
       `Expected: development, production, test, or staging`
     );
   }

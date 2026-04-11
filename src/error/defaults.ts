@@ -103,7 +103,7 @@ function validateEnvironment(): void {
   const nodeEnv = process.env.NODE_ENV;
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
       `Expected: development, production, test, or staging`
     );
   }
@@ -111,7 +111,7 @@ function validateEnvironment(): void {
   // Essential production safety check
   if (nodeEnv === 'production' && process.env.VOILA_ERROR_STACK === 'true') {
     console.warn(
-      `[VoilaJSX AppKit] Security warning: VOILA_ERROR_STACK=true in production. ` +
+      `[Bloomneo AppKit] Security warning: VOILA_ERROR_STACK=true in production. ` +
       `Stack traces may expose internal application structure. Consider setting to false.`
     );
   }

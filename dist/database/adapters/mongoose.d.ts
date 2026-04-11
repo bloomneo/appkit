@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/database
  * @file src/database/adapters/mongoose.ts
  *
- * @llm-rule WHEN: Using Mongoose ODM with MongoDB databases in VoilaJSX framework
+ * @llm-rule WHEN: Using Mongoose ODM with MongoDB databases in Bloomneo framework
  * @llm-rule AVOID: Using with SQL databases - use prisma adapter instead
  * @llm-rule NOTE: Auto-discovers apps from /apps directory structure, applies tenant filtering
  */
@@ -36,7 +36,7 @@ interface MongooseConnection {
     [key: string]: any;
 }
 /**
- * Simplified Mongoose adapter with VoilaJSX app discovery
+ * Simplified Mongoose adapter with Bloomneo app discovery
  */
 export declare class MongooseAdapter {
     private options;
@@ -54,7 +54,7 @@ export declare class MongooseAdapter {
      */
     applyTenantMiddleware(connection: MongooseConnection, tenantId: string, options?: TenantMiddlewareOptions): Promise<MongooseConnection>;
     /**
-     * Auto-discover VoilaJSX apps with Mongoose models
+     * Auto-discover Bloomneo apps with Mongoose models
      */
     discoverApps(): Promise<DiscoveredApp[]>;
     /**
@@ -82,7 +82,7 @@ export declare class MongooseAdapter {
      */
     disconnect(): Promise<void>;
     /**
-     * Detect current app from file path (VoilaJSX structure)
+     * Detect current app from file path (Bloomneo structure)
      */
     private _detectCurrentApp;
     /**

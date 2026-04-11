@@ -65,7 +65,7 @@ function setNestedValue(obj, path, value) {
 function validateEnvironment() {
     const nodeEnv = process.env.NODE_ENV;
     if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
-        console.warn(`[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+        console.warn(`[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
             `Expected: development, production, test, or staging.`);
     }
     // Validate common required variables in production
@@ -73,7 +73,7 @@ function validateEnvironment() {
         const requiredProdVars = ['VOILA_SERVICE_NAME'];
         const missing = requiredProdVars.filter(varName => !process.env[varName]);
         if (missing.length > 0) {
-            console.warn(`[VoilaJSX AppKit] Missing recommended production environment variables: ${missing.join(', ')}`);
+            console.warn(`[Bloomneo AppKit] Missing recommended production environment variables: ${missing.join(', ')}`);
         }
     }
 }
@@ -81,11 +81,11 @@ function validateEnvironment() {
  * Check if environment variable is a framework variable that should be ignored
  * @llm-rule WHEN: Filtering out framework variables from app config parsing
  * @llm-rule AVOID: Parsing framework variables as app config - they serve different purposes
- * @llm-rule NOTE: VoilaJSX AppKit uses VOILA_* and FLUX_* for internal configuration
+ * @llm-rule NOTE: Bloomneo AppKit uses VOILA_* and FLUX_* for internal configuration
  */
 function isFrameworkVariable(envKey) {
     const frameworkPrefixes = [
-        'VOILA_', // VoilaJSX AppKit framework configuration
+        'VOILA_', // Bloomneo AppKit framework configuration
         'FLUX_', // Flux Framework internal variables
         'NODE_', // Node.js environment variables
         'npm_', // npm variables
@@ -146,7 +146,7 @@ function validateEnvVarFormat(envKey) {
     }
     // Check for proper UPPER_SNAKE_CASE format
     if (envKey !== envKey.toUpperCase()) {
-        console.warn(`[VoilaJSX AppKit] Environment variable "${envKey}" should be uppercase for consistency`);
+        console.warn(`[Bloomneo AppKit] Environment variable "${envKey}" should be uppercase for consistency`);
     }
     return true;
 }

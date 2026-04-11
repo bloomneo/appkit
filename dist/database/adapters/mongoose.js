@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/database
  * @file src/database/adapters/mongoose.ts
  *
- * @llm-rule WHEN: Using Mongoose ODM with MongoDB databases in VoilaJSX framework
+ * @llm-rule WHEN: Using Mongoose ODM with MongoDB databases in Bloomneo framework
  * @llm-rule AVOID: Using with SQL databases - use prisma adapter instead
  * @llm-rule NOTE: Auto-discovers apps from /apps directory structure, applies tenant filtering
  */
@@ -11,7 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { createDatabaseError } from '../defaults.js';
 /**
- * Simplified Mongoose adapter with VoilaJSX app discovery
+ * Simplified Mongoose adapter with Bloomneo app discovery
  */
 export class MongooseAdapter {
     options;
@@ -182,7 +182,7 @@ export class MongooseAdapter {
         return connection;
     }
     /**
-     * Auto-discover VoilaJSX apps with Mongoose models
+     * Auto-discover Bloomneo apps with Mongoose models
      */
     async discoverApps() {
         if (this.discoveredApps)
@@ -203,7 +203,7 @@ export class MongooseAdapter {
                 .filter((dirent) => dirent.isDirectory())
                 .map((dirent) => dirent.name);
             for (const appName of appFolders) {
-                // VoilaJSX standard: apps/{appName}/models or apps/{appName}/src/models
+                // Bloomneo standard: apps/{appName}/models or apps/{appName}/src/models
                 const possibleModelPaths = [
                     path.join(appsDir, appName, 'models'),
                     path.join(appsDir, appName, 'src/models'),
@@ -341,7 +341,7 @@ export class MongooseAdapter {
     }
     // Private helper methods
     /**
-     * Detect current app from file path (VoilaJSX structure)
+     * Detect current app from file path (Bloomneo structure)
      */
     async _detectCurrentApp() {
         try {

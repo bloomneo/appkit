@@ -212,7 +212,7 @@ export class UtilClass {
 
     // Performance warning for large arrays
     if (this.config.performance.enabled && array.length > this.config.performance.chunkSizeLimit) {
-      console.warn(`[VoilaJSX Utils] Chunking large array (${array.length} items). Consider streaming or pagination.`);
+      console.warn(`[Bloomneo Utils] Chunking large array (${array.length} items). Consider streaming or pagination.`);
     }
 
     const result: T[][] = [];

@@ -123,7 +123,7 @@ function detectEventStrategy(): 'redis' | 'memory' {
   // Default to memory for development/testing
   if (process.env.NODE_ENV === 'production') {
     console.warn(
-      '[VoilaJSX AppKit] No REDIS_URL found in production. ' +
+      '[Bloomneo AppKit] No REDIS_URL found in production. ' +
       'Using memory event strategy which will not work across multiple servers. ' +
       'Set REDIS_URL for distributed events.'
     );
@@ -188,7 +188,7 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
       `Expected: development, production, test, or staging`
     );
   }
@@ -235,7 +235,7 @@ function validateProductionConfig(): void {
   
   if (strategy === 'memory') {
     console.warn(
-      '[VoilaJSX AppKit] Using memory event strategy in production. ' +
+      '[Bloomneo AppKit] Using memory event strategy in production. ' +
       'Events will only work within single server instance. ' +
       'Set REDIS_URL for distributed events across multiple servers.'
     );
@@ -245,7 +245,7 @@ function validateProductionConfig(): void {
   const namespace = process.env.VOILA_EVENT_NAMESPACE;
   if (!namespace) {
     console.warn(
-      '[VoilaJSX AppKit] No event namespace configured in production. ' +
+      '[Bloomneo AppKit] No event namespace configured in production. ' +
       'Set VOILA_EVENT_NAMESPACE for proper event isolation.'
     );
   }
@@ -285,7 +285,7 @@ export function validateProductionRequirements(): void {
   if (config.environment.isProduction) {
     if (config.strategy === 'memory') {
       console.warn(
-        '[VoilaJSX AppKit] Using memory event strategy in production. ' +
+        '[Bloomneo AppKit] Using memory event strategy in production. ' +
         'Events will not work across multiple server instances. ' +
         'Set REDIS_URL for distributed events.'
       );

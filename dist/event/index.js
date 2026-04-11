@@ -170,13 +170,13 @@ function validateConfig() {
     try {
         const validation = validateStartupConfiguration();
         if (validation.errors.length > 0) {
-            console.error('[VoilaJSX AppKit] Event configuration errors:', validation.errors);
+            console.error('[Bloomneo AppKit] Event configuration errors:', validation.errors);
         }
         if (validation.warnings.length > 0) {
-            console.warn('[VoilaJSX AppKit] Event configuration warnings:', validation.warnings);
+            console.warn('[Bloomneo AppKit] Event configuration warnings:', validation.warnings);
         }
         if (validation.ready) {
-            console.log(`✅ [VoilaJSX AppKit] Events configured with ${validation.strategy} strategy`);
+            console.log(`✅ [Bloomneo AppKit] Events configured with ${validation.strategy} strategy`);
         }
         return {
             valid: validation.errors.length === 0,
@@ -188,7 +188,7 @@ function validateConfig() {
     }
     catch (error) {
         const errorMessage = error.message;
-        console.error('[VoilaJSX AppKit] Event configuration validation failed:', errorMessage);
+        console.error('[Bloomneo AppKit] Event configuration validation failed:', errorMessage);
         return {
             valid: false,
             strategy: 'unknown',
@@ -208,13 +208,13 @@ function validateProduction() {
     try {
         validateProductionRequirements();
         if (process.env.NODE_ENV === 'production' && !hasRedis()) {
-            console.warn('[VoilaJSX AppKit] No Redis configured in production. ' +
+            console.warn('[Bloomneo AppKit] No Redis configured in production. ' +
                 'Set REDIS_URL for distributed events across servers.');
         }
-        console.log('✅ [VoilaJSX AppKit] Production event requirements validated');
+        console.log('✅ [Bloomneo AppKit] Production event requirements validated');
     }
     catch (error) {
-        console.error('[VoilaJSX AppKit] Production event validation failed:', error.message);
+        console.error('[Bloomneo AppKit] Production event validation failed:', error.message);
         throw error;
     }
 }

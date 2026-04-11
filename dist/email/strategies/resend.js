@@ -195,7 +195,7 @@ export class ResendStrategy {
             headers: {
                 'Authorization': `Bearer ${this.apiKey}`,
                 'Content-Type': 'application/json',
-                'User-Agent': 'VoilaJSX-AppKit-Email/1.0.0',
+                'User-Agent': 'Bloomneo-AppKit-Email/1.0.0',
             },
             body: JSON.stringify(payload),
         });

@@ -380,7 +380,7 @@ export class HttpTransport implements Transport {
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload),
-          'User-Agent': 'VoilaJSX-AppKit-Logging/1.0.0',
+          'User-Agent': 'Bloomneo-AppKit-Logging/1.0.0',
         },
         timeout: this.timeout,
       };

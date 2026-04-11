@@ -139,7 +139,7 @@ function detectEmailStrategy(): 'resend' | 'smtp' | 'console' {
   // Default to console for development/testing
   if (process.env.NODE_ENV === 'production') {
     console.warn(
-      '[VoilaJSX AppKit] No email provider configured in production. ' +
+      '[Bloomneo AppKit] No email provider configured in production. ' +
       'Using console strategy which will only log emails. ' +
       'Set RESEND_API_KEY or SMTP_HOST for production email sending.'
     );
@@ -253,7 +253,7 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[VoilaJSX AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
       `Expected: development, production, test, or staging`
     );
   }
@@ -276,7 +276,7 @@ function validateSmtpConfig(): void {
   // Many SMTP servers require authentication
   if (!user && !pass) {
     console.warn(
-      '[VoilaJSX AppKit] SMTP configured without authentication. ' +
+      '[Bloomneo AppKit] SMTP configured without authentication. ' +
       'Set SMTP_USER and SMTP_PASS if your server requires authentication.'
     );
   }
@@ -300,7 +300,7 @@ function validateProductionConfig(): void {
   
   if (strategy === 'console') {
     console.warn(
-      '[VoilaJSX AppKit] Using console email strategy in production. ' +
+      '[Bloomneo AppKit] Using console email strategy in production. ' +
       'Emails will only be logged, not sent. ' +
       'Set RESEND_API_KEY or SMTP_HOST for production email sending.'
     );
@@ -310,7 +310,7 @@ function validateProductionConfig(): void {
   const fromEmail = process.env.VOILA_EMAIL_FROM_EMAIL;
   if (!fromEmail) {
     console.warn(
-      '[VoilaJSX AppKit] No FROM email configured in production. ' +
+      '[Bloomneo AppKit] No FROM email configured in production. ' +
       'Set VOILA_EMAIL_FROM_EMAIL for professional email sending.'
     );
   }
@@ -379,7 +379,7 @@ export function validateProductionRequirements(): void {
   if (config.environment.isProduction) {
     if (config.strategy === 'console') {
       console.warn(
-        '[VoilaJSX AppKit] Using console email strategy in production. ' +
+        '[Bloomneo AppKit] Using console email strategy in production. ' +
         'Emails will only be logged, not sent. ' +
         'Set RESEND_API_KEY or SMTP_HOST for production email sending.'
       );

@@ -149,7 +149,7 @@ function validateConfig(): void {
     
     if (strategy === 'local' && process.env.NODE_ENV === 'production') {
       console.warn(
-        '[VoilaJSX AppKit] Using local storage in production. ' +
+        '[Bloomneo AppKit] Using local storage in production. ' +
         'Files will only exist on single server instance. ' +
         'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for distributed storage.'
       );
@@ -157,12 +157,12 @@ function validateConfig(): void {
     
     if (process.env.NODE_ENV === 'production' && !hasCloudStorage()) {
       console.warn(
-        '[VoilaJSX AppKit] No cloud storage configured in production. ' +
+        '[Bloomneo AppKit] No cloud storage configured in production. ' +
         'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for scalable file storage.'
       );
     }
   } catch (error) {
-    console.error('[VoilaJSX AppKit] Storage configuration validation failed:', (error as Error).message);
+    console.error('[Bloomneo AppKit] Storage configuration validation failed:', (error as Error).message);
   }
 }
 
