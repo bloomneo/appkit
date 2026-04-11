@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for file storage with auto-strategy detection
- * @module @voilajsx/appkit/storage
+ * @module @bloomneo/appkit/storage
  * @file src/storage/defaults.ts
  * 
  * @llm-rule WHEN: App startup - need to configure storage system and connection strategy

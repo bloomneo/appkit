@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for caching
- * @module @voilajsx/appkit/cache
+ * @module @bloomneo/appkit/cache
  * @file src/cache/defaults.ts
  * 
  * @llm-rule WHEN: App startup - need to configure cache behavior and connection strategy

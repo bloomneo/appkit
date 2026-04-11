@@ -8,9 +8,9 @@
  * @llm-rule NOTE: Implements authentication flow with AppKit auth, database, logger, and error patterns
  */
 
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { errorClass } from '@voilajsx/appkit/error';
-import { authClass } from '@voilajsx/appkit/auth';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { errorClass } from '@bloomneo/appkit/error';
+import { authClass } from '@bloomneo/appkit/auth';
 import { model } from './user.model.js';
 import type {
   UserRegisterRequest,

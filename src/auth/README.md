@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Authentication Module 🔐
+# @bloomneo/appkit - Authentication Module 🔐
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple authentication with JWT tokens, bcrypt passwords, and role-based permissions. Express-only middleware with clear separation between user authentication and API access.
@@ -20,7 +20,7 @@
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
@@ -33,7 +33,7 @@ echo "VOILA_AUTH_SECRET=your-super-secure-jwt-secret-key-2024-minimum-32-chars" 
 ```
 
 ```typescript
-import { authClass } from '@voilajsx/appkit/auth';
+import { authClass } from '@bloomneo/appkit/auth';
 
 const auth = authClass.get();
 
@@ -548,7 +548,7 @@ import type {
   ExpressRequest,
   ExpressResponse,
   ExpressMiddleware,
-} from '@voilajsx/appkit/auth';
+} from '@bloomneo/appkit/auth';
 
 // All methods are fully typed
 const user: JwtPayload | null = auth.user(req);
@@ -574,10 +574,10 @@ A: Roles are hierarchical (admin.org > admin.tenant), permissions are specific a
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  Built with ❤️ in India by the <a href="https://github.com/orgs/voilajsx/people">VoilaJSX Team</a>
+  Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>

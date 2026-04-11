@@ -1,6 +1,6 @@
 /**
  * Ultra-simple email sending that just works with automatic provider detection
- * @module @voilajsx/appkit/email
+ * @module @bloomneo/appkit/email
  * @file src/email/index.ts
  *
  * @llm-rule WHEN: Building apps that need email sending with zero configuration

@@ -1,6 +1,6 @@
 /**
  * Smart defaults with direct environment access and auto transport detection
- * @module @voilajsx/appkit/logger
+ * @module @bloomneo/appkit/logger
  * @file src/logger/defaults.ts
  * 
  * @llm-rule WHEN: App startup - need production-ready logging configuration

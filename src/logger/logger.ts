@@ -1,6 +1,6 @@
 /**
  * Core logger class with visual error display and simplified transport management
- * @module @voilajsx/appkit/logger
+ * @module @bloomneo/appkit/logger
  * @file src/logger/logger.ts
  * 
  * @llm-rule WHEN: Building logger instances - called via loggerClass.get(), not directly

@@ -1,6 +1,6 @@
 /**
  * Core security class with CSRF, rate limiting, sanitization, and encryption
- * @module @voilajsx/appkit/security
+ * @module @bloomneo/appkit/security
  * @file src/security/security.ts
  * 
  * @llm-rule WHEN: Building apps that need security protection (CSRF, rate limiting, input sanitization, encryption)

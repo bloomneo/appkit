@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for configuration management
- * @module @voilajsx/appkit/config
+ * @module @bloomneo/appkit/config
  * @file src/config/defaults.ts
  *
  * @llm-rule WHEN: App startup - need to parse UPPER_SNAKE_CASE environment variables

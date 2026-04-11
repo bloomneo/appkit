@@ -1,6 +1,6 @@
 /**
  * Ultra-simple configuration management that just works
- * @module @voilajsx/appkit/config
+ * @module @bloomneo/appkit/config
  * @file src/config/index.ts
  *
  * @llm-rule WHEN: Building apps that need configuration from environment variables

@@ -1,6 +1,6 @@
 /**
  * In-memory queue transport for development and testing
- * @module @voilajsx/appkit/queue
+ * @module @bloomneo/appkit/queue
  * @file src/queue/transports/memory.ts
  * 
  * @llm-rule WHEN: Development mode or when no Redis/Database available

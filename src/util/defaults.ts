@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for utilities
- * @module @voilajsx/appkit/util
+ * @module @bloomneo/appkit/util
  * @file src/util/defaults.ts
  * 
  * @llm-rule WHEN: App startup - need to configure utility behavior and performance settings

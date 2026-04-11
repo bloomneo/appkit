@@ -1,22 +1,22 @@
 /**
- * @voilajsx/appkit - Ultra-minimal, tree-shakable Node.js application toolkit
+ * @bloomneo/appkit - Ultra-minimal, tree-shakable Node.js application toolkit
  *
  * This file provides direct access to individual module entry points for optimal tree-shaking.
  * Import only what you need - unused code will be automatically eliminated by modern bundlers.
  *
- * @module @voilajsx/appkit
+ * @module @bloomneo/appkit
  * @file src/index.ts
  * 
  * @example
  * // ✅ Perfect tree-shaking - only specific modules bundled
- * import { authClass } from '@voilajsx/appkit/auth';
- * import { databaseClass } from '@voilajsx/appkit/database';
+ * import { authClass } from '@bloomneo/appkit/auth';
+ * import { databaseClass } from '@bloomneo/appkit/database';
  *
  * // ✅ Also tree-shakable - but imports main index
- * import { authClass, databaseClass } from '@voilajsx/appkit';
+ * import { authClass, databaseClass } from '@bloomneo/appkit';
  *
  * // ❌ Avoid - imports everything
- * import * as appkit from '@voilajsx/appkit';
+ * import * as appkit from '@bloomneo/appkit';
  */
 
 
@@ -25,7 +25,7 @@
  * Library name
  * @type {string}
  */
-export const NAME = '@voilajsx/appkit';
+export const NAME = '@bloomneo/appkit';
 
 /**
  * Supported Node.js version

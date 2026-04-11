@@ -1,6 +1,6 @@
 /**
  * Ultra-simple event-driven architecture that just works with automatic Redis/Memory strategy
- * @module @voilajsx/appkit/event
+ * @module @bloomneo/appkit/event
  * @file src/event/index.ts
  * 
  * @llm-rule WHEN: Building apps that need event-driven architecture with zero configuration

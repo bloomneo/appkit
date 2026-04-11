@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Queue Module 🚀
+# @bloomneo/appkit - Queue Module 🚀
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple job queuing that just works with automatic transport detection
@@ -23,7 +23,7 @@ processing.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
@@ -36,7 +36,7 @@ echo "DATABASE_URL=postgres://user:pass@localhost/db" > .env
 ```
 
 ```typescript
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 const queue = queueClass.get();
 
@@ -107,7 +107,7 @@ await queue.add('webhook', { url: 'https://api.example.com', data: payload });
 ### Core Methods
 
 ```typescript
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 const queue = queueClass.get();
 
@@ -192,7 +192,7 @@ VOILA_QUEUE_DB_BATCH=50                       # Batch size
 
 ```typescript
 import express from 'express';
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 const app = express();
 const queue = queueClass.get();
@@ -270,7 +270,7 @@ app.listen(3000, () => {
 
 ```typescript
 import Fastify from 'fastify';
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 const fastify = Fastify();
 const queue = queueClass.get();
@@ -337,7 +337,7 @@ fastify.listen({ port: 3000 });
 
 ```typescript
 // worker.ts - Separate worker process
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 const queue = queueClass.get();
 
@@ -392,7 +392,7 @@ console.log('🔧 Background worker started');
 
 ```typescript
 import express from 'express';
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 const app = express();
 const queue = queueClass.get();
@@ -475,7 +475,7 @@ app.listen(4000, () => {
 ### Advanced Job Options
 
 ```typescript
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 const queue = queueClass.get();
 
@@ -576,7 +576,7 @@ npx prisma migrate dev --name add_queue_jobs
 ## 🧪 Testing
 
 ```typescript
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 
 describe('Queue Tests', () => {
   afterEach(async () => {
@@ -695,7 +695,7 @@ VOILA_QUEUE_WORKER=true    # Only in worker processes
 
 ```typescript
 // ✅ ALWAYS use these patterns
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 const queue = queueClass.get();
 
 // ✅ Add jobs with proper data
@@ -833,7 +833,7 @@ const agenda = new Agenda({
 
 ```typescript
 // 2 lines, production ready with 3 transports
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 const queue = queueClass.get();
 ```
 
@@ -841,11 +841,11 @@ const queue = queueClass.get();
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  <strong>Built with ❤️ by the <a href="https://github.com/voilajsx">VoilaJSX Team</a></strong><br>
+  <strong>Built with ❤️ by the <a href="https://github.com/bloomneo">Bloomneo Team</a></strong><br>
   Because job queuing should be simple, not a PhD thesis.
 </p>

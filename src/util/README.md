@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Util Module 🛠️
+# @bloomneo/appkit - Util Module 🛠️
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **The 12 utilities every JavaScript developer needs daily**
@@ -21,13 +21,13 @@ optimization and comprehensive edge case handling.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
 
 ```typescript
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 
 const util = utilClass.get();
 
@@ -266,7 +266,7 @@ const tempData = {
 ### **Core Function**
 
 ```typescript
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 
 const util = utilClass.get(); // One function, everything you need
 ```
@@ -358,7 +358,7 @@ utilClass.clearCache(); // Clear cached config
 
 ```typescript
 import React, { useState, useCallback } from 'react';
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 
 const util = utilClass.get();
 
@@ -409,7 +409,7 @@ function UserProfile({ user, onSave }) {
 ### **API Service with Utils**
 
 ```typescript
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 
 const util = utilClass.get();
 
@@ -469,7 +469,7 @@ class APIService {
 ### **Data Processing Pipeline**
 
 ```typescript
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 
 const util = utilClass.get();
 
@@ -541,7 +541,7 @@ class DataProcessor {
 ### **Form Handling with Validation**
 
 ```typescript
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 
 const util = utilClass.get();
 
@@ -679,7 +679,7 @@ VOILA_UTIL_SLUGIFY_STRICT=false         # Default: false
 ### **Basic Testing Setup**
 
 ```typescript
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 
 describe('Utility Tests', () => {
   beforeEach(() => {
@@ -765,7 +765,7 @@ describe('Custom Configuration', () => {
 
 ```typescript
 // ✅ ALWAYS use these patterns
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 const util = utilClass.get();
 
 // ✅ Safe property access instead of direct access
@@ -915,7 +915,7 @@ import type {
   DebounceOptions,
   FormatBytesOptions,
   SlugifyOptions,
-} from '@voilajsx/appkit/utils';
+} from '@bloomneo/appkit/utils';
 
 // Strongly typed utility operations
 const util = utilClass.get();
@@ -945,11 +945,11 @@ const debouncedFn: Function & { cancel: () => void } = util.debounce(fn, 300);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  <strong>Built with ❤️ in India by the <a href="https://github.com/orgs/voilajsx/people">VoilaJSX Team</a></strong><br>
+  <strong>Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a></strong><br>
   Because utilities should be simple, not a PhD thesis.
 </p>

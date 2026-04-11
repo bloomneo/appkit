@@ -1,6 +1,6 @@
 /**
  * Ultra-simple job queuing that just works with automatic transport detection
- * @module @voilajsx/appkit/queue
+ * @module @bloomneo/appkit/queue
  * @file src/queue/index.ts
  *
  * @llm-rule WHEN: Building apps that need background job processing

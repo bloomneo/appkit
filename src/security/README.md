@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Security Module 🔒
+# @bloomneo/appkit - Security Module 🔒
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple enterprise security that just works
@@ -22,7 +22,7 @@ protection, rate limiting, input sanitization, and AES-256-GCM encryption.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
@@ -40,7 +40,7 @@ VOILA_SECURITY_ENCRYPTION_KEY=64-char-hex-key-for-aes256-encryption
 ```typescript
 import express from 'express';
 import session from 'express-session';
-import { securityClass } from '@voilajsx/appkit/security';
+import { securityClass } from '@bloomneo/appkit/security';
 
 const app = express();
 const security = securityClass.get();
@@ -95,7 +95,7 @@ secure.decrypt(data); // Authenticated decryption
 
 ```typescript
 // ✅ CORRECT - Complete security setup
-import { securityClass } from '@voilajsx/appkit/security';
+import { securityClass } from '@bloomneo/appkit/security';
 const security = securityClass.get();
 
 // Required order
@@ -522,7 +522,7 @@ securityClass.validateRequired({ csrf: true, encryption: true });
 ## 🧪 Testing
 
 ```typescript
-import { securityClass } from '@voilajsx/appkit/security';
+import { securityClass } from '@bloomneo/appkit/security';
 
 describe('Security Tests', () => {
   beforeEach(() => securityClass.clearCache());
@@ -594,7 +594,7 @@ import type {
   ExpressMiddleware,
   CSRFOptions,
   RateLimitOptions,
-} from '@voilajsx/appkit/security';
+} from '@bloomneo/appkit/security';
 
 const security = securityClass.get();
 const middleware: ExpressMiddleware = secure.forms();
@@ -603,10 +603,10 @@ const encrypted: string = secure.encrypt(sensitiveData);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  Built with ❤️ in India by the <a href="https://github.com/orgs/voilajsx/people">VoilaJSX Team</a>
+  Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>

@@ -8,8 +8,8 @@
  * @llm-rule NOTE: Handles all Prisma database operations for {{featureName}} feature
  */
 
-import { databaseClass } from '@voilajsx/appkit/database';
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const logger = loggerClass.get('{{featureName}}-model');
 

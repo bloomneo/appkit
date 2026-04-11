@@ -1,6 +1,6 @@
 /**
  * Database transport with automatic connection management and batch processing
- * @module @voilajsx/appkit/logger
+ * @module @bloomneo/appkit/logger
  * @file src/logger/transports/database.ts
  * 
  * @llm-rule WHEN: Need centralized log storage with database persistence

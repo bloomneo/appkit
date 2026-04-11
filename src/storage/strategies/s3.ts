@@ -1,6 +1,6 @@
 /**
  * S3-compatible storage strategy with automatic connection management and multi-provider support
- * @module @voilajsx/appkit/storage
+ * @module @bloomneo/appkit/storage
  * @file src/storage/strategies/s3.ts
  * 
  * @llm-rule WHEN: App has AWS_S3_BUCKET or S3_ENDPOINT env vars for distributed cloud storage

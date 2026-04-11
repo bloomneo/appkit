@@ -1,6 +1,6 @@
 /**
  * Ultra-simple file storage that just works with automatic Local/S3/R2 strategy
- * @module @voilajsx/appkit/storage
+ * @module @bloomneo/appkit/storage
  * @file src/storage/index.ts
  * 
  * @llm-rule WHEN: Building apps that need file storage with zero configuration

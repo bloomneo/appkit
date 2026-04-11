@@ -9,7 +9,7 @@
  * - VOILA_DB_TENANT: Enable tenant mode (auto/true/false)
  * - ORG_{NAME}: Organization-specific database URLs
  *
- * @module @voilajsx/appkit/database
+ * @module @bloomneo/appkit/database
  * @file src/database/defaults.js
  * 
  * @llm-rule WHEN: App startup - need to validate database environment configuration

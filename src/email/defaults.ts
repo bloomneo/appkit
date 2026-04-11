@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for email with auto-strategy detection
- * @module @voilajsx/appkit/email
+ * @module @bloomneo/appkit/email
  * @file src/email/defaults.ts
  * 
  * @llm-rule WHEN: App startup - need to configure email strategy and connection settings

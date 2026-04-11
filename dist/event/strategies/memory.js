@@ -1,6 +1,6 @@
 /**
  * Memory event strategy with Node.js EventEmitter and cleanup management
- * @module @voilajsx/appkit/event
+ * @module @bloomneo/appkit/event
  * @file src/event/strategies/memory.ts
  *
  * @llm-rule WHEN: No REDIS_URL environment variable - perfect for development and single-server apps

@@ -1,6 +1,6 @@
 /**
  * Ultra-simple database API with org/tenant support and smart connection management
- * @module @voilajsx/appkit/database
+ * @module @bloomneo/appkit/database
  * @file src/database/index.ts
  * 
  * @llm-rule WHEN: ALWAYS add tenant_id text field to ALL tables (nullable for future compatibility)

@@ -1,6 +1,6 @@
 /**
  * Core email class with automatic strategy selection and ultra-simple API
- * @module @voilajsx/appkit/email
+ * @module @bloomneo/appkit/email
  * @file src/email/email.ts
  *
  * @llm-rule WHEN: Building apps that need email sending with automatic provider selection

@@ -1,6 +1,6 @@
 /**
  * Local filesystem storage strategy with automatic directory management
- * @module @voilajsx/appkit/storage
+ * @module @bloomneo/appkit/storage
  * @file src/storage/strategies/local.ts
  *
  * @llm-rule WHEN: No cloud storage env vars - perfect for development and single-server apps

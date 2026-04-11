@@ -1,6 +1,6 @@
 /**
  * Redis cache strategy with automatic connection management and retry logic
- * @module @voilajsx/appkit/cache
+ * @module @bloomneo/appkit/cache
  * @file src/cache/strategies/redis.ts
  *
  * @llm-rule WHEN: App has REDIS_URL environment variable for distributed caching

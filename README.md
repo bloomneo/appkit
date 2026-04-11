@@ -1,9 +1,11 @@
-# VoilaJSX AppKit 🚀
+# Bloomneo AppKit 🚀
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
-[![AI Ready](https://img.shields.io/badge/AI-Optimized-purple.svg)](https://github.com/voilajsx/appkit)
+[![AI Ready](https://img.shields.io/badge/AI-Optimized-purple.svg)](https://github.com/bloomneo/appkit)
+
+> Previously published as `@voilajsx/appkit`. Same code, new home, new namespace. See the [migration note](#scope-change) below.
 
 > **Minimal and framework agnostic Node.js toolkit designed for AI agentic
 > backend development**
@@ -11,9 +13,9 @@
 **Zero configuration. Enterprise features by default. Optimized for both human
 developers and AI code generation.**
 
-## 🚀 What VoilaJSX AppKit Really Is
+## 🚀 What Bloomneo AppKit Really Is
 
-VoilaJSX AppKit is a **complete Node.js development toolkit** that eliminates
+Bloomneo AppKit is a **complete Node.js development toolkit** that eliminates
 the complexity of building production-ready applications. Instead of juggling
 dozens of libraries and configuration files, you get 12 integrated modules that
 work together seamlessly.
@@ -54,7 +56,7 @@ development:
 
 ### **Why This Matters for Developers**
 
-| Traditional Approach                      | VoilaJSX AppKit Approach                |
+| Traditional Approach                      | Bloomneo AppKit Approach                |
 | ----------------------------------------- | --------------------------------------- |
 | Research → Configure → Integrate → Secure | **Import → Use → Deploy**               |
 | Multiple libraries, version conflicts     | **Integrated modules, tested together** |
@@ -86,18 +88,18 @@ const acmeDatabase = await databaseClass.org('acme').get(); // Enterprise scalin
 
 **📦 As a Library** - Install AppKit modules into your existing Node.js/Express projects (NestJS, Fastify, Koa, etc.):
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
-Import modules directly: `import { authClass, databaseClass } from '@voilajsx/appkit'`
+Import modules directly: `import { authClass, databaseClass } from '@bloomneo/appkit'`
 
 **🚀 Complete Microservice Scaffolding** - Use AppKit CLI to generate enterprise-ready backend applications:
 
 ```bash
 # Step 1: Install AppKit CLI globally
-npm install -g @voilajsx/appkit
+npm install -g @bloomneo/appkit
 
 # Check if you have the latest version
-npm list -g @voilajsx/appkit
+npm list -g @bloomneo/appkit
 
 # Step 2: Create your app
 appkit generate app myproject
@@ -123,14 +125,14 @@ appkit generate feature order --db
 
 ```bash
 # For library usage in existing projects
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ```typescript
-import { authClass } from '@voilajsx/appkit/auth';
-import { databaseClass } from '@voilajsx/appkit/database';
-import { errorClass } from '@voilajsx/appkit/error';
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { authClass } from '@bloomneo/appkit/auth';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { errorClass } from '@bloomneo/appkit/error';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const auth = authClass.get();
 const database = await databaseClass.get();
@@ -263,10 +265,10 @@ VOILA_DB_TENANT=auto                      # → Multi-tenant mode
 ### **Multi-Tenant SaaS API**
 
 ```typescript
-import { authClass } from '@voilajsx/appkit/auth';
-import { databaseClass } from '@voilajsx/appkit/database';
-import { securityClass } from '@voilajsx/appkit/security';
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { authClass } from '@bloomneo/appkit/auth';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { securityClass } from '@bloomneo/appkit/security';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 const auth = authClass.get();
 const database = await databaseClass.get(); // Auto-filtered by tenant
@@ -310,9 +312,9 @@ app.get(
 ### **Real-Time Chat Application**
 
 ```typescript
-import { eventClass } from '@voilajsx/appkit/event';
-import { authClass } from '@voilajsx/appkit/auth';
-import { databaseClass } from '@voilajsx/appkit/database';
+import { eventClass } from '@bloomneo/appkit/event';
+import { authClass } from '@bloomneo/appkit/auth';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 const events = eventClass.get();
 const auth = authClass.get();
@@ -370,10 +372,10 @@ app.post('/api/notifications', auth.requireLogin(), async (req, res) => {
 ### **File Upload with Background Processing**
 
 ```typescript
-import { storageClass } from '@voilajsx/appkit/storage';
-import { queueClass } from '@voilajsx/appkit/queue';
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { securityClass } from '@voilajsx/appkit/security';
+import { storageClass } from '@bloomneo/appkit/storage';
+import { queueClass } from '@bloomneo/appkit/queue';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { securityClass } from '@bloomneo/appkit/security';
 
 const storage = storageClass.get();
 const queue = queueClass.get();
@@ -447,16 +449,16 @@ queue.process('process-image', async (data) => {
 
 ```
 Create a Node.js API with user authentication, role-based access control,
-and protected admin routes using VoilaJSX AppKit.
+and protected admin routes using Bloomneo AppKit.
 ```
 
 **AI Agent Output** (guaranteed to work):
 
 ```typescript
-import { authClass } from '@voilajsx/appkit/auth';
-import { errorClass } from '@voilajsx/appkit/error';
-import { databaseClass } from '@voilajsx/appkit/database';
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { authClass } from '@bloomneo/appkit/auth';
+import { errorClass } from '@bloomneo/appkit/error';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const auth = authClass.get();
 const error = errorClass.get();
@@ -567,9 +569,9 @@ but admins can access all organizations.
 **AI Agent Output**:
 
 ```typescript
-import { databaseClass } from '@voilajsx/appkit/database';
-import { authClass } from '@voilajsx/appkit/auth';
-import { errorClass } from '@voilajsx/appkit/error';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { authClass } from '@bloomneo/appkit/auth';
+import { errorClass } from '@bloomneo/appkit/error';
 
 const auth = authClass.get();
 const error = errorClass.get();
@@ -726,11 +728,11 @@ spec:
 ### **Testing Setup**
 
 ```typescript
-import { utilClass } from '@voilajsx/appkit/util';
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { cacheClass } from '@voilajsx/appkit/cache';
-import { databaseClass } from '@voilajsx/appkit/database';
-import { authClass } from '@voilajsx/appkit/auth';
+import { utilClass } from '@bloomneo/appkit/util';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { cacheClass } from '@bloomneo/appkit/cache';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { authClass } from '@bloomneo/appkit/auth';
 
 describe('API Tests', () => {
   beforeEach(() => {
@@ -843,7 +845,7 @@ describe('API Tests', () => {
 
 ### **Getting Help**
 
-- 🐙 [GitHub Issues](https://github.com/voilajsx/appkit/issues) - Bug reports
+- 🐙 [GitHub Issues](https://github.com/bloomneo/appkit/issues) - Bug reports
   and feature requests
 - 📧 [Email Support](mailto:kt@voilacode.com) - Direct support for enterprises
 
@@ -857,9 +859,29 @@ We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for:
 - 🧪 Test coverage improvements
 - 💡 Feature suggestions
 
+<a id="scope-change"></a>
+
+## 🔁 Scope change (1.2.9)
+
+This package was previously published as **`@voilajsx/appkit`**. Starting with `1.2.9` it lives at **`@bloomneo/appkit`**. The old package on npm is frozen at `1.2.8` and will not receive further updates.
+
+**Migration:**
+
+```diff
+- npm install @voilajsx/appkit
++ npm install @bloomneo/appkit
+```
+
+```diff
+- import { authClass } from '@voilajsx/appkit/auth';
++ import { authClass } from '@bloomneo/appkit/auth';
+```
+
+A project-wide find-and-replace of `@voilajsx/appkit` → `@bloomneo/appkit` is sufficient. The API surface, props, types, and behavior are identical between the two scopes — only the namespace changed.
+
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx) - See [LICENSE](LICENSE) for
+MIT © [Bloomneo](https://github.com/bloomneo) — See [LICENSE](LICENSE) for
 details.
 
 ---
@@ -867,7 +889,7 @@ details.
 <p align="center">
   <strong>🚀 Built for the AI-first future of software development</strong><br>
   <strong>Where enterprise applications are generated, not written</strong><br><br>
-  <a href="https://github.com/voilajsx/appkit">⭐ Star us on GitHub</a> 
+  <a href="https://github.com/bloomneo/appkit">⭐ Star us on GitHub</a> 
 </p>
 
 ---

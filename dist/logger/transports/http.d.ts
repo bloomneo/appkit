@@ -1,6 +1,6 @@
 /**
  * HTTP transport for external logging services with automatic format detection
- * @module @voilajsx/appkit/logger
+ * @module @bloomneo/appkit/logger
  * @file src/logger/transports/http.ts
  *
  * @llm-rule WHEN: Need to send logs to external services like Datadog, Elasticsearch, Splunk

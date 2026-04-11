@@ -1,6 +1,6 @@
 /**
  * Ultra-simple logging that just works with enterprise features and enhanced error display
- * @module @voilajsx/appkit/logger
+ * @module @bloomneo/appkit/logger
  * @file src/logger/index.ts
  * 
  * @llm-rule WHEN: Need logging in any app - console, files, database, external services

@@ -1,6 +1,6 @@
 /**
  * Smart configuration management with automatic environment variable parsing
- * @module @voilajsx/appkit/config
+ * @module @bloomneo/appkit/config
  * @file src/config/config.ts
  *
  * @llm-rule WHEN: Building apps that need configuration from environment variables

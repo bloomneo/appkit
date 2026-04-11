@@ -1,6 +1,6 @@
 /**
  * Console email strategy for development with beautiful formatting and email preview
- * @module @voilajsx/appkit/email
+ * @module @bloomneo/appkit/email
  * @file src/email/strategies/console.ts
  *
  * @llm-rule WHEN: No email provider configured - perfect for development and testing

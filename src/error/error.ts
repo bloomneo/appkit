@@ -1,6 +1,6 @@
 /**
  * Core error class with semantic HTTP status codes and middleware
- * @module @voilajsx/appkit/error
+ * @module @bloomneo/appkit/error
  * @file src/error/error.ts
  * 
  * @llm-rule WHEN: Building apps that need semantic HTTP error handling

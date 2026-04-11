@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for role-level-permission authentication
- * @module @voilajsx/appkit/auth
+ * @module @bloomneo/appkit/auth
  * @file src/auth/defaults.ts
  *
  * @llm-rule WHEN: App startup - need to parse auth environment variables and build role hierarchy

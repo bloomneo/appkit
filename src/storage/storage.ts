@@ -1,6 +1,6 @@
 /**
  * Core storage class with automatic strategy selection and ultra-simple API
- * @module @voilajsx/appkit/storage
+ * @module @bloomneo/appkit/storage
  * @file src/storage/storage.ts
  * 
  * @llm-rule WHEN: Building apps that need file storage with automatic Local/S3/R2 selection

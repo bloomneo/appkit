@@ -1,6 +1,6 @@
 /**
  * Ultra-simple utilities that just work
- * @module @voilajsx/appkit/util
+ * @module @bloomneo/appkit/util
  * @file src/util/index.ts
  * 
  * @llm-rule WHEN: Building apps that need common utility functions (get, chunk, slugify, debounce, etc.)

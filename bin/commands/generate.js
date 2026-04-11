@@ -186,7 +186,7 @@ async function generateFeature(name, options) {
       );
       if (
         !packageJson.dependencies ||
-        !packageJson.dependencies['@voilajsx/appkit']
+        !packageJson.dependencies['@bloomneo/appkit']
       ) {
         console.error(
           '❌ Not in an AppKit project directory. Run this from project root.'
@@ -395,8 +395,8 @@ async function handlePackageJson(
 
       // Add backend dependencies if missing
       packageJson.dependencies = packageJson.dependencies || {};
-      if (!packageJson.dependencies['@voilajsx/appkit']) {
-        packageJson.dependencies['@voilajsx/appkit'] = '^1.0.0';
+      if (!packageJson.dependencies['@bloomneo/appkit']) {
+        packageJson.dependencies['@bloomneo/appkit'] = '^1.0.0';
         updated = true;
       }
       if (!packageJson.dependencies['express']) {

@@ -1,6 +1,6 @@
-# Contributing to @voilajsx/appkit
+# Contributing to @bloomneo/appkit
 
-Thank you for your interest in contributing to @voilajsx/appkit! We welcome
+Thank you for your interest in contributing to @bloomneo/appkit! We welcome
 contributions from the community and are excited to have you on board.
 
 ## Table of Contents
@@ -27,7 +27,7 @@ contributions from the community and are excited to have you on board.
    ```
 3. Add the upstream repository:
    ```bash
-   git remote add upstream https://github.com/voilajsx/appkit.git
+   git remote add upstream https://github.com/bloomneo/appkit.git
    ```
 4. Create a new branch for your feature or fix:
    ```bash
@@ -346,7 +346,7 @@ Use our issue templates and include:
 If you discover a security vulnerability:
 
 1. **DO NOT** create a public GitHub issue
-2. Email security@voilajsx.com with:
+2. Email security@bloomneo.com with:
    - Description of the vulnerability
    - Steps to reproduce
    - Potential impact
@@ -365,7 +365,7 @@ We will respond within 48 hours and work with you to resolve the issue.
 
 ### Enforcement
 
-Unacceptable behavior should be reported to conduct@voilajsx.com. All complaints
+Unacceptable behavior should be reported to conduct@bloomneo.com. All complaints
 will be reviewed and investigated promptly and fairly.
 
 ## License
@@ -383,9 +383,9 @@ Contributors will be recognized in:
 
 ## Questions?
 
-- Email us at support@voilajsx.com
+- Email us at support@bloomneo.com
 - Create a discussion in GitHub Discussions
 
 ---
 
-Thank you for contributing to @voilajsx/appkit! 🚀
+Thank you for contributing to @bloomneo/appkit! 🚀

@@ -8,8 +8,8 @@
  * @llm-rule NOTE: Demonstrates AppKit database, logger, config, and error patterns for FBCA with Prisma
  */
 
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { errorClass } from '@voilajsx/appkit/error';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { errorClass } from '@bloomneo/appkit/error';
 import { model } from './{{featureName}}.model.js';
 import type { {{FeatureName}}Response, {{FeatureName}}CreateRequest, {{FeatureName}}UpdateRequest } from './{{featureName}}.types.js';
 

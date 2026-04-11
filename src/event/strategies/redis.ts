@@ -1,6 +1,6 @@
 /**
  * Redis event strategy with distributed pub/sub and automatic connection management
- * @module @voilajsx/appkit/event
+ * @module @bloomneo/appkit/event
  * @file src/event/strategies/redis.ts
  * 
  * @llm-rule WHEN: App has REDIS_URL environment variable for distributed events across servers

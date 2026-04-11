@@ -1,6 +1,6 @@
 /**
  * Core utility class with 12 essential JavaScript functions
- * @module @voilajsx/appkit/util
+ * @module @bloomneo/appkit/util
  * @file src/util/util.ts
  *
  * @llm-rule WHEN: Building apps that need common utility functions (get, chunk, slugify, debounce, etc.)

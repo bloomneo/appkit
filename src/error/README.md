@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Error Module ⚠️
+# @bloomneo/appkit - Error Module ⚠️
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple semantic error handling with HTTP status codes, Express
@@ -24,14 +24,14 @@ framework.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
 
 ```typescript
 import express from 'express';
-import { errorClass } from '@voilajsx/appkit/error';
+import { errorClass } from '@bloomneo/appkit/error';
 
 const app = express();
 const error = errorClass.get();
@@ -392,7 +392,7 @@ VOILA_ERROR_LOG=true             # Enable error logging
 
 ```typescript
 import express from 'express';
-import { errorClass } from '@voilajsx/appkit/error';
+import { errorClass } from '@bloomneo/appkit/error';
 
 const app = express();
 
@@ -417,7 +417,7 @@ app.listen(3000, () => {
 
 ```typescript
 import Fastify from 'fastify';
-import { errorClass } from '@voilajsx/appkit/error';
+import { errorClass } from '@bloomneo/appkit/error';
 
 const fastify = Fastify({ logger: true });
 const error = errorClass.get();
@@ -590,7 +590,7 @@ try {
 ## 🧪 Testing
 
 ```typescript
-import { errorClass } from '@voilajsx/appkit/error';
+import { errorClass } from '@bloomneo/appkit/error';
 
 // Reset for clean testing
 const error = errorClass.reset({
@@ -635,7 +635,7 @@ import type {
   ErrorHandlerOptions,
   ExpressErrorHandler,
   AsyncRouteHandler,
-} from '@voilajsx/appkit/error';
+} from '@bloomneo/appkit/error';
 
 // All methods are fully typed
 const error = errorClass.get();
@@ -651,10 +651,10 @@ const env = error.getEnvironmentInfo();
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  Built with ❤️ in India by the <a href="https://github.com/orgs/voilajsx/people">VoilaJSX Team</a>
+  Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>

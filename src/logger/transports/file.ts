@@ -1,6 +1,6 @@
 /**
  * File transport with automatic rotation, retention and scope optimization
- * @module @voilajsx/appkit/logger
+ * @module @bloomneo/appkit/logger
  * @file src/logger/transports/file.ts
  * 
  * @llm-rule WHEN: Need persistent log storage with automatic file management

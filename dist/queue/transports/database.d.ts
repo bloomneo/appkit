@@ -1,6 +1,6 @@
 /**
  * Database queue transport using AppKit Prisma for persistent job storage
- * @module @voilajsx/appkit/queue
+ * @module @bloomneo/appkit/queue
  * @file src/queue/transports/database.ts
  *
  * @llm-rule WHEN: Need persistent queuing with existing database - leverages AppKit database

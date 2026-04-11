@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Event Module 🚀
+# @bloomneo/appkit - Event Module 🚀
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple event-driven architecture that just works with automatic
@@ -23,7 +23,7 @@ wildcard patterns and event history.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
@@ -31,7 +31,7 @@ npm install @voilajsx/appkit
 ### Basic Events (Memory Strategy)
 
 ```typescript
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 const events = eventClass.get();
 
@@ -55,7 +55,7 @@ REDIS_URL=redis://localhost:6379
 ```
 
 ```typescript
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 const events = eventClass.get();
 
@@ -176,7 +176,7 @@ await eventClass.reset(newConfig);
 
 ```typescript
 import express from 'express';
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 const app = express();
 const events = eventClass.get('api');
@@ -227,7 +227,7 @@ app.listen(3000, () => {
 
 ```typescript
 // User Service
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 const userEvents = eventClass.get('users');
 
@@ -250,7 +250,7 @@ export class UserService {
 
 ```typescript
 // Email Service (separate server/container)
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 const emailEvents = eventClass.get('emails');
 const userEvents = eventClass.get('users'); // Same namespace, distributed
@@ -274,7 +274,7 @@ emailEvents.on('send.*', async (eventName, emailData) => {
 ### **Background Jobs & Queues**
 
 ```typescript
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 const jobEvents = eventClass.get('jobs');
 
@@ -316,7 +316,7 @@ await jobEvents.emit('job.email.welcome', {
 ## 🧪 Testing
 
 ```typescript
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 describe('Events', () => {
   afterEach(() => eventClass.clear()); // Essential cleanup
@@ -422,7 +422,7 @@ async function emitSafely(event, data) {
 ### **Basic Validation**
 
 ```typescript
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 
 async function startApp() {
   // Validate events at startup
@@ -591,7 +591,7 @@ await events.emit('test.event', { data: 'value' });
 
 ```typescript
 // ✅ ALWAYS use these patterns
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 const events = eventClass.get('namespace');
 
 // ✅ Event listening
@@ -624,7 +624,7 @@ events.off('event.name', specificHandler);
 
 ```typescript
 // ❌ DON'T create EventClass directly
-import { EventClass } from '@voilajsx/appkit/event';
+import { EventClass } from '@bloomneo/appkit/event';
 const events = new EventClass(config, namespace); // Wrong!
 
 // ❌ DON'T forget to handle async properly
@@ -700,7 +700,7 @@ import type {
   WildcardHandler,
   BatchEvent,
   EventHistoryEntry,
-} from '@voilajsx/appkit/event';
+} from '@bloomneo/appkit/event';
 
 // Strongly typed event handling
 const events: Event = eventClass.get('users');
@@ -719,11 +719,11 @@ events.on('user.*', wildcardHandler);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  <strong>Built with ❤️ by the <a href="https://github.com/voilajsx">VoilaJSX Team</a></strong><br>
+  <strong>Built with ❤️ by the <a href="https://github.com/bloomneo">Bloomneo Team</a></strong><br>
   Because event-driven architecture should be simple, not rocket science.
 </p>

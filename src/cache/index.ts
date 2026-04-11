@@ -1,6 +1,6 @@
 /**
  * Ultra-simple caching that just works with automatic Redis/Memory strategy selection
- * @module @voilajsx/appkit/cache
+ * @module @bloomneo/appkit/cache
  * @file src/cache/index.ts
  * 
  * @llm-rule WHEN: Building apps that need caching with zero configuration

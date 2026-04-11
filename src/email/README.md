@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Email Module 📧
+# @bloomneo/appkit - Email Module 📧
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple email sending that just works - One function, automatic provider
@@ -24,7 +24,7 @@ template system and development preview.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
@@ -32,7 +32,7 @@ npm install @voilajsx/appkit
 ### 1. Basic Setup (Console Preview)
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 const email = emailClass.get();
 
@@ -55,7 +55,7 @@ export RESEND_API_KEY=re_your_api_key_here
 ```
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 // Same code, now sends real emails!
 await emailClass.send({
@@ -146,7 +146,7 @@ await emailClass.send(emailData); // Direct send without get()
 ### **User Registration Email**
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 async function sendWelcomeEmail(user) {
   await emailClass.send({
@@ -165,7 +165,7 @@ async function sendWelcomeEmail(user) {
 ### **Password Reset**
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 async function sendPasswordReset(user, resetToken) {
   const resetUrl = `${process.env.APP_URL}/reset?token=${resetToken}`;
@@ -189,7 +189,7 @@ async function sendPasswordReset(user, resetToken) {
 ### **Order Confirmation**
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 async function sendOrderConfirmation(order) {
   await emailClass.send({
@@ -212,7 +212,7 @@ async function sendOrderConfirmation(order) {
 ### **Built-in Templates**
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 // Welcome template
 await emailClass.get().sendTemplate('welcome', {
@@ -233,7 +233,7 @@ await emailClass.get().sendTemplate('reset', {
 ## 🧪 Testing
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 describe('Email Tests', () => {
   afterEach(async () => {
@@ -447,7 +447,7 @@ async function sendEmailWithContext(emailData) {
 ### **Basic App Startup Validation**
 
 ```typescript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 
 async function startApp() {
   try {
@@ -646,7 +646,7 @@ export VOILA_EMAIL_FROM_EMAIL=noreply@yourdomain.com
 
 ```typescript
 // ✅ ALWAYS use these patterns
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 const email = emailClass.get();
 
 // ✅ Basic email sending
@@ -736,7 +736,7 @@ await emailClass.get().sendBatch(emails);
 ## 🔍 TypeScript Support
 
 ```typescript
-import type { EmailData, EmailResult } from '@voilajsx/appkit/email';
+import type { EmailData, EmailResult } from '@bloomneo/appkit/email';
 
 // Strongly typed email operations
 const emailData: EmailData = {
@@ -750,10 +750,10 @@ const result: EmailResult = await emailClass.send(emailData);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  Built with ❤️ in India by the <a href="https://github.com/orgs/voilajsx/people">VoilaJSX Team</a>
+  Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>

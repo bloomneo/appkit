@@ -8,7 +8,7 @@ Documentation guidelines for AppKit backend applications optimized for developer
 ```typescript
 /**
  * Brief description
- * @module @voilajsx/package/module
+ * @module @bloomneo/package/module
  * @file src/path/file.ts
  *
  * @llm-rule WHEN: Use case trigger

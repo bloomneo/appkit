@@ -7,7 +7,7 @@ The AppKit CLI is a powerful command-line interface for creating production-read
 ## Installation
 
 ```bash
-npm install -g @voilajsx/appkit
+npm install -g @bloomneo/appkit
 ```
 
 ## Quick Start
@@ -376,7 +376,7 @@ curl http://localhost:3000/api/user/test
 
 ### Database
 ```typescript
-import { databaseClass } from '@voilajsx/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 const db = await databaseClass.get();
 const users = await db.user.findMany();
@@ -384,7 +384,7 @@ const users = await db.user.findMany();
 
 ### Authentication
 ```typescript
-import { authClass } from '@voilajsx/appkit/auth';
+import { authClass } from '@bloomneo/appkit/auth';
 
 const auth = authClass.get();
 const token = auth.generateLoginToken({ userId, role, level });
@@ -392,7 +392,7 @@ const token = auth.generateLoginToken({ userId, role, level });
 
 ### Error Handling
 ```typescript
-import { errorClass } from '@voilajsx/appkit/error';
+import { errorClass } from '@bloomneo/appkit/error';
 
 const error = errorClass.get();
 throw error.badRequest('Invalid input');
@@ -401,7 +401,7 @@ throw error.notFound('User not found');
 
 ### Logging
 ```typescript
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const logger = loggerClass.get('feature-name');
 logger.info('Request processed', { userId });

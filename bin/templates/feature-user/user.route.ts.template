@@ -5,8 +5,8 @@
  */
 
 import express from 'express';
-import { errorClass } from '@voilajsx/appkit/error';
-import { authClass } from '@voilajsx/appkit/auth';
+import { errorClass } from '@bloomneo/appkit/error';
+import { authClass } from '@bloomneo/appkit/auth';
 import { userService } from './user.service.js';
 
 // Initialize AppKit modules

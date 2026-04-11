@@ -1,6 +1,6 @@
 /**
  * Ultra-simple semantic error handling that just works
- * @module @voilajsx/appkit/error
+ * @module @bloomneo/appkit/error
  * @file src/error/index.ts
  * 
  * @llm-rule WHEN: Building apps that need semantic HTTP error handling

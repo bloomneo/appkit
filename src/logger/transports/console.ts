@@ -1,6 +1,6 @@
 /**
  * Console transport with smart formatting, minimal mode support, and visual error enhancement
- * @module @voilajsx/appkit/loggier
+ * @module @bloomneo/appkit/loggier
  * @file src/logger/transports/console.ts
  * 
  * @llm-rule WHEN: Need console output for development or production monitoring

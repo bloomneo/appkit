@@ -1,6 +1,6 @@
 /**
  * Memory cache strategy with LRU eviction and TTL expiration
- * @module @voilajsx/appkit/cache
+ * @module @bloomneo/appkit/cache
  * @file src/cache/strategies/memory.ts
  *
  * @llm-rule WHEN: No REDIS_URL environment variable - perfect for development and testing

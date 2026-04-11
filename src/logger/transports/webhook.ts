@@ -1,6 +1,6 @@
 /**
  * Webhook transport for real-time alerts with Slack and generic webhook support
- * @module @voilajsx/appkit/logger
+ * @module @bloomneo/appkit/logger
  * @file src/logger/transports/webhook.ts
  * 
  * @llm-rule WHEN: Need real-time error alerts or notifications to Slack/Discord/Teams

@@ -1,6 +1,6 @@
 /**
  * Redis queue transport for production distributed queuing
- * @module @voilajsx/appkit/queue
+ * @module @bloomneo/appkit/queue
  * @file src/queue/transports/redis.ts
  *
  * @llm-rule WHEN: Production environment with REDIS_URL - best for distributed systems

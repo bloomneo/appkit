@@ -1,9 +1,9 @@
-# @voilajsx/appkit/logging
+# @bloomneo/appkit/logging
 
 > **Ultra-simple logging that just works** - One function, five transports, zero
 > headaches
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 Why Choose This?
@@ -19,13 +19,13 @@
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
 
 ```typescript
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const log = loggerClass.get();
 log.info('🚀 App started');
@@ -57,7 +57,7 @@ The logger **automatically detects** what you need:
 
 ```typescript
 // ✅ CORRECT - Basic pattern
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const log = loggerClass.get();
 const apiLog = loggerClass.get('api');
@@ -389,7 +389,7 @@ VOILA_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
 ## 🧪 Testing
 
 ```typescript
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 describe('Payment Service', () => {
   afterEach(async () => {
@@ -417,7 +417,7 @@ describe('Payment Service', () => {
 ## 🔍 TypeScript Support
 
 ```typescript
-import type { LoggingConfig, LogMeta, Logger } from '@voilajsx/appkit/logging';
+import type { LoggingConfig, LogMeta, Logger } from '@bloomneo/appkit/logging';
 
 const log: Logger = loggerClass.get();
 const meta: LogMeta = { userId: 123, action: 'login' };
@@ -425,11 +425,11 @@ const meta: LogMeta = { userId: 123, action: 'login' };
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  <strong>Built with ❤️ by the <a href="https://github.com/voilajsx/appkit">VoilaJSX Team</a></strong><br>
+  <strong>Built with ❤️ by the <a href="https://github.com/bloomneo/appkit">Bloomneo Team</a></strong><br>
   Because logging should be simple, not a PhD thesis.
 </p>

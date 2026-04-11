@@ -1,7 +1,7 @@
 {
-  "name": "@voilajsx/appkit",
+  "name": "@bloomneo/appkit",
   "version": "1.2.9",
-  "description": "Minimal and framework agnostic Node.js toolkit designed for AI agentic backend development",
+  "description": "Minimal and framework agnostic Node.js toolkit designed for AI agentic backend development. Previously published as @voilajsx/appkit.",
   "main": "dist/index.js",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -126,12 +126,12 @@
     "fbca",
     "code-generation"
   ],
-  "author": "VoilaJS",
+  "author": "Bloomneo",
   "contributors": [
     {
       "name": "Krishna Teja GS",
       "email": "kt@voilacode.com",
-      "url": "https://voilacode.com"
+      "url": "https://bloomneo.com"
     }
   ],
   "creator": "Krishna Teja GS",
@@ -218,13 +218,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/voilajsx/appkit.git"
+    "url": "git+https://github.com/bloomneo/appkit.git"
   },
   "bugs": {
-    "url": "https://github.com/voilajsx/appkit/issues"
+    "url": "https://github.com/bloomneo/appkit/issues"
   },
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://github.com/voilajsx/appkit#readme"
+  "homepage": "https://github.com/bloomneo/appkit#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/bloomneo"
+  }
 }

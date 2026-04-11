@@ -2,8 +2,8 @@
 
 /**
  * @fileoverview AppKit CLI - Backend FBCA scaffolding tool
- * @description Creates backend APIs with Feature-Based Component Architecture using @voilajsx/appkit modules
- * @package @voilajsx/appkit
+ * @description Creates backend APIs with Feature-Based Component Architecture using @bloomneo/appkit modules
+ * @package @bloomneo/appkit
  * @file appkit/bin/appkit.js
  */
 

@@ -8,9 +8,9 @@
  * @llm-rule NOTE: Handles all Prisma database operations for User authentication
  */
 
-import { databaseClass } from '@voilajsx/appkit/database';
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { authClass } from '@voilajsx/appkit/auth';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { authClass } from '@bloomneo/appkit/auth';
 import type { UserRegisterRequest, UserUpdateRequest } from './user.types.js';
 
 const logger = loggerClass.get('user-model');

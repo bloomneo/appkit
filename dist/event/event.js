@@ -1,6 +1,6 @@
 /**
  * Core event class with automatic strategy selection and ultra-simple API
- * @module @voilajsx/appkit/event
+ * @module @bloomneo/appkit/event
  * @file src/event/event.ts
  *
  * @llm-rule WHEN: Building apps that need event-driven architecture with automatic Redis/Memory selection

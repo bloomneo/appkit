@@ -39,18 +39,18 @@ is absolute.
 
 | Module       | Import                                                      | Class           | Object Name | Optional Param    | When to Use Param                 |
 | ------------ | ----------------------------------------------------------- | --------------- | ----------- | ----------------- | --------------------------------- |
-| **Util**     | `import { utilClass } from '@voilajsx/appkit/util'`         | `utilClass`     | `util`      | ❌ None           | N/A                               |
-| **Config**   | `import { configClass } from '@voilajsx/appkit/config'`     | `configClass`   | `config`    | ❌ None           | N/A                               |
-| **Auth**     | `import { authClass } from '@voilajsx/appkit/auth'`         | `authClass`     | `auth`      | ❌ None           | N/A                               |
-| **Logger**   | `import { loggerClass } from '@voilajsx/appkit/logger'`     | `loggerClass`   | `logger`    | ✅ `(component?)` | Component-specific logging        |
-| **Database** | `import { databaseClass } from '@voilajsx/appkit/database'` | `databaseClass` | `database`  | ❌ None           | N/A                               |
-| **Cache**    | `import { cacheClass } from '@voilajsx/appkit/cache'`       | `cacheClass`    | `cache`     | ✅ `(namespace?)` | Custom namespace (default: 'app') |
-| **Storage**  | `import { storageClass } from '@voilajsx/appkit/storage'`   | `storageClass`  | `storage`   | ❌ None           | N/A                               |
-| **Queue**    | `import { queueClass } from '@voilajsx/appkit/queue'`       | `queueClass`    | `queue`     | ❌ None           | N/A                               |
-| **Email**    | `import { emailClass } from '@voilajsx/appkit/email'`       | `emailClass`    | `email`     | ❌ None           | N/A                               |
-| **Error**    | `import { errorClass } from '@voilajsx/appkit/error'`       | `errorClass`    | `error`     | ❌ None           | N/A                               |
-| **Security** | `import { securityClass } from '@voilajsx/appkit/security'` | `securityClass` | `security`  | ❌ None           | N/A                               |
-| **Event**    | `import { eventClass } from '@voilajsx/appkit/event'`       | `eventClass`    | `event`     | ✅ `(namespace?)` | Namespace isolation for events    |
+| **Util**     | `import { utilClass } from '@bloomneo/appkit/util'`         | `utilClass`     | `util`      | ❌ None           | N/A                               |
+| **Config**   | `import { configClass } from '@bloomneo/appkit/config'`     | `configClass`   | `config`    | ❌ None           | N/A                               |
+| **Auth**     | `import { authClass } from '@bloomneo/appkit/auth'`         | `authClass`     | `auth`      | ❌ None           | N/A                               |
+| **Logger**   | `import { loggerClass } from '@bloomneo/appkit/logger'`     | `loggerClass`   | `logger`    | ✅ `(component?)` | Component-specific logging        |
+| **Database** | `import { databaseClass } from '@bloomneo/appkit/database'` | `databaseClass` | `database`  | ❌ None           | N/A                               |
+| **Cache**    | `import { cacheClass } from '@bloomneo/appkit/cache'`       | `cacheClass`    | `cache`     | ✅ `(namespace?)` | Custom namespace (default: 'app') |
+| **Storage**  | `import { storageClass } from '@bloomneo/appkit/storage'`   | `storageClass`  | `storage`   | ❌ None           | N/A                               |
+| **Queue**    | `import { queueClass } from '@bloomneo/appkit/queue'`       | `queueClass`    | `queue`     | ❌ None           | N/A                               |
+| **Email**    | `import { emailClass } from '@bloomneo/appkit/email'`       | `emailClass`    | `email`     | ❌ None           | N/A                               |
+| **Error**    | `import { errorClass } from '@bloomneo/appkit/error'`       | `errorClass`    | `error`     | ❌ None           | N/A                               |
+| **Security** | `import { securityClass } from '@bloomneo/appkit/security'` | `securityClass` | `security`  | ❌ None           | N/A                               |
+| **Event**    | `import { eventClass } from '@bloomneo/appkit/event'`       | `eventClass`    | `event`     | ✅ `(namespace?)` | Namespace isolation for events    |
 
 ---
 
@@ -133,21 +133,21 @@ const config = configClass.get();
 ✅ **BEST (Perfect tree-shaking):**
 
 ```javascript
-import { utilClass } from '@voilajsx/appkit/util';
-import { authClass } from '@voilajsx/appkit/auth';
-import { configClass } from '@voilajsx/appkit/config';
+import { utilClass } from '@bloomneo/appkit/util';
+import { authClass } from '@bloomneo/appkit/auth';
+import { configClass } from '@bloomneo/appkit/config';
 ```
 
 ✅ **GOOD (Still tree-shakable):**
 
 ```javascript
-import { utilClass, authClass, configClass } from '@voilajsx/appkit';
+import { utilClass, authClass, configClass } from '@bloomneo/appkit';
 ```
 
 ❌ **AVOID (Poor tree-shaking):**
 
 ```javascript
-import * as appkit from '@voilajsx/appkit';
+import * as appkit from '@bloomneo/appkit';
 ```
 
 ---
@@ -281,7 +281,7 @@ const orderEvent = eventClass.get('orders');
 
 ```javascript
 import express from 'express';
-import { authClass, errorClass, loggerClass } from '@voilajsx/appkit';
+import { authClass, errorClass, loggerClass } from '@bloomneo/appkit';
 
 const app = express();
 const auth = authClass.get();
@@ -307,7 +307,7 @@ app.post(
 
 ```javascript
 import Fastify from 'fastify';
-import { authClass, errorClass } from '@voilajsx/appkit';
+import { authClass, errorClass } from '@bloomneo/appkit';
 
 const fastify = Fastify();
 const auth = authClass.get();
@@ -393,7 +393,7 @@ import {
   loggerClass,
   cacheClass,
   configClass,
-} from '@voilajsx/appkit';
+} from '@bloomneo/appkit';
 
 describe('App Tests', () => {
   afterEach(async () => {
@@ -474,7 +474,7 @@ helpers**
 ### Core Pattern
 
 ```javascript
-import { utilClass } from '@voilajsx/appkit/util';
+import { utilClass } from '@bloomneo/appkit/util';
 const util = utilClass.get();
 ```
 
@@ -545,7 +545,7 @@ const sessionId = util.uuid(); // → 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
 ### Core Pattern
 
 ```javascript
-import { configClass } from '@voilajsx/appkit/config';
+import { configClass } from '@bloomneo/appkit/config';
 const config = configClass.get();
 ```
 
@@ -604,7 +604,7 @@ try {
 ### Core Pattern
 
 ```javascript
-import { authClass } from '@voilajsx/appkit/auth';
+import { authClass } from '@bloomneo/appkit/auth';
 const auth = authClass.get();
 ```
 
@@ -742,7 +742,7 @@ app.post(
 ### Core Pattern
 
 ```javascript
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { loggerClass } from '@bloomneo/appkit/logger';
 const logger = loggerClass.get();
 ```
 
@@ -808,11 +808,11 @@ app.use((req, res, next) => {
 
 ```javascript
 // Complete API endpoint using all 4 essential modules
-import { utilClass } from '@voilajsx/appkit/util';
-import { configClass } from '@voilajsx/appkit/config';
-import { authClass } from '@voilajsx/appkit/auth';
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { errorClass } from '@voilajsx/appkit/error';
+import { utilClass } from '@bloomneo/appkit/util';
+import { configClass } from '@bloomneo/appkit/config';
+import { authClass } from '@bloomneo/appkit/auth';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { errorClass } from '@bloomneo/appkit/error';
 
 const util = utilClass.get();
 const config = configClass.get();
@@ -882,7 +882,7 @@ orgs**
 ### Core Pattern
 
 ```javascript
-import { databaseClass } from '@voilajsx/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 const database = databaseClass.get();
 ```
 
@@ -957,7 +957,7 @@ results**
 ### Core Pattern
 
 ```javascript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 const cache = cacheClass.get(); // Default 'app' namespace
 ```
 
@@ -1017,7 +1017,7 @@ await sessionCache.set('123', sessionData); // Different from user:123
 ### Core Pattern
 
 ```javascript
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 const storage = storageClass.get();
 ```
 
@@ -1064,7 +1064,7 @@ const url = storage.url('avatars/user123.jpg');
 ### Core Pattern
 
 ```javascript
-import { queueClass } from '@voilajsx/appkit/queue';
+import { queueClass } from '@bloomneo/appkit/queue';
 const queue = queueClass.get();
 ```
 
@@ -1132,7 +1132,7 @@ await queue.schedule(
 ### Core Pattern
 
 ```javascript
-import { emailClass } from '@voilajsx/appkit/email';
+import { emailClass } from '@bloomneo/appkit/email';
 const email = emailClass.get();
 ```
 
@@ -1182,14 +1182,14 @@ queue.process('email', async (data) => {
 
 ```javascript
 // File upload with complete infrastructure integration
-import { utilClass } from '@voilajsx/appkit/util';
-import { authClass } from '@voilajsx/appkit/auth';
-import { databaseClass } from '@voilajsx/appkit/database';
-import { storageClass } from '@voilajsx/appkit/storage';
-import { cacheClass } from '@voilajsx/appkit/cache';
-import { queueClass } from '@voilajsx/appkit/queue';
-import { errorClass } from '@voilajsx/appkit/error';
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { utilClass } from '@bloomneo/appkit/util';
+import { authClass } from '@bloomneo/appkit/auth';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { storageClass } from '@bloomneo/appkit/storage';
+import { cacheClass } from '@bloomneo/appkit/cache';
+import { queueClass } from '@bloomneo/appkit/queue';
+import { errorClass } from '@bloomneo/appkit/error';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const util = utilClass.get();
 const auth = authClass.get();
@@ -1326,7 +1326,7 @@ queue.process('process-upload', async (data) => {
 ### Core Pattern
 
 ```javascript
-import { errorClass } from '@voilajsx/appkit/error';
+import { errorClass } from '@bloomneo/appkit/error';
 const error = errorClass.get();
 ```
 
@@ -1420,7 +1420,7 @@ encryption**
 ### Core Pattern
 
 ```javascript
-import { securityClass } from '@voilajsx/appkit/security';
+import { securityClass } from '@bloomneo/appkit/security';
 const security = securityClass.get();
 ```
 
@@ -1478,7 +1478,7 @@ notifications**
 ### Core Pattern
 
 ```javascript
-import { eventClass } from '@voilajsx/appkit/event';
+import { eventClass } from '@bloomneo/appkit/event';
 const event = eventClass.get();
 ```
 
@@ -1537,12 +1537,12 @@ import session from 'express-session';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
-import { utilClass } from '@voilajsx/appkit/util';
-import { authClass } from '@voilajsx/appkit/auth';
-import { errorClass } from '@voilajsx/appkit/error';
-import { securityClass } from '@voilajsx/appkit/security';
-import { eventClass } from '@voilajsx/appkit/event';
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { utilClass } from '@bloomneo/appkit/util';
+import { authClass } from '@bloomneo/appkit/auth';
+import { errorClass } from '@bloomneo/appkit/error';
+import { securityClass } from '@bloomneo/appkit/security';
+import { eventClass } from '@bloomneo/appkit/event';
+import { loggerClass } from '@bloomneo/appkit/logger';
 
 const app = express();
 const server = createServer(app);
@@ -1905,18 +1905,18 @@ import multer from 'multer';
 import { createServer } from 'http';
 
 // Import all AppKit modules
-import { utilClass } from '@voilajsx/appkit/util';
-import { configClass } from '@voilajsx/appkit/config';
-import { authClass } from '@voilajsx/appkit/auth';
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { errorClass } from '@voilajsx/appkit/error';
-import { securityClass } from '@voilajsx/appkit/security';
-import { databaseClass } from '@voilajsx/appkit/database';
-import { cacheClass } from '@voilajsx/appkit/cache';
-import { storageClass } from '@voilajsx/appkit/storage';
-import { queueClass } from '@voilajsx/appkit/queue';
-import { emailClass } from '@voilajsx/appkit/email';
-import { eventClass } from '@voilajsx/appkit/event';
+import { utilClass } from '@bloomneo/appkit/util';
+import { configClass } from '@bloomneo/appkit/config';
+import { authClass } from '@bloomneo/appkit/auth';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { errorClass } from '@bloomneo/appkit/error';
+import { securityClass } from '@bloomneo/appkit/security';
+import { databaseClass } from '@bloomneo/appkit/database';
+import { cacheClass } from '@bloomneo/appkit/cache';
+import { storageClass } from '@bloomneo/appkit/storage';
+import { queueClass } from '@bloomneo/appkit/queue';
+import { emailClass } from '@bloomneo/appkit/email';
+import { eventClass } from '@bloomneo/appkit/event';
 
 const app = express();
 const server = createServer(app);
@@ -2294,7 +2294,7 @@ import {
   cacheClass,
   configClass,
   databaseClass,
-} from '@voilajsx/appkit';
+} from '@bloomneo/appkit';
 
 describe('AppKit Application', () => {
   beforeEach(() => {

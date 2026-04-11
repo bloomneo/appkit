@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Storage Module 📁
+# @bloomneo/appkit - Storage Module 📁
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple file storage that just works with automatic Local/S3/R2 strategy
@@ -23,7 +23,7 @@ built-in CDN support and cost optimization.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
@@ -31,7 +31,7 @@ npm install @voilajsx/appkit
 ### Local Storage (Development)
 
 ```typescript
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 
 const storage = storageClass.get();
 
@@ -65,7 +65,7 @@ AWS_SECRET_ACCESS_KEY=secret_key
 ```
 
 ```typescript
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 
 const storage = storageClass.get();
 
@@ -113,7 +113,7 @@ const productGallery = await storage.list('products/456/gallery/');
 
 ```typescript
 // ✅ CORRECT - Complete storage setup
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 const storage = storageClass.get();
 
 // Upload files
@@ -172,7 +172,7 @@ try {
 
 ```typescript
 // ❌ WRONG - Don't create StorageClass directly
-import { StorageClass } from '@voilajsx/appkit/storage';
+import { StorageClass } from '@bloomneo/appkit/storage';
 const storage = new StorageClass(config); // Wrong!
 
 // ❌ WRONG - Missing await
@@ -184,7 +184,7 @@ await storage.put('folder/../file.jpg', buffer); // Path traversal
 await storage.put('folder\\file.jpg', buffer); // Backslashes
 
 // ✅ CORRECT - Use storageClass.get()
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 const storage = storageClass.get();
 await storage.put('folder/file.jpg', buffer);
 ```
@@ -465,7 +465,7 @@ await storageClass.clear(); // For testing
 ```typescript
 import express from 'express';
 import multer from 'multer';
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 
 const app = express();
 const storage = storageClass.get();
@@ -552,7 +552,7 @@ app.get('/files/:key(*)/signed', async (req, res) => {
 ### **Image Processing Pipeline**
 
 ```typescript
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 import sharp from 'sharp';
 
 const storage = storageClass.get();
@@ -622,7 +622,7 @@ export class ImageProcessor {
 ### **Document Management System**
 
 ```typescript
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 
 const storage = storageClass.get();
 
@@ -695,7 +695,7 @@ export class DocumentManager {
 ### **Backup & Sync System**
 
 ```typescript
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 
 const storage = storageClass.get();
 
@@ -868,7 +868,7 @@ const storage = storageClass.get();
 ### **Test Setup**
 
 ```typescript
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 
 describe('File Storage', () => {
   afterEach(async () => {
@@ -949,7 +949,7 @@ import type {
   Storage,
   StorageFile,
   PutOptions,
-} from '@voilajsx/appkit/storage';
+} from '@bloomneo/appkit/storage';
 
 // Strongly typed storage operations
 const storage: Storage = storageClass.get();
@@ -990,7 +990,7 @@ s3.upload(params, callback);
 
 ```typescript
 // 2 lines, works with any provider
-import { storageClass } from '@voilajsx/appkit/storage';
+import { storageClass } from '@bloomneo/appkit/storage';
 await storageClass.get().put('file.jpg', buffer);
 ```
 
@@ -998,11 +998,11 @@ await storageClass.get().put('file.jpg', buffer);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  <strong>Built with ❤️ by the <a href="https://github.com/voilajsx">VoilaJSX Team</a></strong><br>
+  <strong>Built with ❤️ by the <a href="https://github.com/bloomneo">Bloomneo Team</a></strong><br>
   Because file storage should be simple, not a vendor nightmare.
 </p>

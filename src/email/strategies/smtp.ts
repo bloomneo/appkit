@@ -1,6 +1,6 @@
 /**
  * SMTP email strategy with nodemailer and connection pooling
- * @module @voilajsx/appkit/email
+ * @module @bloomneo/appkit/email
  * @file src/email/strategies/smtp.ts
  * 
  * @llm-rule WHEN: App has SMTP_HOST environment variable for universal email sending

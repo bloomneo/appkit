@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for error handling
- * @module @voilajsx/appkit/error
+ * @module @bloomneo/appkit/error
  * @file src/error/defaults.ts
  *
  * @llm-rule WHEN: App startup - need to configure error handling behavior and messages

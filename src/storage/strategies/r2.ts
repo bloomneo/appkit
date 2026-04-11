@@ -1,6 +1,6 @@
 /**
  * Cloudflare R2 storage strategy with zero egress fees and automatic CDN integration
- * @module @voilajsx/appkit/storage
+ * @module @bloomneo/appkit/storage
  * @file src/storage/strategies/r2.ts
  * 
  * @llm-rule WHEN: App has CLOUDFLARE_R2_BUCKET env var for cost-effective distributed storage

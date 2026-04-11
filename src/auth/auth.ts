@@ -1,6 +1,6 @@
 /**
  * Core authentication class with role-level-permission system
- * @module @voilajsx/appkit/auth
+ * @module @bloomneo/appkit/auth
  * @file src/auth/authentication.ts
  * 
  * @llm-rule WHEN: Building apps that need JWT operations, password hashing, and role-based middleware

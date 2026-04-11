@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for event system with auto-strategy detection
- * @module @voilajsx/appkit/event
+ * @module @bloomneo/appkit/event
  * @file src/event/defaults.ts
  *
  * @llm-rule WHEN: App startup - need to configure event system and connection strategy

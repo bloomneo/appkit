@@ -9,8 +9,8 @@
  */
 
 import express from 'express';
-import { errorClass } from '@voilajsx/appkit/error';
-import { loggerClass } from '@voilajsx/appkit/logger';
+import { errorClass } from '@bloomneo/appkit/error';
+import { loggerClass } from '@bloomneo/appkit/logger';
 import { welcomeService } from './welcome.service.js';
 
 const router = express.Router();

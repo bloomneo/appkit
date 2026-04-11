@@ -1,6 +1,6 @@
 /**
  * Simplified Mongoose adapter with app discovery and tenant middleware
- * @module @voilajsx/appkit/database
+ * @module @bloomneo/appkit/database
  * @file src/database/adapters/mongoose.ts
  * 
  * @llm-rule WHEN: Using Mongoose ODM with MongoDB databases in VoilaJSX framework

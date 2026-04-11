@@ -1,6 +1,6 @@
 /**
  * Resend email strategy with modern API and automatic retry logic
- * @module @voilajsx/appkit/email
+ * @module @bloomneo/appkit/email
  * @file src/email/strategies/resend.ts
  * 
  * @llm-rule WHEN: App has RESEND_API_KEY environment variable for modern email sending

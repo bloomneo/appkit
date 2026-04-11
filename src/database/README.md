@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Database Module 💾
+# @bloomneo/appkit - Database Module 💾
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -28,20 +28,20 @@ in.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ### Database-Specific Dependencies
 
 ```bash
 # PostgreSQL/MySQL/SQLite with Prisma
-npm install @voilajsx/appkit @prisma/client
+npm install @bloomneo/appkit @prisma/client
 
 # MongoDB with Mongoose
-npm install @voilajsx/appkit mongoose
+npm install @bloomneo/appkit mongoose
 
 # Multi-database setup (both ORMs)
-npm install @voilajsx/appkit @prisma/client mongoose
+npm install @bloomneo/appkit @prisma/client mongoose
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
@@ -49,7 +49,7 @@ npm install @voilajsx/appkit @prisma/client mongoose
 ### Single Database (Day 1)
 
 ```typescript
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 
 // PostgreSQL/MySQL with Prisma
 const database = await databaseClass.get();
@@ -330,7 +330,7 @@ async function getAllOrgPosts(orgId) {
 ### **Multi-Tenant API Endpoints**
 
 ```typescript
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 
 // User endpoints - auto-filtered by tenant
 app.get('/api/users', async (req, res) => {
@@ -451,7 +451,7 @@ const specificOrgdatabase = await databaseClass.org('specific-org').get();
 
 ```typescript
 import express from 'express';
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 
 const app = express();
 
@@ -474,7 +474,7 @@ app.get('/admin/users', requireAdmin, async (req, res) => {
 
 ```typescript
 import Fastify from 'fastify';
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 
 const fastify = Fastify();
 
@@ -499,7 +499,7 @@ fastify.get(
 
 ```typescript
 // pages/api/users.ts
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 
 export default async function handler(req, res) {
   const database = await databaseClass.get();
@@ -514,7 +514,7 @@ export default async function handler(req, res) {
 }
 
 // pages/api/admin/users.ts
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 
 export default async function handler(req, res) {
   const dbTenants = await databaseClass.getTenants();
@@ -598,7 +598,7 @@ const prisma = new PrismaClient();
 const users = await prisma.user.findMany();
 
 // After: AppKit Database
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 const database = await databaseClass.get();
 const users = await database.user.findMany();
 ```
@@ -771,7 +771,7 @@ const users = await database.User.find(); // Clear intent (Mongoose)
 
 ```typescript
 // Check configuration
-import { database } from '@voilajsx/appkit/database';
+import { database } from '@bloomneo/appkit/database';
 
 const health = await databaseClass.health();
 if (!health.healthy) {
@@ -790,7 +790,7 @@ if (!health.healthy) {
 ### **Environment Validation**
 
 ```typescript
-import { getConfigSummary } from '@voilajsx/appkit/database/defaults';
+import { getConfigSummary } from '@bloomneo/appkit/database/defaults';
 
 console.log(getConfigSummary());
 // Shows current configuration, validation status, and warnings
@@ -806,13 +806,13 @@ console.log(getConfigSummary());
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
   <strong>Built for developers who value simplicity and future-proof architecture</strong><br>
-  <a href="https://github.com/voilajsx/appkit">⭐ Star us on GitHub</a> •
-  <a href="https://discord.gg/voilajsx">💬 Join our Discord</a> •
-  <a href="https://twitter.com/voilajsx">🐦 Follow on Twitter</a>
+  <a href="https://github.com/bloomneo/appkit">⭐ Star us on GitHub</a> •
+  <a href="https://discord.gg/bloomneo">💬 Join our Discord</a> •
+  <a href="https://twitter.com/bloomneo">🐦 Follow on Twitter</a>
 </p>

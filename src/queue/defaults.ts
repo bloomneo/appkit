@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for job queue management
- * @module @voilajsx/appkit/queue
+ * @module @bloomneo/appkit/queue
  * @file src/queue/defaults.ts
  * 
  * @llm-rule WHEN: App startup - need to parse VOILA_QUEUE_* environment variables and detect transports

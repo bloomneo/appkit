@@ -1,6 +1,6 @@
 /**
  * Core cache class with Redis and Memory strategies and simplified API
- * @module @voilajsx/appkit/cache
+ * @module @bloomneo/appkit/cache
  * @file src/cache/cache.ts
  *
  * @llm-rule WHEN: Building apps that need caching with automatic strategy selection

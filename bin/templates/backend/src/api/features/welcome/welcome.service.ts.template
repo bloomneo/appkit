@@ -8,9 +8,9 @@
  * @llm-rule NOTE: Demonstrates AppKit logger, config, and error patterns for FBCA
  */
 
-import { loggerClass } from '@voilajsx/appkit/logger';
-import { configClass } from '@voilajsx/appkit/config';
-import { errorClass } from '@voilajsx/appkit/error';
+import { loggerClass } from '@bloomneo/appkit/logger';
+import { configClass } from '@bloomneo/appkit/config';
+import { errorClass } from '@bloomneo/appkit/error';
 import type { WelcomeResponse, PersonalizedWelcomeResponse } from './welcome.types.js';
 
 // Initialize AppKit modules following the pattern

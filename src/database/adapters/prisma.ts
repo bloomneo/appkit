@@ -1,6 +1,6 @@
 /**
  * Simplified Prisma adapter with app discovery and tenant middleware
- * @module @voilajsx/appkit/database
+ * @module @bloomneo/appkit/database
  * @file src/database/adapters/prisma.ts
  * 
  * @llm-rule WHEN: Using Prisma ORM with PostgreSQL, MySQL, or SQLite databases in VoilaJSX framework

@@ -1,6 +1,6 @@
 /**
  * Smart defaults and environment validation for security
- * @module @voilajsx/appkit/security
+ * @module @bloomneo/appkit/security
  * @file src/security/defaults.ts
  *
  * @llm-rule WHEN: App startup - need to configure security behavior and encryption keys

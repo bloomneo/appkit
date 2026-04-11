@@ -1,6 +1,6 @@
-# @voilajsx/appkit - Cache Module ⚡
+# @bloomneo/appkit - Cache Module ⚡
 
-[![npm version](https://img.shields.io/npm/v/@voilajsx/appkit.svg)](https://www.npmjs.com/package/@voilajsx/appkit)
+[![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Ultra-simple caching that just works - One function, automatic Redis/Memory
@@ -24,13 +24,13 @@ configuration needed, production-ready performance by default.
 ## 📦 Installation
 
 ```bash
-npm install @voilajsx/appkit
+npm install @bloomneo/appkit
 ```
 
 ## 🏃‍♂️ Quick Start (30 seconds)
 
 ```typescript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 const cache = cacheClass.get('users');
 
@@ -61,7 +61,7 @@ REDIS_URL=redis://localhost:6379
 
 ```typescript
 // ✅ CORRECT - Complete cache setup
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 const cache = cacheClass.get('namespace');
 
 // Cache operations
@@ -125,7 +125,7 @@ async function getUser(id) {
 
 ```typescript
 // ❌ WRONG - Don't access strategies directly
-import { RedisStrategy } from '@voilajsx/appkit/cache';
+import { RedisStrategy } from '@bloomneo/appkit/cache';
 const redis = new RedisStrategy(); // Wrong!
 
 // ❌ WRONG - Missing TTL for temporary data
@@ -385,7 +385,7 @@ cacheClass.getConfig(); // Configuration summary
 ### **Basic User Caching**
 
 ```typescript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 const userCache = cacheClass.get('users');
 
@@ -408,7 +408,7 @@ async function getUser(id) {
 ### **API Response Caching**
 
 ```typescript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 const apiCache = cacheClass.get('external-api');
 
@@ -436,7 +436,7 @@ const weather2 = await getWeather('london');
 ### **Session Management**
 
 ```typescript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 const sessionCache = cacheClass.get('sessions');
 
@@ -465,7 +465,7 @@ async function logout(sessionId) {
 ### **Shopping Cart**
 
 ```typescript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 const cartCache = cacheClass.get('shopping-carts');
 
@@ -492,7 +492,7 @@ async function clearCart(userId) {
 ### **Rate Limiting Cache**
 
 ```typescript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 const rateLimitCache = cacheClass.get('rate-limits');
 
@@ -600,7 +600,7 @@ const cache = cacheClass.get('users');
 ## 🧪 Testing
 
 ```typescript
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 
 describe('Cache Tests', () => {
   afterEach(async () => {
@@ -682,7 +682,7 @@ describe('Cache with Memory Strategy', () => {
 ## 🔍 TypeScript Support
 
 ```typescript
-import type { Cache } from '@voilajsx/appkit/cache';
+import type { Cache } from '@bloomneo/appkit/cache';
 
 // Strongly typed cache operations
 const cache: Cache = cacheClass.get('users');
@@ -713,7 +713,7 @@ await client.setEx('user:123', 3600, JSON.stringify(userData));
 
 ```typescript
 // 3 lines, automatic Redis/Memory, built-in serialization
-import { cacheClass } from '@voilajsx/appkit/cache';
+import { cacheClass } from '@bloomneo/appkit/cache';
 const cache = cacheClass.get('users');
 await cache.set('user:123', userData, 3600);
 ```
@@ -722,11 +722,11 @@ await cache.set('user:123', userData, 3600);
 
 ## 📄 License
 
-MIT © [VoilaJSX](https://github.com/voilajsx)
+MIT © [VoilaJSX](https://github.com/bloomneo)
 
 ---
 
 <p align="center">
-  <strong>Built with ❤️ by the <a href="https://github.com/voilajsx">VoilaJSX Team</a></strong><br>
+  <strong>Built with ❤️ by the <a href="https://github.com/bloomneo">Bloomneo Team</a></strong><br>
   Because caching should be simple, not a Redis nightmare.
 </p>

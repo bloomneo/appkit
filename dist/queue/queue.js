@@ -1,6 +1,6 @@
 /**
  * Core queuing class with automatic transport management and job processing
- * @module @voilajsx/appkit/queue
+ * @module @bloomneo/appkit/queue
  * @file src/queue/queue.ts
  *
  * @llm-rule WHEN: Building queue instances - called via queueClass.get(), not directly

@@ -1,6 +1,6 @@
 /**
  * Ultra-simple role-level-permission authentication that just works
- * @module @voilajsx/appkit/auth
+ * @module @bloomneo/appkit/auth
  * @file src/auth/index.ts
  *
  * @llm-rule WHEN: Building apps that need authentication with user roles and permissions
