@@ -40,7 +40,7 @@ app.use(error.handleErrors());  // last middleware
 
 ## 🤖 For AI coding agents — read these first
 
-Three files at the package root tell agents everything they need to know:
+Four locations at the package root tell agents everything they need to know:
 
 | File | Purpose |
 |---|---|
@@ -232,7 +232,7 @@ unchanged. The breaking change is **only** the env var prefix.
 - **[`examples/`](./examples)** — one minimal example per module
 - **[`cookbook/`](./cookbook)** — composed recipes (auth + crud, multi-tenant, file upload, real-time)
 - **[`CHANGELOG.md`](./CHANGELOG.md)** — release history
-- **[Per-module READMEs on GitHub](https://github.com/bloomneo/appkit/tree/main/src)** — long-form human docs (not shipped in tarball)
+- **[Per-module READMEs](https://github.com/bloomneo/appkit/tree/main/src)** — long-form human docs (also shipped in the tarball at `node_modules/@bloomneo/appkit/src/<module>/README.md`)
 - **Issues**: https://github.com/bloomneo/appkit/issues
 
 ---

@@ -64,7 +64,7 @@ const auth = authClass.get();
 // Token generation — these are the ONLY two public token-creation methods.
 // (`signToken` is a private internal — never call it from consumer code.)
 auth.generateLoginToken(payload, expiresIn?: string): string
-//   payload: { userId: number, role: string, level: string, permissions?: string[] }
+//   payload: { userId: string | number, role: string, level: string, permissions?: string[], email?: string }
 //   default expiresIn: '7d'
 
 auth.generateApiToken(payload, expiresIn?: string): string
@@ -86,9 +86,9 @@ auth.requireUserRoles(['admin.tenant', 'admin.org']): ExpressMiddleware
 auth.requireUserPermissions(['manage:users']): ExpressMiddleware // permission check (AND within array)
 
 // Request helpers
-auth.user(req: ExpressRequest): JwtPayload | null   // null-safe extract from req.user OR req.token
+auth.getUser(req: ExpressRequest): JwtPayload | null   // null-safe extract from req.user OR req.token
 auth.hasRole(userRoleLevel: string, requiredRoleLevel: string): boolean   // inheritance-aware
-auth.can(user: JwtPayload, permission: string): boolean   // permission inheritance
+auth.hasPermission(user: JwtPayload, permission: string): boolean   // permission inheritance
 ```
 
 ### Middleware chaining rules
@@ -161,7 +161,7 @@ app.delete(
   auth.requireLoginToken(),                    // 1. authenticate
   auth.requireUserRoles(['admin.tenant']),     // 2. authorize (chained)
   error.asyncRoute(async (req, res) => {
-    const me = auth.user(req);                 // null-safe; non-null after middleware
+    const me = auth.getUser(req);              // null-safe; non-null after middleware
     if (!me) throw error.unauthorized();
     await database.user.delete({ where: { id: Number(req.params.id) } });
     res.json({ deleted: true });
@@ -257,7 +257,7 @@ throw error.forbidden('message')         // 403
 throw error.notFound('message')          // 404
 throw error.conflict('message')          // 409
 throw error.tooMany('message')           // 429
-throw error.internal('message')          // 500
+throw error.serverError('message')       // 500  (alias: error.internal)
 
 // Async route wrapper (catches throws)
 app.get('/x', error.asyncRoute(async (req, res) => {
@@ -460,7 +460,7 @@ const config = configClass.get();
 config.get('section.key', defaultValue?)         // always returns string | undefined
 config.has('section.key'): boolean
 config.getRequired('section.key'): string        // throws if missing
-config.getMany(['KEY_A', 'KEY_B']): Record<string, string | undefined>
+config.getMany({ a: 'section.key_a', b: 'section.key_b' }): { a: string, b: string }  // object in, object out
 config.getAll(): Record<string, string | undefined>
 
 // NOTE: getNumber() and getBoolean() do NOT exist on the config instance.
@@ -475,8 +475,8 @@ configClass.isTest(): boolean
 configClass.validateRequired(['BLOOM_AUTH_SECRET', 'DATABASE_URL'])  // throws if missing
 ```
 
-`config.get('auth.secret')` reads `BLOOM_AUTH_SECRET` (and falls back to
-`BLOOM_AUTH_SECRET` for backwards compatibility, with a dev-mode warning).
+`config.get('auth.secret')` reads `BLOOM_AUTH_SECRET`. There is no legacy
+fallback — the `VOILA_*` prefix was removed entirely in 1.5.2.
 
 ---
 
@@ -586,6 +586,6 @@ For frontend + backend together, use `@bloomneo/bloom` which scaffolds both.
 
 - **Rules** (always/never): `AGENTS.md` in this same directory
 - **Source code**: `dist/` (compiled TypeScript with .d.ts)
-- **Per-module READMEs**: `https://github.com/bloomneo/appkit/tree/main/src` (not shipped in tarball after 1.5.2 — they're verbose human-facing docs available on GitHub for browsing)
+- **Per-module READMEs**: shipped in the tarball at `node_modules/@bloomneo/appkit/src/<module>/README.md` (long-form human-facing docs; also browsable at `https://github.com/bloomneo/appkit/tree/main/src`)
 - **CHANGELOG**: `CHANGELOG.md`
 - **Issues**: https://github.com/bloomneo/appkit/issues
