@@ -2,11 +2,13 @@
  * Smart defaults and environment validation for error handling
  * @module @bloomneo/appkit/error
  * @file src/error/defaults.ts
- * 
+ *
  * @llm-rule WHEN: App startup - need to configure error handling behavior and messages
  * @llm-rule AVOID: Calling multiple times - expensive environment parsing, use lazy loading in get()
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
+
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/error/README.md';
 
 export interface ErrorMessages {
   badRequest: string;
@@ -87,7 +89,7 @@ function validateEnvironment(): void {
   const errorStack = process.env.BLOOM_ERROR_STACK;
   if (errorStack && !['true', 'false'].includes(errorStack.toLowerCase())) {
     throw new Error(
-      `Invalid BLOOM_ERROR_STACK: "${errorStack}". Must be "true" or "false"`
+      `[@bloomneo/appkit/error] Invalid BLOOM_ERROR_STACK: "${errorStack}". Must be "true" or "false". See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -95,7 +97,7 @@ function validateEnvironment(): void {
   const errorLog = process.env.BLOOM_ERROR_LOG;
   if (errorLog && !['true', 'false'].includes(errorLog.toLowerCase())) {
     throw new Error(
-      `Invalid BLOOM_ERROR_LOG: "${errorLog}". Must be "true" or "false"`
+      `[@bloomneo/appkit/error] Invalid BLOOM_ERROR_LOG: "${errorLog}". Must be "true" or "false". See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -103,16 +105,14 @@ function validateEnvironment(): void {
   const nodeEnv = process.env.NODE_ENV;
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
-      `Expected: development, production, test, or staging`
+      `[@bloomneo/appkit/error] Unusual NODE_ENV: "${nodeEnv}". Expected: development, production, test, or staging`
     );
   }
 
   // Essential production safety check
   if (nodeEnv === 'production' && process.env.BLOOM_ERROR_STACK === 'true') {
     console.warn(
-      `[Bloomneo AppKit] Security warning: BLOOM_ERROR_STACK=true in production. ` +
-      `Stack traces may expose internal application structure. Consider setting to false.`
+      `[@bloomneo/appkit/error] Security warning: BLOOM_ERROR_STACK=true in production. Stack traces may expose internal application structure. Consider setting to false. See: ${DOCS_URL}#production-deployment`
     );
   }
 }

@@ -849,3 +849,45 @@ MIT © [Bloomneo](https://github.com/bloomneo)
   <strong>Built with ❤️ by the <a href="https://github.com/bloomneo">Bloomneo Team</a></strong><br>
   Because job queuing should be simple, not a PhD thesis.
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 75/100 — 🟡 Solid**
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> No anti-pattern caps applied. All 11 instance methods and 5 class utility methods documented correctly. `attempts` (not `retries`) confirmed correct in job options.
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **8** | All 11 instance methods (`add`, `process`, `schedule`, `pause`, `resume`, `getStats`, `getJobs`, `retry`, `remove`, `clean`, `close`) documented correctly. Class methods (`getActiveTransport`, `hasTransport`, `getConfig`, `getHealth`, `clear`) correct. `attempts` field confirmed (not `retries`). |
+| 2 | Doc consistency | **8** | README, examples, and testing section align. Job options use `attempts`/`priority`/`backoff` consistently. |
+| 3 | Runtime verification | **8** | Testing section covers `add`, `process`, retry logic with 3 attempts. `queueClass.clear()` used correctly. |
+| 4 | Type safety | **7** | No exported type interfaces shown for `JobOptions` — agent must infer from examples. |
+| 5 | Discoverability | **7** | Clear import. No AGENTS.md pointer at top. |
+| 6 | Example completeness | **7** | Covers `add`, `process`, `schedule`, `pause`/`resume`, `getStats`, `getJobs`, `retry`, `remove`, `clean`, `close`. Good coverage. Missing: explicit `JobOptions` interface reference. |
+| 7 | Composability | **7** | `examples/queue.ts` shows queue + logger + error composition. |
+| 8 | Educational errors | **6** | Transport init errors logged to console; no actionable fix messages. |
+| 9 | Convention enforcement | **9** | Single `queue = queueClass.get()` pattern; `queue.process(type, handler)` shown consistently. |
+| 10 | Drift prevention | **5** | No CI drift check. |
+| 11 | Reading order | **4** | No "See also" pointer at top. |
+| **12** | **Simplicity** | **9** | `add` + `process` covers 90% of use cases. Minimal cognitive load. |
+| **13** | **Clarity** | **8** | `add`, `process`, `schedule`, `pause`, `resume` — unambiguous names. |
+| **14** | **Unambiguity** | **7** | `schedule` vs `add` with delay: difference documented in examples file. |
+| **15** | **Learning curve** | **8** | Three lines to queue and process a job. Very approachable. |
+
+### Weighted (v1.1)
+
+```
+(8×.12)+(8×.08)+(8×.09)+(7×.06)+(7×.06)+(7×.08)+(7×.06)+(6×.05)+(9×.05)+(5×.04)+(4×.03)
++(9×.09)+(8×.09)+(7×.05)+(8×.05) = 7.49 → 75/100
+No cap applied.
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D4 → 9**: Export and document `JobOptions` TypeScript interface explicitly
+2. **D11 → 8**: Add "See also: AGENTS.md | examples/queue.ts" at README top
+3. **D10 → 9**: Add CI drift check
+4. **D6 → 9**: Add explicit `JobOptions` fields table (type, required/optional, default)

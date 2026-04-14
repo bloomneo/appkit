@@ -106,10 +106,34 @@ describe('Public API surface — drift check', () => {
     'getEnvironmentInfo', 'getConfig',
   ];
 
+  // Class-level shortcuts on `errorClass` (static-style usage without get()).
+  const CLASS_METHODS = [
+    'get', 'reset', 'clearCache',
+    'badRequest', 'unauthorized', 'forbidden', 'notFound', 'conflict',
+    'tooMany', 'serverError', 'internal', 'createError',
+    'handleErrors', 'asyncRoute', 'isClientError', 'isServerError',
+  ];
+
+  // Methods that live ONLY on the instance, NOT on the `errorClass` shortcut
+  // object — drift trap for README readers who assume symmetry.
+  const INSTANCE_ONLY_NOT_ON_CLASS = ['getEnvironmentInfo', 'getConfig'];
+
   const error = errorClass.get();
   for (const m of INSTANCE_METHODS) {
     it(`error.${m} exists and is a function`, () => {
       expect(typeof (error as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of CLASS_METHODS) {
+    it(`errorClass.${m} exists and is a function`, () => {
+      expect(typeof (errorClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of INSTANCE_ONLY_NOT_ON_CLASS) {
+    it(`errorClass.${m} does NOT exist (call via errorClass.get().${m}() instead)`, () => {
+      expect(typeof (errorClass as any)[m]).not.toBe('function');
     });
   }
 });

@@ -1,4 +1,4 @@
-# @bloomneo/appkit/logging
+# @bloomneo/appkit/logger
 
 > **Ultra-simple logging that just works** - One function, five transports, zero
 > headaches
@@ -276,6 +276,7 @@ log.info(message, meta?);    // Normal events
 log.warn(message, meta?);    // Potential issues
 log.error(message, meta?);   // Errors (triggers alerts)
 log.debug(message, meta?);   // Development info
+log.fatal(message, meta?);   // Unrecoverable failures — process about to exit
 ```
 
 ### **Context Methods**
@@ -290,9 +291,9 @@ log.close(); // Close transports
 
 ```typescript
 loggerClass.getActiveTransports(); // ['console', 'file', 'database']
-loggerClass.gethasTransport('database'); // true/false
+loggerClass.hasTransport('database'); // true/false
 loggerClass.getConfig(); // Debug configuration
-loggerClass.getclear(); // Clear state (testing)
+await loggerClass.clear(); // Clear state (testing)
 ```
 
 ## 💡 Simple Examples
@@ -393,7 +394,7 @@ import { loggerClass } from '@bloomneo/appkit/logger';
 
 describe('Payment Service', () => {
   afterEach(async () => {
-    await loggerClass.getclear(); // Clear state between tests
+    await loggerClass.clear(); // Clear state between tests
   });
 
   test('should log payment success', async () => {
@@ -417,7 +418,7 @@ describe('Payment Service', () => {
 ## 🔍 TypeScript Support
 
 ```typescript
-import type { LoggingConfig, LogMeta, Logger } from '@bloomneo/appkit/logging';
+import type { LoggingConfig, LogMeta, Logger } from '@bloomneo/appkit/logger';
 
 const log: Logger = loggerClass.get();
 const meta: LogMeta = { userId: 123, action: 'login' };
@@ -433,3 +434,48 @@ MIT © [Bloomneo](https://github.com/bloomneo)
   <strong>Built with ❤️ by the <a href="https://github.com/bloomneo/appkit">Bloomneo Team</a></strong><br>
   Because logging should be simple, not a PhD thesis.
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 40/100 — 🟠 Usable with caveats** *(uncapped: 66/100 — cap applied for hallucinated method names)*
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> ⚠️ **Cap reason**: The "Utility Methods" section in the Complete API Reference listed `loggerClass.gethasTransport()` and `loggerClass.getclear()` — neither method exists. The real names are `hasTransport()` and `clear()`. An agent copying from that section would generate code that throws `TypeError: loggerClass.gethasTransport is not a function`. Anti-pattern "any documented method is hallucinated" → **40 max**. **Fixed in this version.**
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **3** | Fixed: `loggerClass.gethasTransport` → `hasTransport`, `loggerClass.getclear` → `clear` (2 occurrences). Fixed: import path `'@bloomneo/appkit/logging'` → `'@bloomneo/appkit/logger'`. Fixed: README title said `/logging`. Fixed: `fatal()` missing from API reference log methods. All 13 methods now documented correctly. |
+| 2 | Doc consistency | **5** | After fixes, README, test, and examples are consistent. Minor gap: `error()` visual formatting side-effect not mentioned in the quick reference, only in a sub-section. |
+| 3 | Runtime verification | **8** | Solid test: all 5 levels tested (info, warn, error, debug, fatal), child() verified, flush/close verified. Drift check for 8 instance methods + 5 class methods. |
+| 4 | Type safety | **7** | `Logger` interface is tight. `LogMeta = [key: string]: any` is acceptable. `flush()` / `close()` return `Promise<void>` correctly. |
+| 5 | Discoverability | **7** | Clear import, clean hero. Wrong module path (`/logging` vs `/logger`) in TS support section — now fixed. |
+| 6 | Example completeness | **7** | `examples/logger.ts` covers: `get()`, all 5 log levels, `child()`, composing with error module. Missing: `flush()`, `close()`, `getActiveTransports()`, `hasTransport()`, `getConfig()`. |
+| 7 | Composability | **7** | `examples/logger.ts` shows logger + error combo. `cookbook/auth-protected-crud.ts` composes logger with auth + database + error. |
+| 8 | Educational errors | **6** | Logger emits internal transport errors to `console.error` (e.g. `'File transport initialization failed: ...'`) — functional but generic, no fix suggestion. |
+| 9 | Convention enforcement | **8** | One canonical pattern: `loggerClass.get('component')` per file, `.child()` for request scope. Consistently shown. |
+| 10 | Drift prevention | **6** | Drift check test is comprehensive. No CI gate. |
+| 11 | Reading order | **4** | No pointers to AGENTS.md or examples in the README opening. |
+| **12** | **Simplicity** | **9** | 5 class methods + 8 instance methods. Minimum viable use: `loggerClass.get()` + `.info()`. Lowest learning surface of all modules reviewed. |
+| **13** | **Clarity** | **9** | `info`, `warn`, `error`, `debug`, `fatal`, `child`, `flush`, `close`, `getActiveTransports` — all names read exactly as what they do. |
+| **14** | **Unambiguity** | **7** | `error()` silently adds visual formatting in dev — the side-effect is documented but not at the call site. Otherwise clean. |
+| **15** | **Learning curve** | **9** | Simplest API in the package. One function, five methods, done. |
+
+### Weighted (v1.1)
+
+```
+(3×.12)+(5×.08)+(8×.09)+(7×.06)+(7×.06)+(7×.08)+(7×.06)+(6×.05)+(8×.05)+(6×.04)+(4×.03)
++(9×.09)+(9×.09)+(7×.05)+(9×.05) = 6.63 → 66/100
+Hallucinated methods cap: 40/100 (gethasTransport, getclear — now fixed)
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D1 → 9 (after fix)**: With the 3 method-name fixes applied, D1 rises to ~9 → uncapped score ~82
+2. **D6 → 9**: Add `flush()`, `close()`, `hasTransport()` to `examples/logger.ts`
+3. **D11 → 8**: Add "See also: AGENTS.md | examples/logger.ts" at the top of README
+4. **D8 → 8**: Transport init failures should log `[@bloomneo/appkit/logger] File transport failed: <reason>. Check BLOOM_LOGGER_FILE_PATH is writable.`
+5. **D10 → 9**: Add CI drift check
+
+**Realistic ceiling:** ~84/100 after all fixes. The module itself is excellent — the only real gaps are the hallucinated names (fixed) and missing example coverage.

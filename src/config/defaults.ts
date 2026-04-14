@@ -2,11 +2,13 @@
  * Smart defaults and environment validation for configuration management
  * @module @bloomneo/appkit/config
  * @file src/config/defaults.ts
- * 
+ *
  * @llm-rule WHEN: App startup - need to parse UPPER_SNAKE_CASE environment variables
  * @llm-rule AVOID: Calling multiple times - expensive parsing, use lazy loading in get()
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
+
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/config/README.md';
 
 export interface ConfigValue {
   [key: string]: string | number | boolean | ConfigValue;
@@ -32,7 +34,7 @@ function parseValue(value: string): string | boolean | number {
   if (typeof value !== 'string') return value;
 
   const trimmed = value.trim();
-  
+
   // Handle empty strings
   if (trimmed === '') return '';
 
@@ -40,15 +42,16 @@ function parseValue(value: string): string | boolean | number {
   const lowerValue = trimmed.toLowerCase();
   if (lowerValue === 'true') return true;
   if (lowerValue === 'false') return false;
-  
-  // Handle special values
-  if (lowerValue === 'null') return '';
-  if (lowerValue === 'undefined') return '';
 
-  // Handle numbers (but not if they start with 0 - could be IDs)
-  if (!trimmed.startsWith('0') && !isNaN(Number(trimmed)) && trimmed !== '') {
+  // Literal "null"/"undefined" strings are preserved as-is. Users who want
+  // a falsy value should set the variable to an empty string.
+
+  // Handle numbers. Leading "0" guards preserve ID-like strings ("007") as
+  // strings, but decimals starting with "0." ("0.5") must still parse as numbers.
+  const isLeadingZeroInt = trimmed.startsWith('0') && !trimmed.startsWith('0.');
+  if (!isLeadingZeroInt && !isNaN(Number(trimmed))) {
     const num = Number(trimmed);
-    // Only convert if it's a safe integer or decimal
+    // Only convert if it's a safe integer or a decimal that round-trips exactly.
     if (Number.isSafeInteger(num) || (num % 1 !== 0 && num.toString() === trimmed)) {
       return num;
     }
@@ -62,18 +65,38 @@ function parseValue(value: string): string | boolean | number {
  * @llm-rule WHEN: Building nested config object from flat environment variables
  * @llm-rule AVOID: Manual object nesting - this handles deep paths safely
  */
-function setNestedValue(obj: ConfigValue, path: string[], value: any): void {
+function setNestedValue(obj: ConfigValue, path: string[], value: any, sourceKey?: string): void {
   let current: any = obj;
-  
+
   for (let i = 0; i < path.length - 1; i++) {
     const segment = path[i];
-    if (typeof current[segment] !== 'object' || current[segment] === null) {
+    const existing = current[segment];
+    if (existing !== undefined && (typeof existing !== 'object' || existing === null)) {
+      // Collision: a scalar already exists at this path, but we'd need to
+      // descend into it. Warn and SKIP to avoid silent data loss. The first
+      // writer wins; the user must rename one of the colliding env vars.
+      console.warn(
+        `[@bloomneo/appkit/config] Env var "${sourceKey}" collides with existing scalar at "${path.slice(0, i + 1).join('.')}". Skipped. Rename one of the conflicting variables.`
+      );
+      return;
+    }
+    if (existing === undefined) {
       current[segment] = {};
     }
     current = current[segment];
   }
-  
-  current[path[path.length - 1]] = value;
+
+  const leaf = path[path.length - 1];
+  const existingLeaf = current[leaf];
+  if (existingLeaf !== undefined && typeof existingLeaf === 'object' && existingLeaf !== null) {
+    // Collision: we're about to assign a scalar over an existing object
+    // (e.g. APP=myapp after APP_NAME=... already built config.app = {...}).
+    console.warn(
+      `[@bloomneo/appkit/config] Env var "${sourceKey}" would overwrite existing nested config at "${path.join('.')}". Skipped. Rename one of the conflicting variables.`
+    );
+    return;
+  }
+  current[leaf] = value;
 }
 
 /**
@@ -86,8 +109,7 @@ function validateEnvironment(): void {
   
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
-      `Expected: development, production, test, or staging.`
+      `[@bloomneo/appkit/config] Unusual NODE_ENV: "${nodeEnv}". Expected: development, production, test, or staging.`
     );
   }
 
@@ -95,10 +117,10 @@ function validateEnvironment(): void {
   if (nodeEnv === 'production') {
     const requiredProdVars = ['BLOOM_SERVICE_NAME'];
     const missing = requiredProdVars.filter(varName => !process.env[varName]);
-    
+
     if (missing.length > 0) {
       console.warn(
-        `[Bloomneo AppKit] Missing recommended production environment variables: ${missing.join(', ')}`
+        `[@bloomneo/appkit/config] Missing recommended production environment variables: ${missing.join(', ')}. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -110,7 +132,7 @@ function validateEnvironment(): void {
  * @llm-rule AVOID: Parsing framework variables as app config - they serve different purposes
  * @llm-rule NOTE: Bloomneo AppKit uses BLOOM_* and FLUX_* for internal configuration
  */
-function isFrameworkVariable(envKey: string): boolean {
+export function isFrameworkVariable(envKey: string): boolean {
   const frameworkPrefixes = [
     'BLOOM_',      // Bloomneo AppKit framework configuration
     'FLUX_',       // Flux Framework internal variables
@@ -126,7 +148,7 @@ function isFrameworkVariable(envKey: string): boolean {
  * @llm-rule WHEN: Filtering out system variables from app config validation
  * @llm-rule AVOID: Validating system variables - they don't follow our conventions
  */
-function isSystemVariable(envKey: string): boolean {
+export function isSystemVariable(envKey: string): boolean {
   const systemVarPrefixes = [
     '__CF',        // macOS Core Foundation variables
     '__VERCEL_',   // Vercel deployment variables
@@ -168,24 +190,19 @@ function isSystemVariable(envKey: string): boolean {
 }
 
 /**
- * Validates environment variable format for common mistakes
+ * Warns on non-UPPER_SNAKE_CASE app env var names. Does not block processing.
  * @llm-rule WHEN: Processing custom environment variables for format validation
  * @llm-rule AVOID: Silent format errors - validates UPPER_SNAKE_CASE convention
  */
-function validateEnvVarFormat(envKey: string): boolean {
-  // Skip framework and system variables - they don't follow our conventions
+function warnIfBadEnvVarFormat(envKey: string): void {
   if (isFrameworkVariable(envKey) || isSystemVariable(envKey)) {
-    return true;
+    return;
   }
-
-  // Check for proper UPPER_SNAKE_CASE format
   if (envKey !== envKey.toUpperCase()) {
     console.warn(
-      `[Bloomneo AppKit] Environment variable "${envKey}" should be uppercase for consistency`
+      `[@bloomneo/appkit/config] Environment variable "${envKey}" should be uppercase for consistency`
     );
   }
-  
-  return true;
 }
 
 /**
@@ -208,20 +225,16 @@ export function buildConfigFromEnv(): AppConfig {
     },
   };
 
-  // Process ONLY user configuration variables using UPPER_SNAKE_CASE convention
-  // IMPORTANT: Framework variables (BLOOM_*, FLUX_*) are NOT processed as user config
+  // Process ONLY user configuration variables using UPPER_SNAKE_CASE convention.
+  // Framework variables (BLOOM_*, FLUX_*) and system vars are NOT processed as user config.
   for (const envKey in process.env) {
-    // Skip framework variables and system variables
     if (isFrameworkVariable(envKey) || isSystemVariable(envKey)) {
       continue;
     }
-    
-    // Process remaining variables as user configuration
-    if (validateEnvVarFormat(envKey)) {
-      const path = envKey.toLowerCase().split('_');
-      const value = parseValue(process.env[envKey] || '');
-      setNestedValue(config, path, value);
-    }
+    warnIfBadEnvVarFormat(envKey);
+    const path = envKey.toLowerCase().split('_');
+    const value = parseValue(process.env[envKey] || '');
+    setNestedValue(config, path, value, envKey);
   }
 
   return config;
@@ -240,16 +253,15 @@ export function validateConfig(config: AppConfig): void {
   if (environment === 'production') {
     if (!config.app.name || config.app.name === 'voila-app') {
       throw new Error(
-        'BLOOM_SERVICE_NAME is required in production. ' +
-        'Set environment variable: BLOOM_SERVICE_NAME=your-app-name'
+        `[@bloomneo/appkit/config] BLOOM_SERVICE_NAME is required in production. Set environment variable: BLOOM_SERVICE_NAME=your-app-name. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
-  
+
   // Port validation
   if (config.app.port && (config.app.port < 1 || config.app.port > 65535)) {
     throw new Error(
-      `Invalid PORT: ${config.app.port}. Must be between 1 and 65535.`
+      `[@bloomneo/appkit/config] Invalid PORT: ${config.app.port}. Must be between 1 and 65535. See: ${DOCS_URL}#environment-variables`
     );
   }
 }

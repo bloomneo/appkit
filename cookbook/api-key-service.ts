@@ -35,7 +35,7 @@ router.post(
   '/api-keys',
   auth.requireUserRoles(['admin.tenant']),
   error.asyncRoute(async (req, res) => {
-    const u = auth.user(req);
+    const u = auth.getUser(req);
     if (!u) throw error.unauthorized();
 
     const { name, scopes } = req.body;

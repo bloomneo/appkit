@@ -2,11 +2,13 @@
  * Smart configuration management with automatic environment variable parsing
  * @module @bloomneo/appkit/config
  * @file src/config/config.ts
- * 
+ *
  * @llm-rule WHEN: Building apps that need configuration from environment variables
  * @llm-rule AVOID: Manual env parsing or complex config files - this handles it automatically
  * @llm-rule NOTE: Uses UPPER_SNAKE_CASE convention (DATABASE_HOST → config.get('database.host'))
  */
+
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/config/README.md';
 
 export class ConfigClass {
   private readonly _config: Record<string, any>;
@@ -26,8 +28,10 @@ export class ConfigClass {
    * Gets a specific configuration value using dot notation
    * @llm-rule WHEN: Accessing any config value from environment variables
    * @llm-rule AVOID: Accessing process.env directly - use this for type safety and defaults
-   * @llm-rule NOTE: Returns typed values (strings, numbers, booleans) automatically
+   * @llm-rule NOTE: parseValue() coerces env strings — "true"/"false" → boolean, numeric strings → number
    */
+  get<T>(path: string, defaultValue: T): T;
+  get<T = any>(path: string): T | undefined;
   get<T = any>(path: string, defaultValue?: T): T | undefined {
     if (typeof path !== 'string' || !path) {
       return defaultValue;
@@ -50,7 +54,6 @@ export class ConfigClass {
   /**
    * Checks if a configuration path exists
    * @llm-rule WHEN: Need to conditionally enable features based on config presence
-   * @llm-rule AVOID: Using get() !== undefined - this is more explicit and readable
    */
   has(path: string): boolean {
     return this.get(path) !== undefined;
@@ -75,8 +78,7 @@ export class ConfigClass {
     const value = this.get<T>(path);
     if (value === undefined) {
       throw new Error(
-        `Missing required configuration: "${path}". ` +
-        `Set environment variable: ${this.pathToEnvVar(path)}`
+        `[@bloomneo/appkit/config] Missing required configuration: "${path}". Set environment variable: ${this.pathToEnvVar(path)}. See: ${DOCS_URL}#startup-validation`
       );
     }
     return value;

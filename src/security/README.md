@@ -49,14 +49,14 @@ const security = securityClass.get();
 app.use(session({ secret: process.env.SESSION_SECRET }));
 
 // Security middleware
-app.use(secure.forms()); // CSRF protection
-app.use('/api', secure.requests()); // Rate limiting
+app.use(security.forms()); // CSRF protection
+app.use('/api', security.requests()); // Rate limiting
 
 // Secure route
 app.post('/profile', (req, res) => {
-  const safeName = secure.input(req.body.name);
-  const safeBio = secure.html(req.body.bio, { allowedTags: ['p', 'b'] });
-  const encryptedSSN = secure.encrypt(req.body.ssn);
+  const safeName = security.input(req.body.name);
+  const safeBio = security.html(req.body.bio, { allowedTags: ['p', 'b'] });
+  const encryptedSSN = security.encrypt(req.body.ssn);
 
   // Save to database...
   res.json({ success: true });
@@ -100,8 +100,8 @@ const security = securityClass.get();
 
 // Required order
 app.use(session({ secret: process.env.SESSION_SECRET }));
-app.use(secure.forms()); // CSRF protection
-app.use('/api', secure.requests()); // Rate limiting
+app.use(security.forms()); // CSRF protection
+app.use('/api', security.requests()); // Rate limiting
 
 // Form with CSRF token
 app.get('/form', (req, res) => {
@@ -111,9 +111,9 @@ app.get('/form', (req, res) => {
 
 // Secure input processing
 app.post('/form', (req, res) => {
-  const clean = secure.input(req.body.data);
-  const safeHtml = secure.html(req.body.content, { allowedTags: ['p'] });
-  const encrypted = secure.encrypt(req.body.sensitive);
+  const clean = security.input(req.body.data);
+  const safeHtml = security.html(req.body.content, { allowedTags: ['p'] });
+  const encrypted = security.encrypt(req.body.sensitive);
   // Process...
 });
 ```
@@ -557,7 +557,7 @@ describe('Security Tests', () => {
   test('should sanitize malicious input', () => {
     const security = securityClass.get();
     const malicious = '<script>alert("xss")</script><p>Safe</p>';
-    const cleaned = secure.html(malicious, { allowedTags: ['p'] });
+    const cleaned = security.html(malicious, { allowedTags: ['p'] });
 
     expect(cleaned).toBe('<p>Safe</p>');
     expect(cleaned).not.toContain('<script>');
@@ -610,3 +610,46 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 <p align="center">
   Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 55/100 — 🟠 Usable with caveats** *(uncapped: 73/100 — cap applied for runtime ReferenceErrors)*
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> ⚠️ **Cap reason**: Three code blocks declared `const security = securityClass.get()` but then called `secure.forms()`, `secure.requests()`, `secure.input()`, `secure.html()`, `secure.encrypt()` — `secure` was never defined → **ReferenceError at runtime**. Anti-pattern "example throws at runtime" → **55 max**. **Fixed in this version**: all three occurrences corrected to `security.*`.
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **9** | Fixed: Quick Start, LLM Quick Reference, and testing block corrected (`secure.*` → `security.*`). Fixed: testing test #3 `secure.html()` → `security.html()`. All 10 class methods (`get`, `reset`, `clearCache`, `getConfig`, `isDevelopment`, `isProduction`, `generateKey`, `quickSetup`, `validateRequired`, `getStatus`) and 8 instance methods (`forms`, `requests`, `input`, `html`, `escape`, `encrypt`, `decrypt`, `generateKey`) documented correctly. |
+| 2 | Doc consistency | **8** | After fixes, Quick Start, LLM Quick Reference, and testing all use `security` consistently. |
+| 3 | Runtime verification | **8** | Testing section covers CSRF token generation, encrypt/decrypt, HTML sanitization. Lifecycle (`clearCache`, `reset`) shown. |
+| 4 | Type safety | **7** | Types exported: `SecurityConfig`, `ExpressMiddleware`, `CSRFOptions`, `RateLimitOptions`. `input()` options not shown in type imports. |
+| 5 | Discoverability | **8** | Clear import, required env vars in Quick Start. Good first-screen info density. |
+| 6 | Example completeness | **7** | Covers `forms`, `requests`, `input`, `html`, `escape`, `encrypt`, `decrypt`, `generateKey`, `validateRequired`, `quickSetup`. Missing: `getStatus` in examples. |
+| 7 | Composability | **7** | `examples/security.ts` shows security + error module composition. Storage example shows security + storage. |
+| 8 | Educational errors | **7** | `validateRequired` error message includes env var names — actionable. |
+| 9 | Convention enforcement | **8** | `security = securityClass.get()` + middleware chain shown consistently (after fix). |
+| 10 | Drift prevention | **5** | No CI drift check. |
+| 11 | Reading order | **4** | No "See also" pointer at top. |
+| **12** | **Simplicity** | **7** | Four protection types cleanly separated. `quickSetup()` reduces boilerplate. |
+| **13** | **Clarity** | **8** | `forms`, `requests`, `input`, `html`, `escape`, `encrypt`, `decrypt` — all self-evident. |
+| **14** | **Unambiguity** | **7** | Session-before-CSRF ordering is clearly documented in common mistakes. |
+| **15** | **Learning curve** | **7** | Security concepts are inherently complex; module does well to hide it. |
+
+### Weighted (v1.1)
+
+```
+(9×.12)+(8×.08)+(8×.09)+(7×.06)+(8×.06)+(7×.08)+(7×.06)+(7×.05)+(8×.05)+(5×.04)+(4×.03)
++(7×.09)+(8×.09)+(7×.05)+(7×.05) = 7.35 → 74/100
+Runtime ReferenceError cap: 55/100 (secure.forms/requests/input/html/encrypt — now fixed)
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D1 → 9 (after fix)**: With 3 variable-name fixes applied, D1 rises to ~9 → uncapped score ~74
+2. **D11 → 8**: Add "See also: AGENTS.md | examples/security.ts" at README top
+3. **D6 → 9**: Add `getStatus()` to examples section
+4. **D10 → 9**: Add CI drift check
+5. **D12 → 9**: Document `quickSetup()` in the hero/Quick Start instead of only in API Reference

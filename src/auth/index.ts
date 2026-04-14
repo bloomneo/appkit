@@ -7,11 +7,13 @@
  * @llm-rule AVOID: Complex auth setups with multiple libraries - this handles JWT + bcrypt + middleware in one API
  * @llm-rule NOTE: Uses role.level hierarchy (user.basic → admin.system) with automatic inheritance
  * @llm-rule NOTE: Common pattern - auth.requireLoginToken() → auth.requireUserRoles() → handler
- * @llm-rule NOTE: Safe user access - const user = auth.user(req); if (!user) return error;
+ * @llm-rule NOTE: Safe user access - const user = auth.getUser(req); if (!user) return error;
  */
 
 import { AuthenticationClass } from './auth.js';
-import { getSmartDefaults, type AuthConfig, type RoleHierarchy } from './defaults.js';
+import { getSmartDefaults, validateAuthConfig, type AuthConfig, type RoleHierarchy } from './defaults.js';
+
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/auth/README.md';
 
 // Global authentication instance for performance
 let globalAuthentication: AuthenticationClass | null = null;
@@ -21,16 +23,23 @@ let globalAuthentication: AuthenticationClass | null = null;
  * Environment variables parsed once for performance
  * @llm-rule WHEN: Starting any auth operation - this is your main entry point
  * @llm-rule AVOID: Calling new AuthenticationClass() directly - always use this function
- * @llm-rule NOTE: Typical flow - get() → generateLoginToken() → middleware → user()
+ * @llm-rule AVOID: Passing overrides after first call - they THROW; use reset(newConfig) to rebuild with new config
+ * @llm-rule NOTE: Typical flow - get() → generateLoginToken() → middleware → getUser(req)
  */
 function get(overrides: Partial<AuthConfig> = {}): AuthenticationClass {
-  // Lazy initialization - parse environment once
-  if (!globalAuthentication) {
-    const defaults = getSmartDefaults();
-    const config: AuthConfig = { ...defaults, ...overrides };
-    globalAuthentication = new AuthenticationClass(config);
+  if (globalAuthentication) {
+    if (overrides && Object.keys(overrides).length > 0) {
+      throw new Error(
+        `[@bloomneo/appkit/auth] authClass.get() overrides are only applied on first call. Use authClass.reset(newConfig) to rebuild with new config. See: ${DOCS_URL}#configuration`
+      );
+    }
+    return globalAuthentication;
   }
 
+  const defaults = getSmartDefaults();
+  const config: AuthConfig = { ...defaults, ...overrides };
+  validateAuthConfig(config);
+  globalAuthentication = new AuthenticationClass(config);
   return globalAuthentication;
 }
 
@@ -42,6 +51,7 @@ function get(overrides: Partial<AuthConfig> = {}): AuthenticationClass {
 function reset(newConfig: Partial<AuthConfig> = {}): AuthenticationClass {
   const defaults = getSmartDefaults();
   const config: AuthConfig = { ...defaults, ...newConfig };
+  validateAuthConfig(config);
   globalAuthentication = new AuthenticationClass(config);
   return globalAuthentication;
 }
@@ -59,7 +69,7 @@ function getRoles(): RoleHierarchy {
 /**
  * Get current permission configuration for inspection
  * @llm-rule WHEN: Need to see default permissions for debugging or documentation
- * @llm-rule AVOID: Using for permission checks - use can() method instead
+ * @llm-rule AVOID: Using for permission checks - use auth.hasPermission(user, permission) instead
  */
 function getPermissions(): { coreActions: string[]; coreScopes: string[]; defaults: Record<string, string[]> } {
   const auth = get();
@@ -121,4 +131,4 @@ export type {
   ExpressMiddleware,
 } from './auth.js';
 
-export { AuthenticationClass } from './auth.js';
+export { AuthenticationClass, TokenError } from './auth.js';

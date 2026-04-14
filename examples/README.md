@@ -1,5 +1,7 @@
 # Examples
 
+> ⚠️ **Under review — may reference outdated APIs until the module-by-module review completes.** Do not copy-paste verbatim; verify each call against the current module README first.
+
 One minimal `.ts` file per module. Each example is the smallest runnable shape
 of the canonical pattern — copy, modify the data, ship.
 

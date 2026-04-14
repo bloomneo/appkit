@@ -1,10 +1,10 @@
 /**
  * Core authentication class with role-level-permission system
  * @module @bloomneo/appkit/auth
- * @file src/auth/authentication.ts
- * 
+ * @file src/auth/auth.ts
+ *
  * @llm-rule WHEN: Building apps that need JWT operations, password hashing, and role-based middleware
- * @llm-rule AVOID: Using directly - always get instance via auth.get()
+ * @llm-rule AVOID: Constructing AuthenticationClass directly — always get the instance via authClass.get()
  * @llm-rule NOTE: Use requireUserRoles() for hierarchy-based access, requireUserPermissions() for action-specific access
  * @llm-rule NOTE: Uses role.level format (user.basic, admin.tenant) with automatic inheritance
  */
@@ -12,7 +12,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import {
-  validateSecret,
   validateRounds,
   validateRoleLevel,
   validatePermission,
@@ -26,6 +25,25 @@ import {
  * Mistakes sections that match the most-hit error scenarios.
  */
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/auth/README.md';
+
+/**
+ * Typed error thrown by verifyToken() for all JWT failure modes.
+ *
+ * Middleware checks `error.code` to decide which user-facing message to
+ * render. Using a typed error (instead of matching `error.message`) means
+ * we can safely prefix / reword messages without breaking middleware.
+ *
+ * @llm-rule WHEN: Catching verifyToken() failures to branch on failure type
+ * @llm-rule AVOID: Comparing error.message strings — use error.code instead
+ */
+export class TokenError extends Error {
+  public readonly code: 'expired' | 'not_before' | 'invalid' | 'malformed';
+  constructor(code: TokenError['code'], message: string) {
+    super(message);
+    this.name = 'TokenError';
+    this.code = code;
+  }
+}
 
 export interface JwtPayload {
   userId?: string | number;
@@ -154,7 +172,7 @@ export class AuthenticationClass {
     const jwtSecret = this.config.jwt.secret;
     if (!jwtSecret) {
       throw new Error(
-        'JWT secret required. Set BLOOM_AUTH_SECRET environment variable'
+        `[@bloomneo/appkit/auth] JWT secret required. Set BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#configuration`
       );
     }
 
@@ -163,9 +181,10 @@ export class AuthenticationClass {
     try {
       return jwt.sign(payload, jwtSecret, {
         expiresIn: tokenExpiration,
+        algorithm: this.config.jwt.algorithm as jwt.Algorithm,
       } as jwt.SignOptions);
     } catch (error) {
-      throw new Error(`Failed to generate token: ${(error as Error).message}`);
+      throw new Error(`[@bloomneo/appkit/auth] Failed to generate token: ${(error as Error).message}. See: ${DOCS_URL}#token-generation`);
     }
   }
 
@@ -177,13 +196,13 @@ export class AuthenticationClass {
    */
   verifyToken(token: string): JwtPayload {
     if (!token || typeof token !== 'string') {
-      throw new Error('Token must be a string');
+      throw new Error(`[@bloomneo/appkit/auth] Token must be a non-empty string. See: ${DOCS_URL}#token-verification`);
     }
 
     const jwtSecret = this.config.jwt.secret;
     if (!jwtSecret) {
       throw new Error(
-        'JWT secret required. Set BLOOM_AUTH_SECRET environment variable'
+        `[@bloomneo/appkit/auth] JWT secret required. Set BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#configuration`
       );
     }
 
@@ -194,26 +213,33 @@ export class AuthenticationClass {
 
       // Validate decoded token has required structure
       if (!decoded.role || !decoded.level || !decoded.type) {
-        throw new Error('Token missing required role, level, or type information');
+        throw new Error(`[@bloomneo/appkit/auth] Token missing required role, level, or type information. See: ${DOCS_URL}#token-verification`);
       }
 
       // Validate type-specific requirements
       if (decoded.type === 'login' && !decoded.userId) {
-        throw new Error('Login token missing userId');
+        throw new Error(`[@bloomneo/appkit/auth] Login token missing userId. See: ${DOCS_URL}#token-verification`);
       }
       if (decoded.type === 'api_key' && !decoded.keyId) {
-        throw new Error('API token missing keyId');
+        throw new Error(`[@bloomneo/appkit/auth] API token missing keyId. See: ${DOCS_URL}#token-verification`);
       }
 
       return decoded;
     } catch (error) {
-      if ((error as any).name === 'TokenExpiredError') {
-        throw new Error('Token has expired');
+      // Re-throw our own typed errors unchanged so callers see the real cause.
+      if (error instanceof TokenError) throw error;
+
+      const name = (error as any).name;
+      if (name === 'TokenExpiredError') {
+        throw new TokenError('expired', `[@bloomneo/appkit/auth] Token has expired. See: ${DOCS_URL}#token-verification`);
       }
-      if ((error as any).name === 'JsonWebTokenError') {
-        throw new Error('Invalid token');
+      if (name === 'NotBeforeError') {
+        throw new TokenError('not_before', `[@bloomneo/appkit/auth] Token is not yet active (nbf). See: ${DOCS_URL}#token-verification`);
       }
-      throw new Error(`Token verification failed: ${(error as Error).message}`);
+      if (name === 'JsonWebTokenError') {
+        throw new TokenError('invalid', `[@bloomneo/appkit/auth] Invalid token: ${(error as Error).message}. See: ${DOCS_URL}#token-verification`);
+      }
+      throw new TokenError('malformed', `[@bloomneo/appkit/auth] Token verification failed: ${(error as Error).message}. See: ${DOCS_URL}#token-verification`);
     }
   }
 
@@ -225,7 +251,7 @@ export class AuthenticationClass {
    */
   async hashPassword(password: string, rounds?: number): Promise<string> {
     if (!password || typeof password !== 'string') {
-      throw new Error('Password must be a non-empty string');
+      throw new Error(`[@bloomneo/appkit/auth] Password must be a non-empty string. See: ${DOCS_URL}#password-hashing`);
     }
 
     const saltRounds = rounds || this.config.password.saltRounds;
@@ -234,7 +260,7 @@ export class AuthenticationClass {
     try {
       return await bcrypt.hash(password, saltRounds);
     } catch (error) {
-      throw new Error(`Password hashing failed: ${(error as Error).message}`);
+      throw new Error(`[@bloomneo/appkit/auth] Password hashing failed: ${(error as Error).message}. See: ${DOCS_URL}#password-hashing`);
     }
   }
 
@@ -267,8 +293,10 @@ export class AuthenticationClass {
    * @llm-rule AVOID: Accessing req.user directly - may be undefined and cause crashes
    * @llm-rule NOTE: Always returns null for unauthenticated requests - safe to use
    * @llm-rule NOTE: Works with both login authentication (req.user) and API tokens (req.token)
+   * @llm-rule NOTE: Previously named user(). Renamed to getUser() pre-v1 per NAMING.md
+   *                 (no bare-noun methods). There is no user() alias.
    */
-  user(request: ExpressRequest): JwtPayload | null {
+  getUser(request: ExpressRequest): JwtPayload | null {
     if (!request || typeof request !== 'object') {
       return null;
     }
@@ -347,12 +375,14 @@ export class AuthenticationClass {
    * @llm-rule AVOID: Hardcoding permission checks - this handles inheritance
    * @llm-rule NOTE: 'manage:scope' includes ALL other actions for that scope
    * @llm-rule NOTE: Explicit user.permissions REPLACES role defaults (not additive)
-   * @llm-rule NOTE: If user has 'manage:tenant' → can('edit:tenant') returns TRUE
-   * @llm-rule NOTE: If user has 'edit:tenant' → can('manage:tenant') returns FALSE
+   * @llm-rule NOTE: If user has 'manage:tenant' → hasPermission('edit:tenant') returns TRUE
+   * @llm-rule NOTE: If user has 'edit:tenant' → hasPermission('manage:tenant') returns FALSE
    * @llm-rule NOTE: To downgrade a user, pass permissions: [] (empty array)
    * @llm-rule NOTE: Actions hierarchy: manage > delete > edit > create > view
+   * @llm-rule NOTE: Previously named can(). Renamed to hasPermission() pre-v1 per
+   *                 NAMING.md (has/is/can are boolean prefixes, not bare verbs).
    */
-  can(user: JwtPayload, permission: string): boolean {
+  hasPermission(user: JwtPayload, permission: string): boolean {
     if (!user || !permission) {
       return false;
     }
@@ -361,7 +391,7 @@ export class AuthenticationClass {
       throw new Error(
         `[@bloomneo/appkit/auth] Invalid permission format: "${permission}". ` +
         `Permissions must be in "action:scope" form (e.g. "edit:tenant", "manage:users"). ` +
-        `See: https://github.com/bloomneo/appkit/blob/main/src/auth/README.md#role-level-permission-architecture`
+        `See: ${DOCS_URL}#role-level-permission-architecture`
       );
     }
 
@@ -402,10 +432,6 @@ export class AuthenticationClass {
    * @llm-rule NOTE: Validates login tokens (type: 'login') and sets req.user
    */
   requireLoginToken(options: MiddlewareOptions = {}): ExpressMiddleware {
-    if (!this.config.jwt.secret) {
-      throw new Error('JWT secret required for authentication middleware');
-    }
-
     const getToken = options.getToken || this.getDefaultTokenExtractor();
 
     return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
@@ -431,7 +457,7 @@ export class AuthenticationClass {
         req.user = payload;
         next();
       } catch (error) {
-        const isExpired = (error as Error).message === 'Token has expired';
+        const isExpired = error instanceof TokenError && error.code === 'expired';
         const message = isExpired
           ? this.config.middleware.errorMessages.expiredToken
           : this.config.middleware.errorMessages.invalidToken;
@@ -454,18 +480,18 @@ export class AuthenticationClass {
    */
   requireUserRoles(requiredRoles: string[]): ExpressMiddleware {
     if (!Array.isArray(requiredRoles) || requiredRoles.length === 0) {
-      throw new Error('requiredRoles must be a non-empty array');
+      throw new Error(`[@bloomneo/appkit/auth] requiredRoles must be a non-empty array. See: ${DOCS_URL}#role-level-permission-architecture`);
     }
 
     // Validate all roles exist
     for (const role of requiredRoles) {
       if (!validateRoleLevel(role, this.config.roles)) {
-        throw new Error(`Invalid role.level for middleware: "${role}"`);
+        throw new Error(`[@bloomneo/appkit/auth] Invalid role.level for middleware: "${role}". See: ${DOCS_URL}#role-level-permission-architecture`);
       }
     }
 
     return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
-      const user = this.user(req);
+      const user = this.getUser(req);
 
       if (!user) {
         return res.status(401).json({
@@ -507,18 +533,18 @@ export class AuthenticationClass {
    */
   requireUserPermissions(requiredPermissions: string[]): ExpressMiddleware {
     if (!Array.isArray(requiredPermissions) || requiredPermissions.length === 0) {
-      throw new Error('requiredPermissions must be a non-empty array');
+      throw new Error(`[@bloomneo/appkit/auth] requiredPermissions must be a non-empty array. See: ${DOCS_URL}#role-level-permission-architecture`);
     }
 
     // Validate all permissions
     for (const permission of requiredPermissions) {
       if (!validatePermission(permission)) {
-        throw new Error(`Invalid permission format for middleware: "${permission}"`);
+        throw new Error(`[@bloomneo/appkit/auth] Invalid permission format for middleware: "${permission}". See: ${DOCS_URL}#role-level-permission-architecture`);
       }
     }
 
     return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
-      const user = this.user(req);
+      const user = this.getUser(req);
 
       if (!user) {
         return res.status(401).json({
@@ -534,8 +560,8 @@ export class AuthenticationClass {
         });
       }
 
-      const hasAllPermissions = requiredPermissions.every(permission => 
-        this.can(user, permission)
+      const hasAllPermissions = requiredPermissions.every(permission =>
+        this.hasPermission(user, permission)
       );
 
       if (!hasAllPermissions) {
@@ -556,10 +582,6 @@ export class AuthenticationClass {
    * @llm-rule NOTE: Validates API tokens (type: 'api_key') and sets req.token
    */
   requireApiToken(options: MiddlewareOptions = {}): ExpressMiddleware {
-    if (!this.config.jwt.secret) {
-      throw new Error('JWT secret required for API token authentication middleware');
-    }
-
     const getToken = options.getToken || this.getDefaultTokenExtractor();
 
     return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
@@ -585,7 +607,7 @@ export class AuthenticationClass {
         req.token = payload;
         next();
       } catch (error) {
-        const isExpired = (error as Error).message === 'Token has expired';
+        const isExpired = error instanceof TokenError && error.code === 'expired';
         const message = isExpired
           ? 'API token has expired'
           : 'Invalid API token';

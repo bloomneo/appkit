@@ -1006,3 +1006,45 @@ MIT © [Bloomneo](https://github.com/bloomneo)
   <strong>Built with ❤️ by the <a href="https://github.com/bloomneo">Bloomneo Team</a></strong><br>
   Because file storage should be simple, not a vendor nightmare.
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 77/100 — 🟡 Solid**
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> No anti-pattern caps applied. All 11 instance methods and 12 class methods documented correctly. `storageClass` is the named export; default export is `StorageClass` (the constructor) — README correctly warns against using `new StorageClass()`.
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **9** | All 11 instance methods (`put`, `get`, `delete`, `list`, `url`, `signedUrl`, `exists`, `copy`, `disconnect`, `getStrategy`, `getConfig`) and class methods (`clear`, `reset`, `getStrategy`, `getConfig`, `hasCloudStorage`, `isLocal`, `getStats`, `validateConfig`, `shutdown`, `upload`, `download`) documented correctly. Named export `storageClass` is correct (default export is `StorageClass` constructor — not for direct use). |
+| 2 | Doc consistency | **9** | README, `examples/storage.ts`, and testing section all agree on method names and signatures. |
+| 3 | Runtime verification | **8** | Testing section covers `put`, `get`, `url`, `exists`, `reset`, `clear`. `storageClass.reset()` pattern shown. |
+| 4 | Type safety | **7** | `Storage`, `StorageFile`, `PutOptions` exported and shown. |
+| 5 | Discoverability | **8** | Clear import. Auto-strategy table is excellent. No AGENTS.md pointer at top. |
+| 6 | Example completeness | **7** | Covers all core operations. Missing: explicit `shutdown` call, `getStats` example. |
+| 7 | Composability | **8** | `examples/storage.ts` shows storage + error + security module composition. |
+| 8 | Educational errors | **6** | Storage validation emits `console.warn` — no actionable env var suggestions in error messages. |
+| 9 | Convention enforcement | **9** | Consistent `storage = storageClass.get()` + method calls throughout. Anti-pattern `new StorageClass()` explicitly called out. |
+| 10 | Drift prevention | **5** | No CI drift check. |
+| 11 | Reading order | **4** | No "See also" pointer at top. |
+| **12** | **Simplicity** | **8** | `put`, `get`, `url` covers 80% of usage. Cost comparison table is a great addition. |
+| **13** | **Clarity** | **9** | `put`, `get`, `delete`, `list`, `url`, `signedUrl`, `exists`, `copy` — all names are self-documenting. |
+| **14** | **Unambiguity** | **8** | `url()` vs `signedUrl()` distinction (public vs temporary) clearly documented. |
+| **15** | **Learning curve** | **8** | Two lines, no config, works locally. Excellent entry barrier. |
+
+### Weighted (v1.1)
+
+```
+(9×.12)+(9×.08)+(8×.09)+(7×.06)+(8×.06)+(7×.08)+(8×.06)+(6×.05)+(9×.05)+(5×.04)+(4×.03)
++(8×.09)+(9×.09)+(8×.05)+(8×.05) = 7.83 → 78/100
+No cap applied. (Rounded 77→78 after recalculation.)
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D11 → 8**: Add "See also: AGENTS.md | examples/storage.ts" at README top
+2. **D6 → 9**: Add `getStats()` and `shutdown()` to examples section
+3. **D8 → 8**: Storage init failures should include `[@bloomneo/appkit/storage] Local strategy failed: check BLOOM_STORAGE_DIR is writable`
+4. **D10 → 9**: Add CI drift check

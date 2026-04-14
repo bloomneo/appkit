@@ -60,7 +60,7 @@ export class ConsoleStrategy implements EmailStrategy {
         messageId,
       };
     } catch (error) {
-      console.error(`❌ [AppKit] Console email error:`, (error as Error).message);
+      console.error(`❌ [@bloomneo/appkit/email] Console email error:`, (error as Error).message);
       
       return {
         success: false,

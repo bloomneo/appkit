@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { configClass } from './index.js';
 
-beforeEach(() => { configClass.clearCache(); });
+beforeEach(() => { configClass.reset(); });
 
 describe('configClass.get()', () => {
   it('returns a ConfigClass instance', () => {
@@ -81,12 +81,14 @@ describe('Environment detection — on configClass, not on config instance', () 
 describe('validateRequired()', () => {
   it('does not throw when all paths are present', () => {
     process.env.DATABASE_URL = 'postgres://localhost/test';
+    configClass.reset();
     expect(() => configClass.validateRequired(['database.url'])).not.toThrow();
     delete process.env.DATABASE_URL;
   });
 
   it('throws when a required path is missing', () => {
     delete process.env.DEFINITELY_MISSING_VAR;
+    configClass.reset();
     expect(() => configClass.validateRequired(['definitely.missing.var'])).toThrow(/missing/i);
   });
 });
@@ -108,7 +110,7 @@ describe('getEnvVars()', () => {
 
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
-    'get', 'reset', 'clearCache',
+    'get', 'reset',
     'getEnvironment', 'isDevelopment', 'isProduction', 'isTest',
     'getEnvVars', 'validateRequired', 'getModuleConfig',
   ];
@@ -118,9 +120,20 @@ describe('Public API surface — drift check', () => {
   // Methods that do NOT exist on the ConfigClass instance (they're on configClass).
   const NOT_ON_INSTANCE = ['isDevelopment', 'isProduction', 'isTest', 'getNumber', 'getBoolean'];
 
+  // configClass-level methods that MUST NOT exist — drift trap for docs.
+  // `clearCache` was documented in an earlier README draft but never implemented.
+  // Consumers should use `configClass.reset()` instead.
+  const HALLUCINATED_CLASS_METHODS = ['clearCache'];
+
   for (const m of CLASS_METHODS) {
     it(`configClass.${m} exists and is a function`, () => {
       expect(typeof (configClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS_METHODS) {
+    it(`configClass.${m} does NOT exist (use reset() instead)`, () => {
+      expect(typeof (configClass as any)[m]).not.toBe('function');
     });
   }
 

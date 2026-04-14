@@ -64,6 +64,7 @@ export class CacheClass {
   public namespace: string;
   private strategy: RedisStrategy | MemoryStrategy;
   private connected: boolean = false;
+  private inFlight: Map<string, Promise<unknown>> = new Map();
 
   constructor(config: CacheConfig, namespace: string) {
     this.config = config;
@@ -83,7 +84,9 @@ export class CacheClass {
       case 'memory':
         return new MemoryStrategy(this.config);
       default:
-        throw new Error(`Unknown cache strategy: ${this.config.strategy}`);
+        throw new CacheError(`Unknown cache strategy: ${this.config.strategy}`, {
+          code: 'CACHE_INVALID_STRATEGY',
+        });
     }
   }
 
@@ -220,19 +223,55 @@ export class CacheClass {
   }
 
   /**
-   * Gets a value from cache or sets it using a factory function
+   * Gets a value from cache or sets it using a factory function.
+   *
+   * Race safety: concurrent callers for the same key share a single factory
+   * run via an in-flight promise map — the factory is executed at most once
+   * per in-flight key.
+   *
+   * Null handling: if the factory previously cached `null`, subsequent calls
+   * return that cached `null` (via a membership check) instead of re-running
+   * the factory. A cache miss and a cached `null` are distinct outcomes.
+   *
    * @llm-rule WHEN: Cache-aside pattern - get cached value or compute and cache
-   * @llm-rule AVOID: Manual get/set logic - this handles race conditions properly
-   * @llm-rule NOTE: Factory function only called on cache miss
+   * @llm-rule AVOID: Manual get/set logic - this dedupes concurrent misses and preserves cached null
+   * @llm-rule NOTE: Factory errors propagate as-is (not wrapped in CacheError); in-flight entry is cleared on error
    */
   async getOrSet<T = unknown>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
-    // Try to get existing value first
+    this.validateKey(key);
+
+    const pending = this.inFlight.get(key);
+    if (pending) {
+      return pending as Promise<T>;
+    }
+
+    const promise = this.runGetOrSet<T>(key, factory, ttl).finally(() => {
+      this.inFlight.delete(key);
+    });
+    this.inFlight.set(key, promise);
+    return promise;
+  }
+
+  private async runGetOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
     const existing = await this.get<T>(key);
     if (existing !== null) {
       return existing;
     }
 
-    // Generate new value and cache it
+    // `existing === null` is ambiguous: could be a miss or a cached null.
+    // Disambiguate via a membership check so we don't re-run the factory on cached null.
+    const prefixedKey = this.buildKey(key);
+    let exists = false;
+    try {
+      exists = await this.strategy.has(prefixedKey);
+    } catch {
+      // If the membership check fails, treat as miss and let the factory recompute.
+      exists = false;
+    }
+    if (exists) {
+      return null as T;
+    }
+
     const value = await factory(); // factory errors propagate as-is — not wrapped in CacheError
     await this.set(key, value, ttl);
     return value;
@@ -287,7 +326,11 @@ export class CacheClass {
   }
 
   /**
-   * Validates cache key format and length
+   * Validates cache key format and length.
+   *
+   * Colons ARE allowed — the canonical Redis idiom (`user:123`, `session:abc`)
+   * is supported. Internal namespacing uses `${keyPrefix}:${namespace}:${key}`
+   * so your key's colons are scoped to your namespace and cannot collide.
    */
   private validateKey(key: string): void {
     if (!key || typeof key !== 'string') {
@@ -298,9 +341,6 @@ export class CacheClass {
     }
     if (key.includes('\n') || key.includes('\r')) {
       throw new CacheError('Cache key cannot contain newline characters', { code: 'CACHE_INVALID_KEY' });
-    }
-    if (key.includes(':')) {
-      throw new CacheError('Cache key cannot contain colon characters (reserved for namespacing)', { code: 'CACHE_INVALID_KEY' });
     }
   }
 

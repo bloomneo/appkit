@@ -169,8 +169,8 @@ export class RedisStrategy implements CacheStrategy {
     await this.ensureConnected();
 
     try {
-      const value = await this.client.get(key);
-      
+      const value = await this.withTimeout(this.client.get(key), 'get');
+
       if (value === null) {
         return null; // Key not found or expired
       }
@@ -194,10 +194,10 @@ export class RedisStrategy implements CacheStrategy {
     try {
       // Serialize value to JSON
       const serialized = this.serialize(value);
-      
+
       // Set with TTL (Redis EX option expects seconds)
-      const result = await this.client.setEx(key, ttl, serialized);
-      
+      const result = await this.withTimeout(this.client.setEx(key, ttl, serialized), 'set');
+
       return result === 'OK';
     } catch (error) {
       console.error(`[AppKit] Redis set error for key "${key}":`, (error as Error).message);
@@ -214,7 +214,7 @@ export class RedisStrategy implements CacheStrategy {
     await this.ensureConnected();
 
     try {
-      const result = await this.client.del(key);
+      const result = await this.withTimeout(this.client.del(key), 'delete');
       return result === 1; // Redis returns number of keys deleted
     } catch (error) {
       console.error(`[AppKit] Redis delete error for key "${key}":`, (error as Error).message);
@@ -223,14 +223,14 @@ export class RedisStrategy implements CacheStrategy {
   }
 
   /**
-   * Clears all keys matching pattern (usually namespace-based)
-   * @llm-rule WHEN: Namespace-based cache invalidation
-   * @llm-rule AVOID: Using FLUSHDB - this only clears specific namespace keys
+   * No-op at the strategy level: namespace-scoped clearing is handled by
+   * CacheClass.clear() via keys() + deleteMany() to avoid a FLUSHDB footgun
+   * that would wipe keys outside this cache's namespace.
+   * @llm-rule WHEN: Called directly from a custom CacheStrategy consumer — use CacheClass.clear() instead
+   * @llm-rule AVOID: Expecting this to clear anything
    */
   async clear(): Promise<boolean> {
-    // Note: This is handled by the main cache class using keys() + deleteMany()
-    // We don't implement it here to avoid accidental full cache clearing
-    throw new Error('Clear operation should be handled by cache class using keys() + deleteMany()');
+    return true;
   }
 
   /**
@@ -242,7 +242,7 @@ export class RedisStrategy implements CacheStrategy {
     await this.ensureConnected();
 
     try {
-      const result = await this.client.exists(key);
+      const result = await this.withTimeout(this.client.exists(key), 'has');
       return result === 1;
     } catch (error) {
       console.error(`[AppKit] Redis has error for key "${key}":`, (error as Error).message);
@@ -264,10 +264,13 @@ export class RedisStrategy implements CacheStrategy {
       let cursor = 0;
 
       do {
-        const result = await this.client.scan(cursor, {
-          MATCH: pattern,
-          COUNT: 1000, // Scan in batches of 1000
-        });
+        const result = await this.withTimeout(
+          this.client.scan(cursor, {
+            MATCH: pattern,
+            COUNT: 1000, // Scan in batches of 1000
+          }),
+          'scan',
+        );
 
         cursor = result.cursor;
         keys.push(...result.keys);
@@ -287,12 +290,12 @@ export class RedisStrategy implements CacheStrategy {
    */
   async deleteMany(keys: string[]): Promise<number> {
     if (keys.length === 0) return 0;
-    
+
     await this.ensureConnected();
 
     try {
       // Redis DEL command accepts multiple keys
-      const result = await this.client.del(keys);
+      const result = await this.withTimeout(this.client.del(keys), 'deleteMany');
       return result; // Returns number of keys deleted
     } catch (error) {
       console.error(`[AppKit] Redis deleteMany error:`, (error as Error).message);
@@ -309,6 +312,32 @@ export class RedisStrategy implements CacheStrategy {
     if (!this.connected) {
       await this.connect();
     }
+  }
+
+  /**
+   * Enforces config.redis.commandTimeout on each Redis command. node-redis v4
+   * has no client-level command timeout, so we race the command against a
+   * setTimeout. If the command wins, its timer is unref'd/cleared.
+   */
+  private withTimeout(op: Promise<any>, label: string): Promise<any> {
+    const ms = this.config.redis?.commandTimeout;
+    if (!ms || ms <= 0) return op;
+
+    return new Promise<any>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Redis ${label} timed out after ${ms}ms`));
+      }, ms);
+      op.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      );
+    });
   }
 
   /**

@@ -15,7 +15,7 @@ const config = configClass.get();
 
 // ── Read string config (with default) ───────────────────────────────
 const apiHost = config.get('api.host', 'localhost');
-const dbUrl = config.get('database.url');                  // throws if not set
+const dbUrl = config.getRequired('database.url');          // throws if not set
 
 // ── Read typed config ───────────────────────────────────────────────
 // config.get() returns the value as-is. Cast to number/boolean yourself.
@@ -35,11 +35,11 @@ if (configClass.isProduction()) {
 // ── Validate required env vars at startup ───────────────────────────
 // Call this once in your server bootstrap. Throws with a clear error message
 // listing every missing variable.
-config.validateRequired([
-  'BLOOM_AUTH_SECRET',
-  'DATABASE_URL',
-  'BLOOM_SECURITY_CSRF_SECRET',
-  'BLOOM_SECURITY_ENCRYPTION_KEY',
+// NOTE: Only app-level config paths work here (BLOOM_* framework vars are
+// not parsed into the config object — check them via process.env if needed).
+configClass.validateRequired([
+  'database.url',
+  'api.key',
 ]);
 
 export { config, apiHost, dbUrl, port, debugMode };

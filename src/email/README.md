@@ -450,23 +450,26 @@ async function sendEmailWithContext(emailData) {
 import { emailClass } from '@bloomneo/appkit/email';
 
 async function startApp() {
-  try {
-    // Validate email configuration at startup
-    emailClass.validateConfig();
+  // validateConfig() RETURNS a report — it does not throw.
+  // Inspect `errors` yourself and decide whether to proceed.
+  const report = emailClass.validateConfig();
 
-    const strategy = emailClass.getStrategy();
-    console.log(`📧 Email configured with ${strategy} strategy`);
-
-    // Start your app
-    app.listen(3000, () => {
-      console.log('🚀 Server started on port 3000');
-    });
-  } catch (error) {
-    console.error('❌ Startup validation failed:', error.message);
+  if (!report.valid) {
+    console.error('❌ Email configuration errors:', report.errors);
     process.exit(1);
   }
+
+  console.log(`📧 Email configured with ${report.strategy} strategy`);
+
+  app.listen(3000, () => {
+    console.log('🚀 Server started on port 3000');
+  });
 }
 ```
+
+> 🧩 **`validateConfig()` vs `validateProduction()`.**
+> - `validateConfig()` → returns `{ valid, strategy, warnings, errors, ready }`. Never throws. Use for graceful startup checks.
+> - `validateProduction()` → throws on missing provider in production. Use at boot for fail-fast deploys.
 
 ### **Production Startup Validation**
 
@@ -757,3 +760,45 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 <p align="center">
   Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 73/100 — 🟡 Solid**
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> No anti-pattern caps applied. All 14 class + instance methods documented correctly. Examples are copy-paste safe.
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **9** | All 14 methods (`get`, `send`, `sendText`, `sendHtml`, `sendTemplate`, `sendBatch`, `disconnect`, `getStrategy`, `getConfig`, `clear`, `reset`, `hasResend`, `hasSmtp`, `hasProvider`) documented correctly. No hallucinated names. |
+| 2 | Doc consistency | **8** | README, examples, and quick-start all agree. Minor gap: testing section uses `emailClass.reset()` before calling class-level `emailClass.send()` — valid but pattern switch could confuse. |
+| 3 | Runtime verification | **7** | Testing section covers basic `send`, `reset`, and `clear`. Missing lifecycle methods (`shutdown`, `validateProduction`, `getHealthStatus`). |
+| 4 | Type safety | **7** | `EmailData` and `EmailResult` types exported and shown. `sendTemplate` data is untyped `any`. |
+| 5 | Discoverability | **7** | Clear import, clean hero. No pointer to AGENTS.md or examples at top. |
+| 6 | Example completeness | **6** | Covers `send`, `sendText`, `sendTemplate`, `sendBatch`, `hasProvider`, `getStrategy`, `getConfig`. Missing: `shutdown`, `validateProduction`, `getHealthStatus`, `validateConfig`. |
+| 7 | Composability | **7** | `examples/email.ts` shows email + error module composition. |
+| 8 | Educational errors | **6** | Generic errors emitted internally; no fix suggestions. |
+| 9 | Convention enforcement | **8** | Consistent `emailClass.get()` + `.send()` pattern throughout. |
+| 10 | Drift prevention | **5** | No CI drift check. |
+| 11 | Reading order | **4** | No "See also: AGENTS.md" pointer at README top. |
+| **12** | **Simplicity** | **8** | Auto-strategy selection hides complexity well. |
+| **13** | **Clarity** | **8** | `send`, `sendText`, `sendHtml`, `sendTemplate`, `sendBatch` — all unambiguous. |
+| **14** | **Unambiguity** | **7** | Console strategy in dev vs real-send in prod is documented in common mistakes. |
+| **15** | **Learning curve** | **8** | One class, two lines to send email. Excellent entry barrier. |
+
+### Weighted (v1.1)
+
+```
+(9×.12)+(8×.08)+(7×.09)+(7×.06)+(7×.06)+(6×.08)+(7×.06)+(6×.05)+(8×.05)+(5×.04)+(4×.03)
++(8×.09)+(8×.09)+(7×.05)+(8×.05) = 7.30 → 73/100
+No cap applied.
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D6 → 9**: Add `shutdown`, `validateProduction`, `getHealthStatus` to examples
+2. **D11 → 8**: Add "See also: AGENTS.md | examples/email.ts" at README top
+3. **D10 → 9**: Add CI drift check
+4. **D3 → 9**: Expand testing section to cover lifecycle methods

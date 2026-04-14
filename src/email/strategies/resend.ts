@@ -11,6 +11,8 @@
 import type { EmailStrategy, EmailData, EmailResult, EmailAddress, EmailAttachment } from '../email.js';
 import type { EmailConfig } from '../defaults.js';
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
+
 /**
  * Resend email strategy with modern API and reliability features
  */
@@ -32,7 +34,9 @@ export class ResendStrategy implements EmailStrategy {
     this.timeout = config.resend!.timeout;
 
     if (!this.apiKey) {
-      throw new Error('Resend API key is required. Set RESEND_API_KEY environment variable.');
+      throw new Error(
+        `[@bloomneo/appkit/email] Resend API key is required. Set RESEND_API_KEY environment variable. See: ${DOCS_URL}#resend-recommended`
+      );
     }
   }
 
@@ -58,7 +62,7 @@ export class ResendStrategy implements EmailStrategy {
       const errorMessage = this.parseResendError(error);
       
       if (this.config.environment.isDevelopment) {
-        console.error(`[AppKit] Resend error:`, errorMessage);
+        console.error(`[@bloomneo/appkit/email] Resend error:`, errorMessage);
       }
 
       return {
@@ -208,7 +212,7 @@ export class ResendStrategy implements EmailStrategy {
         if (attempt < maxRetries) {
           const delay = 1000 * Math.pow(2, attempt - 1); // Exponential backoff
           console.warn(
-            `[AppKit] Resend attempt ${attempt} failed, retrying in ${delay}ms:`,
+            `[@bloomneo/appkit/email] Resend attempt ${attempt} failed, retrying in ${delay}ms:`,
             error.message
           );
           await this.sleep(delay);
@@ -237,7 +241,9 @@ export class ResendStrategy implements EmailStrategy {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({})) as any;
-      throw new Error(`Resend API error (${response.status}): ${errorData.message || response.statusText}`);
+      throw new Error(
+        `[@bloomneo/appkit/email] Resend API error (${response.status}): ${errorData.message || response.statusText}`
+      );
     }
 
     return await response.json();
@@ -262,7 +268,7 @@ export class ResendStrategy implements EmailStrategy {
       clearTimeout(timeoutId);
       
       if (error.name === 'AbortError') {
-        throw new Error(`Resend API request timeout after ${this.timeout}ms`);
+        throw new Error(`[@bloomneo/appkit/email] Resend API request timeout after ${this.timeout}ms`);
       }
       
       throw error;

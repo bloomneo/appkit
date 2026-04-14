@@ -101,10 +101,13 @@ describe('cache.set() and cache.get()', () => {
     expect(await cache.get('arr')).toEqual([1, 2, 3]);
   });
 
-  it('throws CacheError on key with colon (reserved for namespacing)', async () => {
+  it('allows the canonical Redis colon idiom in keys (user:123, session:abc)', async () => {
     const cache = cacheClass.get('test');
-    await expect(cache.set('bad:key', 'value', 60)).rejects.toThrow(CacheError);
-    await expect(cache.set('bad:key', 'value', 60)).rejects.toThrow(/colon/i);
+    await cache.set('user:123', { name: 'Alice' }, 60);
+    expect(await cache.get('user:123')).toEqual({ name: 'Alice' });
+    // Delete round-trips too — colons are not special on the consumer side.
+    await cache.delete('user:123');
+    expect(await cache.get('user:123')).toBeNull();
   });
 
   it('throws CacheError on key with newline', async () => {
@@ -316,7 +319,7 @@ describe('CacheError', () => {
   it('key validation throws CacheError (verifies caller can instanceof-check)', async () => {
     const cache = cacheClass.get('test');
     try {
-      await cache.get('bad:key');
+      await cache.get('bad\nkey');
       expect.fail('should have thrown');
     } catch (err) {
       expect(err instanceof CacheError).toBe(true);

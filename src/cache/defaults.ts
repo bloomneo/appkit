@@ -2,11 +2,13 @@
  * Smart defaults and environment validation for caching
  * @module @bloomneo/appkit/cache
  * @file src/cache/defaults.ts
- * 
+ *
  * @llm-rule WHEN: App startup - need to configure cache behavior and connection strategy
  * @llm-rule AVOID: Calling multiple times - expensive environment parsing, use lazy loading in get()
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
+
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/cache/README.md';
 
 export interface RedisConfig {
   url: string;
@@ -113,9 +115,9 @@ function detectCacheStrategy(): 'redis' | 'memory' {
 
   if (process.env.NODE_ENV === 'production') {
     console.warn(
-      '[Bloomneo AppKit] No REDIS_URL found in production. ' +
+      '[@bloomneo/appkit/cache] No REDIS_URL found in production. ' +
       'Using memory cache which will not persist across server restarts. ' +
-      'Set REDIS_URL for production caching.'
+      `Set REDIS_URL for production caching. See: ${DOCS_URL}#production-configuration`
     );
   }
 
@@ -132,14 +134,16 @@ function validateEnvironment(): void {
   // Validate Redis URL if provided
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl && !isValidRedisUrl(redisUrl)) {
-    throw new Error(`Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://`);
+    throw new Error(
+      `[@bloomneo/appkit/cache] Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://. See: ${DOCS_URL}#environment-variables`
+    );
   }
 
   // Validate cache strategy if explicitly set
   const strategy = process.env.BLOOM_CACHE_STRATEGY;
   if (strategy && !['redis', 'memory'].includes(strategy.toLowerCase())) {
     throw new Error(
-      `Invalid BLOOM_CACHE_STRATEGY: "${strategy}". Must be "redis" or "memory"`
+      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_STRATEGY: "${strategy}". Must be "redis" or "memory". See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -157,7 +161,7 @@ function validateEnvironment(): void {
   const keyPrefix = process.env.BLOOM_CACHE_PREFIX;
   if (keyPrefix && !/^[a-zA-Z0-9_-]+$/.test(keyPrefix)) {
     throw new Error(
-      `Invalid BLOOM_CACHE_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens`
+      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -165,27 +169,23 @@ function validateEnvironment(): void {
   const namespace = process.env.BLOOM_CACHE_NAMESPACE;
   if (namespace && !/^[a-zA-Z0-9_-]+$/.test(namespace)) {
     throw new Error(
-      `Invalid BLOOM_CACHE_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens`
+      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`
     );
   }
 
-  // Production-specific validations
+  // Production-specific warnings
   const nodeEnv = process.env.NODE_ENV;
-  if (nodeEnv === 'production') {
-    if (!redisUrl) {
-      console.warn(
-        '[Bloomneo AppKit] Production environment detected without REDIS_URL. ' +
-        'Memory cache will not persist across server restarts. ' +
-        'Consider setting REDIS_URL for production deployments.'
-      );
-    }
+  if (nodeEnv === 'production' && !redisUrl) {
+    console.warn(
+      '[@bloomneo/appkit/cache] Production environment detected without REDIS_URL. ' +
+      'Memory cache will not persist across server restarts. ' +
+      `Consider setting REDIS_URL for production deployments. See: ${DOCS_URL}#production-configuration`
+    );
   }
 
-  // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
-      `Expected: development, production, test, or staging`
+      `[@bloomneo/appkit/cache] Unusual NODE_ENV: "${nodeEnv}". Expected: development, production, test, or staging.`
     );
   }
 }
@@ -216,58 +216,8 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
     throw new Error(
-      `Invalid ${name}: "${value}". Must be a number between ${min} and ${max}`
+      `[@bloomneo/appkit/cache] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`
     );
   }
 }
 
-/**
- * Gets cache configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging cache configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive connection details - this only shows safe info
- */
-export function getConfigSummary(): {
-  strategy: string;
-  keyPrefix: string;
-  namespace: string;
-  defaultTTL: number;
-  redisConnected: boolean;
-  environment: string;
-} {
-  const config = getSmartDefaults();
-  
-  return {
-    strategy: config.strategy,
-    keyPrefix: config.keyPrefix,
-    namespace: config.namespace,
-    defaultTTL: config.defaultTTL,
-    redisConnected: config.strategy === 'redis' && !!config.redis?.url,
-    environment: config.environment.nodeEnv,
-  };
-}
-
-/**
- * Validates that required cache configuration is present for production
- * @llm-rule WHEN: App startup validation for production deployments
- * @llm-rule AVOID: Skipping validation - missing cache config causes runtime issues
- */
-export function validateProductionRequirements(): void {
-  const config = getSmartDefaults();
-  
-  if (config.environment.isProduction) {
-    if (config.strategy === 'memory') {
-      console.warn(
-        '[Bloomneo AppKit] Using memory cache in production. ' +
-        'Data will not persist across server restarts. ' +
-        'Set REDIS_URL for persistent caching.'
-      );
-    }
-    
-    if (config.strategy === 'redis' && !config.redis?.url) {
-      throw new Error(
-        'Redis strategy selected but REDIS_URL not configured. ' +
-        'Set REDIS_URL environment variable for Redis caching.'
-      );
-    }
-  }
-}

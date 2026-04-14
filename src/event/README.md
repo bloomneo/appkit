@@ -727,3 +727,45 @@ MIT © [Bloomneo](https://github.com/bloomneo)
   <strong>Built with ❤️ by the <a href="https://github.com/bloomneo">Bloomneo Team</a></strong><br>
   Because event-driven architecture should be simple, not rocket science.
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 73/100 — 🟡 Solid**
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> No anti-pattern caps applied. All class and instance methods correct. `validateConfig()` returns an object (not void) — README call sites ignore the return value, which is functional but misses useful result.
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **8** | All 10 instance methods (`emit`, `on`, `once`, `off`, `emitBatch`, `history`, `getListeners`, `disconnect`, `getStrategy`, `getConfig`) and 13 class methods correct. Minor: `validateConfig()` returns `{ valid, strategy, warnings, errors, ready }` but README shows it called without using the result — callers miss the validation outcome. |
+| 2 | Doc consistency | **8** | README and `examples/event.ts` align. Wildcard handler signature `(eventName, data)` correctly shown. |
+| 3 | Runtime verification | **8** | Testing section covers `on`, `emit`, `clear`. Cleanup via `afterEach(() => eventClass.clear())` is correct — Jest awaits the returned Promise. |
+| 4 | Type safety | **7** | `Event`, `EventHandler`, `WildcardHandler`, `BatchEvent`, `EventHistoryEntry` all exported and shown. |
+| 5 | Discoverability | **7** | Clean hero. No AGENTS.md pointer at top. |
+| 6 | Example completeness | **6** | Covers `emit`, `on`, `once`, `off`, `emitBatch`, `history`, `getListeners`, `getStrategy`, `hasRedis`. Missing: `broadcast`, `validateProduction`, `getHealthStatus`, `shutdown`. |
+| 7 | Composability | **7** | `examples/event.ts` shows event + logger + error composition. |
+| 8 | Educational errors | **6** | Internal transport errors not surfaced with actionable messages. |
+| 9 | Convention enforcement | **8** | Namespace pattern (`eventClass.get('users')`) shown consistently. |
+| 10 | Drift prevention | **5** | No CI drift check. |
+| 11 | Reading order | **4** | No "See also" pointer at top. |
+| **12** | **Simplicity** | **8** | Namespace isolation + strategy auto-detection = clean mental model. |
+| **13** | **Clarity** | **8** | `emit`, `on`, `once`, `off`, `emitBatch` — all self-evident. |
+| **14** | **Unambiguity** | **7** | Wildcard handler `(eventName, data)` vs regular `(data)` distinction is documented. |
+| **15** | **Learning curve** | **8** | Two lines to get distributed events. Very low barrier. |
+
+### Weighted (v1.1)
+
+```
+(8×.12)+(8×.08)+(8×.09)+(7×.06)+(7×.06)+(6×.08)+(7×.06)+(6×.05)+(8×.05)+(5×.04)+(4×.03)
++(8×.09)+(8×.09)+(7×.05)+(8×.05) = 7.27 → 73/100
+No cap applied.
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D1 → 9**: Show `validateConfig()` return value used: `const { valid, warnings } = eventClass.validateConfig()`
+2. **D6 → 9**: Add `broadcast`, `getHealthStatus`, `shutdown` to API reference examples
+3. **D11 → 8**: Add "See also: AGENTS.md | examples/event.ts" at README top
+4. **D10 → 9**: Add CI drift check

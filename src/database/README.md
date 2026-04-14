@@ -49,7 +49,7 @@ npm install @bloomneo/appkit @prisma/client mongoose
 ### Single Database (Day 1)
 
 ```typescript
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 // PostgreSQL/MySQL with Prisma
 const database = await databaseClass.get();
@@ -330,7 +330,7 @@ async function getAllOrgPosts(orgId) {
 ### **Multi-Tenant API Endpoints**
 
 ```typescript
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 // User endpoints - auto-filtered by tenant
 app.get('/api/users', async (req, res) => {
@@ -348,7 +348,7 @@ app.post('/api/users', async (req, res) => {
 });
 
 // Admin endpoints - see all tenant data
-app.get('/api/admin/users', requireRole('admin'), async (req, res) => {
+app.get('/api/admin/users', requireUserRoles(['admin']), async (req, res) => {
   const dbTenants = await databaseClass.getTenants();
   const users = await dbTenants.user.findMany({
     include: { _count: { select: { posts: true } } },
@@ -357,7 +357,7 @@ app.get('/api/admin/users', requireRole('admin'), async (req, res) => {
 });
 
 // Organization management
-app.get('/api/orgs/:orgId/users', requireRole('admin'), async (req, res) => {
+app.get('/api/orgs/:orgId/users', requireUserRoles(['admin']), async (req, res) => {
   const { orgId } = req.params;
   const orgdatabase = await databaseClass.org(orgId).get();
   const users = await orgdatabase.user.findMany();
@@ -451,7 +451,7 @@ const specificOrgdatabase = await databaseClass.org('specific-org').get();
 
 ```typescript
 import express from 'express';
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 const app = express();
 
@@ -474,7 +474,7 @@ app.get('/admin/users', requireAdmin, async (req, res) => {
 
 ```typescript
 import Fastify from 'fastify';
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 const fastify = Fastify();
 
@@ -499,7 +499,7 @@ fastify.get(
 
 ```typescript
 // pages/api/users.ts
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 export default async function handler(req, res) {
   const database = await databaseClass.get();
@@ -514,7 +514,7 @@ export default async function handler(req, res) {
 }
 
 // pages/api/admin/users.ts
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 export default async function handler(req, res) {
   const dbTenants = await databaseClass.getTenants();
@@ -598,7 +598,7 @@ const prisma = new PrismaClient();
 const users = await prisma.user.findMany();
 
 // After: AppKit Database
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 const database = await databaseClass.get();
 const users = await database.user.findMany();
 ```
@@ -771,7 +771,7 @@ const users = await database.User.find(); // Clear intent (Mongoose)
 
 ```typescript
 // Check configuration
-import { database } from '@bloomneo/appkit/database';
+import { databaseClass } from '@bloomneo/appkit/database';
 
 const health = await databaseClass.health();
 if (!health.healthy) {
@@ -816,3 +816,45 @@ MIT © [Bloomneo](https://github.com/bloomneo)
   <a href="https://discord.gg/bloomneo">💬 Join our Discord</a> •
   <a href="https://twitter.com/bloomneo">🐦 Follow on Twitter</a>
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 68/100 — 🟡 Solid** *(no cap)*
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **9** | All 9 public methods verified in `database.test.ts`. Fixed: 8 README code blocks had `import { database }` (wrong — named export is `databaseClass`). Also fixed `requireRole` → `requireUserRoles`. |
+| 2 | Doc consistency | **8** | After import-name fix, README, examples, cookbook, AGENTS.md all use `databaseClass`. Minor gap: README doesn't pointer to examples or AGENTS.md. |
+| 3 | Runtime verification | **5** | `database.test.ts` drift-checks all 9 methods exist but only verifies `org()` returns an object. No behavior tests (no real DB in CI). |
+| 4 | Type safety | **5** | `req: any`, `options: any`, `DatabaseClientUnion` has `[key: string]: any`. Return type is a union — consumer can't know if they get Prisma or Mongoose without inspecting at runtime. |
+| 5 | Discoverability | **7** | README hero shows canonical import and pattern. No explicit pointer to AGENTS.md, llms.txt, or `/examples`. |
+| 6 | Example completeness | **5** | `examples/database.ts` covers `get`, `getTenants`, `org().get`, `org().getTenants`. Missing: `health`, `list`, `exists`, `create`, `delete`, `disconnect`. |
+| 7 | Composability | **8** | `cookbook/multi-tenant-saas.ts` (auth+db+cache+security) and `cookbook/auth-protected-crud.ts` (auth+db+error+logger) both compose database with other modules correctly. |
+| 8 | Educational errors | **7** | `DATABASE_URL required. Set DATABASE_URL` ✅. `No database URL found for organization '${orgId}'` ✅. `Tenant deletion requires explicit confirmation` ✅. Generic `Failed to get tenant IDs` without context is the weakest spot. |
+| 9 | Convention enforcement | **8** | One canonical pattern per task: `get()` for user data, `getTenants()` for admin, `org().get()` for per-org. Variable naming convention (`database`, `dbTenants`, `acmedatabase`, `acmeDbTenants`) is consistently documented. |
+| 10 | Drift prevention | **5** | Drift-check test exists; runs under vitest. No CI gate enforcing it. |
+| 11 | Reading order | **4** | README has no pointers to AGENTS.md, llms.txt, examples, or cookbook from the top section. |
+| **12** | **Simplicity** | **7** | 9 methods. 80% case: one call (`databaseClass.get()`). Progressive scaling story is well-told. Tenant management methods are secondary concerns. |
+| **13** | **Clarity** | **9** | All method names are self-documenting: `get`, `getTenants`, `org`, `health`, `list`, `exists`, `create`, `delete`, `disconnect`. |
+| **14** | **Unambiguity** | **5** | Return type is `PrismaClient \| MongooseConnection` — caller doesn't know which until runtime. `create()` name implies registration but is a format-validation no-op (comment is correct but behaviour surprise remains). |
+| **15** | **Learning curve** | **6** | Quick-start is clear. The mental model of single → multi-tenant → multi-org is well-explained with code. Learning curve is from the Prisma vs Mongoose split in the return type. |
+
+### Weighted (v1.1)
+
+```
+(9×.12)+(8×.08)+(5×.09)+(5×.06)+(7×.06)+(5×.08)+(8×.06)+(7×.05)+(8×.05)+(5×.04)+(4×.03)
++(7×.09)+(9×.09)+(5×.05)+(6×.05) = 6.83 → 68/100
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D6 Example completeness → 9**: Add `health()`, `list()`, `exists()`, `create()`, `delete()`, `disconnect()` to `examples/database.ts` (+6 methods × 0.08 weight)
+2. **D3 Runtime verification → 8**: Add mock-adapter behavior tests for tenant filtering logic
+3. **D4 Type safety → 8**: Tighten `delete(options: { confirm: boolean })`, narrow return type with adapter-aware generics
+4. **D11 Reading order → 8**: Add "See also: [AGENTS.md](../../AGENTS.md) | [examples/database.ts](../../examples/database.ts)" to the top section
+5. **D14 Unambiguity → 8**: Document clearly whether `get()` returns Prisma or Mongoose; expose `.adapter` property on the returned client
+
+**Realistic ceiling:** ~82/100 with all 5 fixes. Beyond that requires typed adapter generics at the call site.

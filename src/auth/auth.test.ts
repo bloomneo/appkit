@@ -179,11 +179,11 @@ describe('Password hashing', () => {
   });
 });
 
-describe('user(req) — null-safe extraction', () => {
+describe('getUser(req) — null-safe extraction', () => {
   const auth = authClass.get();
 
   it('returns null for an empty request', () => {
-    const user = auth.user({ headers: {}, method: 'GET' } as any);
+    const user = auth.getUser({ headers: {}, method: 'GET' } as any);
     expect(user).toBeNull();
   });
 
@@ -193,7 +193,7 @@ describe('user(req) — null-safe extraction', () => {
       method: 'GET',
       user: { userId: 7, role: 'user', level: 'basic', type: 'login' },
     } as any;
-    const user = auth.user(fakeReq);
+    const user = auth.getUser(fakeReq);
     expect(user).not.toBeNull();
     expect(user!.userId).toBe(7);
   });
@@ -204,9 +204,15 @@ describe('user(req) — null-safe extraction', () => {
       method: 'GET',
       token: { keyId: 'svc', role: 'admin', level: 'system', type: 'api_key' },
     } as any;
-    const user = auth.user(fakeReq);
+    const user = auth.getUser(fakeReq);
     expect(user).not.toBeNull();
     expect(user!.keyId).toBe('svc');
+  });
+
+  it('bare-noun user() method is renamed — auth.user does NOT exist', () => {
+    // NAMING.md bans bare-noun methods. Keep this assertion so docs and
+    // consumers cannot silently revert to the old name.
+    expect((auth as any).user).toBeUndefined();
   });
 });
 
@@ -235,7 +241,7 @@ describe('hasRole — inheritance', () => {
   });
 });
 
-describe('can — permission inheritance + replacement', () => {
+describe('hasPermission — permission inheritance + replacement', () => {
   const auth = authClass.get();
 
   // Build a JwtPayload by signing + verifying a token. Pass explicit
@@ -264,14 +270,14 @@ describe('can — permission inheritance + replacement', () => {
 
   it('returns true when user has the exact explicit permission', () => {
     const user = makeUserWithExplicit(['edit:tenant']);
-    expect(auth.can(user, 'edit:tenant')).toBe(true);
+    expect(auth.hasPermission(user, 'edit:tenant')).toBe(true);
   });
 
   it('returns true when user has manage:scope (inherits all actions for that scope)', () => {
     const user = makeUserWithExplicit(['manage:tenant']);
-    expect(auth.can(user, 'edit:tenant')).toBe(true);
-    expect(auth.can(user, 'view:tenant')).toBe(true);
-    expect(auth.can(user, 'delete:tenant')).toBe(true);
+    expect(auth.hasPermission(user, 'edit:tenant')).toBe(true);
+    expect(auth.hasPermission(user, 'view:tenant')).toBe(true);
+    expect(auth.hasPermission(user, 'delete:tenant')).toBe(true);
   });
 
   it('NO upward inheritance: edit:scope does NOT grant manage:scope', () => {
@@ -279,7 +285,7 @@ describe('can — permission inheritance + replacement', () => {
     // Explicit permissions REPLACE role defaults, so admin.tenant's
     // default manage:tenant is NOT consulted. Consumer wanted edit-only,
     // they get edit-only.
-    expect(auth.can(user, 'manage:tenant')).toBe(false);
+    expect(auth.hasPermission(user, 'manage:tenant')).toBe(false);
   });
 
   it('explicit permissions REPLACE role defaults (you CAN downgrade a user)', () => {
@@ -288,17 +294,17 @@ describe('can — permission inheritance + replacement', () => {
     // But because we passed explicit permissions=['view:own'], that array
     // becomes the COMPLETE set — defaults are not consulted.
     const user = makeUserWithExplicit(['view:own']);
-    expect(auth.can(user, 'view:own')).toBe(true);
-    expect(auth.can(user, 'manage:tenant')).toBe(false);
-    expect(auth.can(user, 'edit:tenant')).toBe(false);
+    expect(auth.hasPermission(user, 'view:own')).toBe(true);
+    expect(auth.hasPermission(user, 'manage:tenant')).toBe(false);
+    expect(auth.hasPermission(user, 'edit:tenant')).toBe(false);
   });
 
   it('explicit empty permissions array completely strips the user (zero permissions)', () => {
     // Edge case: explicit `[]` is still an explicit array, so it replaces
     // defaults. The user has no permissions despite their admin.tenant role.
     const user = makeUserWithExplicit([]);
-    expect(auth.can(user, 'view:own')).toBe(false);
-    expect(auth.can(user, 'manage:tenant')).toBe(false);
+    expect(auth.hasPermission(user, 'view:own')).toBe(false);
+    expect(auth.hasPermission(user, 'manage:tenant')).toBe(false);
   });
 
   it('NO explicit permissions falls back to role defaults', () => {
@@ -306,19 +312,19 @@ describe('can — permission inheritance + replacement', () => {
     // defaults from the configured RolePermissionConfig apply.
     // admin.tenant's defaults include manage:tenant.
     const user = makeUserWithDefaults();
-    expect(auth.can(user, 'manage:tenant')).toBe(true);
-    expect(auth.can(user, 'edit:tenant')).toBe(true);  // via manage inheritance
+    expect(auth.hasPermission(user, 'manage:tenant')).toBe(true);
+    expect(auth.hasPermission(user, 'edit:tenant')).toBe(true);  // via manage inheritance
   });
 
   it('returns false for null user or empty permission', () => {
     const user = makeUserWithExplicit(['edit:tenant']);
-    expect(auth.can(null as any, 'edit:tenant')).toBe(false);
-    expect(auth.can(user, '')).toBe(false);
+    expect(auth.hasPermission(null as any, 'edit:tenant')).toBe(false);
+    expect(auth.hasPermission(user, '')).toBe(false);
   });
 
   it('throws on malformed permission string (no colon)', () => {
     const user = makeUserWithExplicit(['edit:tenant']);
-    expect(() => auth.can(user, 'notvalid')).toThrow(/Invalid permission/);
+    expect(() => auth.hasPermission(user, 'notvalid')).toThrow(/Invalid permission/);
   });
 });
 
@@ -376,9 +382,9 @@ describe('Public API surface — drift check', () => {
     'hashPassword',
     'comparePassword',
     // User extraction + authorization checks
-    'user',
+    'getUser',
     'hasRole',
-    'can',
+    'hasPermission',
     // Express middleware factories
     'requireLoginToken',
     'requireUserRoles',
@@ -405,7 +411,9 @@ describe('Public API surface — drift check', () => {
   // `auth.signToken(` — that's the actual contract we care about.
   const HALLUCINATED_METHODS = [
     'requireLogin', // never existed — real name is requireLoginToken
-    'requireRole', // never existed — real name is requireUserRoles
+    'requireRole',  // never existed — real name is requireUserRoles
+    'user',         // renamed pre-v1 to getUser() per NAMING.md (no bare-noun methods)
+    'can',          // renamed pre-v1 to hasPermission() per NAMING.md (has/is/can are prefixes)
   ];
 
   const auth = authClass.get();

@@ -101,8 +101,8 @@ import Fastify from 'fastify';
 const fastify = Fastify();
 const error = errorClass.get();
 
-fastify.setErrorHandler((error, request, reply) => {
-  const appError = error.statusCode ? error : error.serverError(error.message);
+fastify.setErrorHandler((err, request, reply) => {
+  const appError = err.statusCode ? err : error.serverError(err.message);
   reply.status(appError.statusCode).send({
     error: appError.type,
     message: appError.message,
@@ -127,10 +127,10 @@ const error = errorClass.get();
 app.use(async (ctx, next) => {
   try {
     await next();
-  } catch (error) {
-    const appError = error.statusCode
-      ? error
-      : error.serverError(error.message);
+  } catch (err) {
+    const appError = (err as any).statusCode
+      ? (err as any)
+      : error.serverError((err as Error).message);
     ctx.status = appError.statusCode;
     ctx.body = {
       error: appError.type,
@@ -366,7 +366,7 @@ SESSION_SECRET=your-session-secret
 
 The error module follows **clear separation**:
 
-- **VOILA*ERROR*\*** - Framework behavior (stack traces, logging)
+- **BLOOM_ERROR_\*** - Framework behavior (stack traces, logging)
 - **Everything else** - Your application configuration
 - **No interference** - Your app config remains untouched
 
@@ -423,16 +423,16 @@ const fastify = Fastify({ logger: true });
 const error = errorClass.get();
 
 // Global error handler
-fastify.setErrorHandler((error, request, reply) => {
-  const appError = error.statusCode ? error : error.serverError(error.message);
+fastify.setErrorHandler((err, request, reply) => {
+  const appError = (err as any).statusCode ? err : error.serverError(err.message);
 
   // Log in production
   if (error.getEnvironmentInfo().isProduction) {
-    fastify.log.error(error);
+    fastify.log.error(err);
   }
 
-  reply.status(appError.statusCode).send({
-    error: appError.type,
+  reply.status((appError as any).statusCode).send({
+    error: (appError as any).type,
     message: appError.message,
   });
 });
@@ -524,24 +524,45 @@ error.isServerError(error);  // 5xx status codes
 
 ### **Utility Methods**
 
+> 🧩 **Two surfaces — know which is which.** Every error-creation method, plus
+> `handleErrors`/`asyncRoute`/`isClientError`/`isServerError`, is mirrored as an
+> `errorClass.*` shortcut for convenience. Two methods live **only on the
+> instance** and must be called via `errorClass.get().X()`.
+
+**Instance-only (not on `errorClass`):**
+
 ```typescript
-// Environment info
-error.getEnvironmentInfo(); // Current environment details
+const error = errorClass.get();
 
-// Configuration access
-error.getConfig(); // Current error configuration
+error.getEnvironmentInfo(); // { isDevelopment, isProduction, nodeEnv }
+error.getConfig();          // Current ErrorConfig
+```
 
-// Shortcut methods (direct usage without get())
-error.badRequest('Message');
-error.unauthorized('Message');
-error.forbidden('Message');
-error.notFound('Message');
-error.conflict('Message');
-error.serverError('Message');
+**Class-level shortcuts (skip `get()`):**
 
-// Direct middleware usage
-error.handleErrors();
-error.asyncRoute(handler);
+```typescript
+import { errorClass } from '@bloomneo/appkit/error';
+
+// Error creation — all 9 semantic methods
+errorClass.badRequest('Message');
+errorClass.unauthorized('Message');
+errorClass.forbidden('Message');
+errorClass.notFound('Message');
+errorClass.conflict('Message');
+errorClass.tooMany('Message');
+errorClass.serverError('Message');
+errorClass.internal('Message'); // alias for serverError
+errorClass.createError(503, 'Maintenance', 'MAINTENANCE');
+
+// Middleware + predicates
+errorClass.handleErrors();
+errorClass.asyncRoute(handler);
+errorClass.isClientError(err);
+errorClass.isServerError(err);
+
+// Lifecycle
+errorClass.reset({ middleware: { showStack: false, logErrors: false } });
+errorClass.clearCache(); // null out the global — next get() rebuilds from env
 ```
 
 ## 💡 Simple Usage Patterns
@@ -658,3 +679,47 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 <p align="center">
   Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 60/100 — 🟡 Solid** *(uncapped: 75/100 — cap applied for runtime bug in Fastify example)*
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> ⚠️ **Cap reason**: The Fastify and Koa example code blocks in the README shadowed the outer `error` variable with the caught error parameter, making `error.serverError(error.message)` call `.serverError()` on a plain Error object (which doesn't have that method) — a runtime TypeError. This is the "doc file contradicts examples file" anti-pattern → cap 60. **Fixed in this version.**
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **7** | All 15 methods exist and are tested. Fixed: 3 code blocks (2× Fastify, 1× Koa) used `error` as both the class instance and the caught error parameter — `error.serverError(error.message)` would TypeError at runtime. Also fixed stale `VOILA_ERROR_*` brand string. |
+| 2 | Doc consistency | **8** | README, examples, AGENTS.md, and tests all use `errorClass.get()` consistently. The dual invocation paths (instance methods + `errorClass` shortcuts) are clearly documented. |
+| 3 | Runtime verification | **9** | Excellent test suite: all 8 semantic errors tested with exact `statusCode` + `type`, `handleErrors()` verified to return 4-arg function, `asyncRoute` verified, `isClientError/isServerError` tested. Drift check for all 15 instance methods. |
+| 4 | Type safety | **7** | `AppError`, `ErrorHandlerOptions`, `AsyncRouteHandler`, `ExpressErrorHandler` are all typed. Framework interfaces use `any` index signatures — acceptable for framework-agnostic design. |
+| 5 | Discoverability | **9** | README hero is 10 lines to a working setup. Import is consistent. "Must be LAST middleware" is called out repeatedly. |
+| 6 | Example completeness | **6** | `examples/error.ts` covers 6 of 15 methods. Missing from examples: `unauthorized`, `conflict`, `serverError`, `tooMany`, `internal`, `createError`, `isClientError`, `isServerError`, `getEnvironmentInfo`, `getConfig`, `reset`, `clearCache`. README compensates with inline code blocks for all cases. |
+| 7 | Composability | **7** | `cookbook/auth-protected-crud.ts` composes error + auth + database + logger. `examples/error.ts` shows error + database combo. |
+| 8 | Educational errors | **7** | The module *creates* educational errors for consumers (`badRequest`, `notFound`, etc.) — all well-named. The module itself doesn't throw many internal errors. Transport/config failures are logged generically. |
+| 9 | Convention enforcement | **8** | One canonical setup: `get()` → `asyncRoute()` → `throw error.X()` → `handleErrors()` last. `serverError` vs `internal` aliasing is the only ambiguity (documented). |
+| 10 | Drift prevention | **6** | Drift check test covers all 15 instance methods. No CI gate. |
+| 11 | Reading order | **6** | README is well-structured with clear sections. No explicit pointer to AGENTS.md or examples at top. |
+| **12** | **Simplicity** | **8** | 15 methods, but 8 are semantic errors following identical shapes. Minimum viable setup is 4 concepts: `get()`, `asyncRoute()`, `throw error.X()`, `handleErrors()`. |
+| **13** | **Clarity** | **10** | `badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `serverError`, `asyncRoute`, `handleErrors` — every name reads as an English sentence. Best clarity score of any module reviewed so far. |
+| **14** | **Unambiguity** | **7** | `serverError` and `internal` are aliases — documented but creates two valid ways to do the same thing. Otherwise every method has exactly one valid interpretation. |
+| **15** | **Learning curve** | **9** | Fastest time-to-first-working-call of any module. README hero is complete in 10 lines. Errors self-explain via semantic names. |
+
+### Weighted (v1.1)
+
+```
+(7×.12)+(8×.08)+(9×.09)+(7×.06)+(9×.06)+(6×.08)+(7×.06)+(7×.05)+(8×.05)+(6×.04)+(6×.03)
++(8×.09)+(10×.09)+(7×.05)+(9×.05) = 7.5 → 75/100
+Doc-contradiction cap: 60/100 (Fastify/Koa variable shadowing bug — now fixed)
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D6 Example completeness → 9**: Add `unauthorized`, `conflict`, `serverError`, `tooMany`, `createError`, `isClientError`, `isServerError` to `examples/error.ts`
+2. **D14 Unambiguity → 9**: Deprecate `internal()` in favour of `serverError()` — document the alias explicitly so agents pick one
+3. **D10 Drift prevention → 9**: Add CI check
+4. **D11 Reading order → 8**: Add "See also: AGENTS.md | examples/error.ts" at the top
+
+**Realistic ceiling:** ~82/100 with all 4 fixes.

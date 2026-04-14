@@ -1,5 +1,7 @@
 # Cookbook
 
+> ⚠️ **Under review — may reference outdated APIs until the module-by-module review completes.** Do not copy-paste recipes verbatim; verify each `auth.*` / `security.*` / etc. call against the current module README first.
+
 Composed multi-module recipes. Whole-pattern files showing how the 12 modules
 work together for common backend scenarios. Copy a recipe, swap the data
 source, ship.

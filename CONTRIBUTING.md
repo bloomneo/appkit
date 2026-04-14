@@ -176,6 +176,14 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `style`, `chore`
 
 ## Coding Standards
 
+### API Naming
+
+Public API names follow [`NAMING.md`](./NAMING.md). Any new public method,
+class, env var, or error type must comply with the patterns in that doc
+(`get<Thing>` for nullable extractors, `has` / `is` / `can` for booleans,
+`require<Thing>` for middleware factories, etc.). PRs that add or rename
+public API without following the policy will be asked to update.
+
 ### JavaScript Style
 
 - ES modules (ESM)

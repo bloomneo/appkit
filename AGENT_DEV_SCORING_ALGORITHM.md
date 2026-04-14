@@ -17,6 +17,12 @@ justifications, agents need short prescriptive rules and copy-pasteable patterns
 good package serves both with the same docs. Most dimensions are scored separately for
 each audience and averaged.
 
+**Naming policy:** This rubric assumes the package follows [`NAMING.md`](./NAMING.md)
+(`get<Thing>` nullable extractors, `has` / `is` / `can` booleans, `require<Thing>`
+middleware factories, no synonym drift, no bare-noun methods). Violations are
+scored against D9 (Convention enforcement) and D13 (Clarity). When naming and
+documentation disagree, the source is authoritative; the docstring is the bug.
+
 ## How to use this rubric
 
 1. Give an LLM (Claude, GPT, etc.) access to the package source tree.

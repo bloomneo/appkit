@@ -566,9 +566,9 @@ class FormHandler {
       avatar: this.processFileUpload(util.get(formData, 'avatar')),
 
       // Clean and limit tags
-      tags: utils
+      tags: util
         .unique(
-          utils
+          util
             .get(formData, 'tags', [])
             .map((tag) => tag.trim())
             .filter((tag) => !util.isEmpty(tag))
@@ -915,7 +915,7 @@ import type {
   DebounceOptions,
   FormatBytesOptions,
   SlugifyOptions,
-} from '@bloomneo/appkit/utils';
+} from '@bloomneo/appkit/util';
 
 // Strongly typed utility operations
 const util = utilClass.get();
@@ -953,3 +953,48 @@ MIT © [Bloomneo](https://github.com/bloomneo)
   <strong>Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a></strong><br>
   Because utilities should be simple, not a PhD thesis.
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 55/100 — 🟠 Usable with caveats** *(uncapped: 82/100 — cap applied for runtime ReferenceError)*
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+> ⚠️ **Cap reason**: Form Handling example used `utils.unique()` and `utils.get()` — `utils` was never defined (variable is `util`) → **ReferenceError at runtime**. Anti-pattern "example throws at runtime" → **55 max**. **Fixed in this version**: `utils.` → `util.`
+>
+> Second fix: TypeScript Support import path was `'@bloomneo/appkit/utils'` → corrected to `'@bloomneo/appkit/util'`.
+>
+> Fix in `examples/util.ts`: `util.truncate('...', 10)` → `util.truncate('...', { length: 10 })` (`truncate` requires `TruncateOptions` object, never a bare number).
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **9** | After fixes: all 12 instance methods (`get`, `isEmpty`, `slugify`, `chunk`, `debounce`, `pick`, `unique`, `clamp`, `formatBytes`, `truncate`, `sleep`, `uuid`) and 9 class methods correct. Import path fixed (`/utils` → `/util`). |
+| 2 | Doc consistency | **8** | After fixes, README and examples align. Testing section uses correct `utilClass.clearCache()`. |
+| 3 | Runtime verification | **9** | Testing section covers all 12 instance methods with expected values. Clean `clearCache()` in `beforeEach`. |
+| 4 | Type safety | **7** | 7 TypeScript option types exported (`UtilityConfig`, `GetOptions`, `ChunkOptions`, `TruncateOptions`, `DebounceOptions`, `FormatBytesOptions`, `SlugifyOptions`). Generic `get<T>()` shown. |
+| 5 | Discoverability | **8** | "The Essential 12" section is an excellent navigational anchor. No AGENTS.md pointer. |
+| 6 | Example completeness | **9** | All 12 utilities documented with examples, edge cases, and options variants. Best coverage of any module. |
+| 7 | Composability | **8** | Multiple realistic compositions shown (data processing, API service, form handling). |
+| 8 | Educational errors | **6** | Internal errors not surfaced with fix suggestions. |
+| 9 | Convention enforcement | **9** | Single `util = utilClass.get()` at module top; all methods called on it. |
+| 10 | Drift prevention | **5** | No CI drift check. |
+| 11 | Reading order | **4** | No "See also" pointer at top. |
+| **12** | **Simplicity** | **9** | 12 utilities, one import, one `get()` call. Minimum viable surface. |
+| **13** | **Clarity** | **9** | Every method name reads exactly as what it does. |
+| **14** | **Unambiguity** | **8** | `util.set()` / `util.omit()` / `util.throttle()` / `util.retry()` absence documented in examples. |
+| **15** | **Learning curve** | **9** | Lowest barrier of all modules. Each utility is self-contained. |
+
+### Weighted (v1.1)
+
+```
+(9×.12)+(8×.08)+(9×.09)+(7×.06)+(8×.06)+(9×.08)+(8×.06)+(6×.05)+(9×.05)+(5×.04)+(4×.03)
++(9×.09)+(9×.09)+(8×.05)+(9×.05) = 8.17 → 82/100
+Runtime ReferenceError cap: 55/100 (utils.unique, utils.get — now fixed)
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D1 → 10 (after fix)**: With 3 fixes applied, D1 rises to 9+ → uncapped score 82 → just below 85 threshold
+2. **D11 → 8**: Add "See also: AGENTS.md | examples/util.ts" at README top (+3 uncapped points)
+3. **D10 → 9**: Add CI drift check (+4 uncapped points) → would push to ~86/100 uncapped

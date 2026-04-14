@@ -45,6 +45,23 @@ console.log(user); // { name: 'John' }
 await cache.delete('user:123');
 ```
 
+## 🔑 Cache Key Rules
+
+> Keys are validated on every operation. Break these rules and you get a `CacheError` with `code: 'CACHE_INVALID_KEY'`.
+
+- ✅ **Colons are allowed** — the canonical Redis idiom `user:123`, `session:abc`, `products:list` works out of the box. Internal namespacing uses `${keyPrefix}:${namespace}:${key}`, so your key's colons are scoped to your namespace and cannot collide.
+- ✅ **Any ASCII letters/digits, dots, dashes, underscores, slashes** — `users/42`, `v1.orders.open`, `cart-abc`.
+- ❌ **No newlines** (`\n` or `\r`) — would break log lines and Redis protocol.
+- ❌ **Max 250 characters** — Redis's own limit is 512 MB, but 250 keeps keys indexable.
+- ❌ **Must be a non-empty string** — no `null`, `undefined`, numbers, or objects.
+
+```typescript
+await cache.set('user:123', data);       // ✅ ok
+await cache.set('v1:orders:open', data); // ✅ ok — multiple colons fine
+await cache.set('bad\nkey', data);       // ❌ throws CacheError
+await cache.set('', data);               // ❌ throws CacheError
+```
+
 ## 🌍 Environment Variables
 
 ```bash
@@ -168,12 +185,14 @@ if (!user) {
 // ❌ WRONG - No cleanup between tests
 test('should cache user', async () => {
   await cache.set('user:123', userData);
-  // Missing: await cacheClass.clear();
+  // Missing: await cacheClass.flushAll();
 });
 
 // ✅ CORRECT - Proper test cleanup
 afterEach(async () => {
-  await cacheClass.flushAll(); // flushAll() clears data; clear() disconnects instances
+  // flushAll() clears cached data between individual tests.
+  // disconnectAll() is reserved for full end-of-suite teardown.
+  await cacheClass.flushAll();
 });
 ```
 
@@ -572,8 +591,8 @@ import { cacheClass } from '@bloomneo/appkit/cache';
 
 describe('Cache Tests', () => {
   afterEach(async () => {
-    // flushAll() clears cached data. clear() disconnects all instances
-    // (use only for full teardown, not between individual tests).
+    // flushAll() clears cached data between individual tests.
+    // Use disconnectAll() only for full end-of-suite teardown.
     await cacheClass.flushAll();
   });
 
@@ -622,7 +641,7 @@ describe('Cache with Memory Strategy', () => {
   });
 
   afterEach(async () => {
-    await cacheClass.flushAll(); // clear data, keep instances alive
+    await cacheClass.flushAll(); // clear data; disconnectAll() is for full teardown
   });
 });
 ```
@@ -675,8 +694,10 @@ try {
 | `CACHE_SET_FAILED` | Strategy threw during `set` |
 | `CACHE_DELETE_FAILED` | Strategy threw during `delete` |
 | `CACHE_CLEAR_FAILED` | Strategy threw during `clear` |
-| `CACHE_INVALID_KEY` | Key is empty, too long, has colons or newlines |
+| `CACHE_INVALID_KEY` | Key is empty, too long, or contains newline characters |
 | `CACHE_INVALID_VALUE` | Value is `undefined` or not JSON-serializable |
+| `CACHE_INVALID_NAMESPACE` | Namespace is empty or contains invalid characters |
+| `CACHE_INVALID_STRATEGY` | Configured strategy is neither `redis` nor `memory` |
 | `CACHE_ERROR` | Generic fallback (use when no specific code fits) |
 
 ## 🆚 Why Not Redis directly?

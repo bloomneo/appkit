@@ -40,8 +40,8 @@ DATABASE_CREDENTIALS_USER=admin
 DATABASE_CREDENTIALS_PASSWORD=secret
 
 # Feature flags
-FEATURES_ENABLE_BETA=true
-FEATURES_MAX_UPLOADS=100
+FEATURES_BETA_ENABLED=true
+FEATURES_UPLOADS_MAX=100
 
 # API settings
 API_BASE_URL=https://api.example.com
@@ -60,15 +60,15 @@ const config = configClass.get();
 const dbHost = config.get('database.host'); // 'localhost'
 const dbPort = config.get('database.port'); // 5432 (number!)
 const dbUser = config.get('database.credentials.user'); // 'admin'
-const isBeta = config.get('features.enable_beta'); // true (boolean!)
-const maxUploads = config.get('features.max_uploads'); // 100 (number!)
+const isBeta = config.get('features.beta.enabled'); // true (boolean!)
+const maxUploads = config.get('features.uploads.max'); // 100 (number!)
 
 // Get with defaults
 const timeout = config.get('redis.timeout', 5000); // 5000 if not set
 const retries = config.get('api.retries', 3); // 3 if not set
 
 // Check if config exists
-if (config.has('features.enable_beta')) {
+if (config.has('features.beta.enabled')) {
   console.log('Beta features are configured');
 }
 
@@ -87,7 +87,7 @@ Single underscores create nesting:
 ```bash
 # Environment Variable → Config Path
 DATABASE_HOST=localhost                     → config.get('database.host')
-DATABASE_CONNECTION_POOL_SIZE=10           → config.get('database.connection.pool_size')
+DATABASE_CONNECTION_POOL_SIZE=10           → config.get('database.connection.pool.size')
 STRIPE_API_KEYS_PUBLIC=pk_test_123         → config.get('stripe.api.keys.public')
 FEATURES_ANALYTICS_ENABLED=true           → config.get('features.analytics.enabled')
 ```
@@ -326,13 +326,13 @@ const config = configClass.get(); // One function, all methods
 // Get value with optional default
 config.get<string>('database.host', 'localhost');
 config.get<number>('database.port', 5432);
-config.get<boolean>('features.enable_beta', false);
+config.get<boolean>('features.beta.enabled', false);
 
 // Get required value (throws if missing)
 config.getRequired<string>('database.url');
 
 // Check if config exists
-config.has('features.enable_beta'); // true/false
+config.has('features.beta.enabled'); // true/false
 
 // Get multiple related values
 config.getMany({
@@ -372,7 +372,7 @@ configClass.getEnvVars(); // { DATABASE_HOST: 'localhost', ... }
 
 // Reset for testing
 configClass.reset(customConfig); // Reset with custom config
-configClass.clearCache(); // Clear cached config
+configClass.reset(); // Rebuild config from current process.env
 ```
 
 ## 🎯 Usage Examples
@@ -431,7 +431,7 @@ class DatabaseService {
     const config = configClass.get();
 
     // Get all database config with defaults
-    this.config = config.getModuleConfig('database', {
+    this.config = configClass.getModuleConfig('database', {
       host: 'localhost',
       port: 5432,
       pool: { min: 2, max: 10 },
@@ -523,8 +523,8 @@ import { configClass } from '@bloomneo/appkit/config';
 
 describe('Configuration Tests', () => {
   beforeEach(() => {
-    // Clear cache before each test
-    configClass.clearCache();
+    // Rebuild config from the current process.env for each test
+    configClass.reset();
   });
 
   afterEach(() => {
@@ -540,9 +540,9 @@ describe('Configuration Tests', () => {
 
     const config = configClass.get();
 
-    expect(config.get('test_config.value')).toBe('test-value');
-    expect(config.get('test_config.number')).toBe(123);
-    expect(config.get('test_config.boolean')).toBe(true);
+    expect(config.get('test.config.value')).toBe('test-value');
+    expect(config.get('test.config.number')).toBe(123);
+    expect(config.get('test.config.boolean')).toBe(true);
   });
 
   test('should use defaults when environment variables are missing', () => {
@@ -590,7 +590,7 @@ interface DatabaseConfig {
   };
 }
 
-const dbConfig: DatabaseConfig = config.getModuleConfig('database');
+const dbConfig: DatabaseConfig = configClass.getModuleConfig('database');
 ```
 
 ## 📄 License
@@ -602,3 +602,45 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 <p align="center">
   Built with ❤️ in India by the <a href="https://github.com/orgs/bloomneo/people">Bloomneo Team</a>
 </p>
+
+---
+
+## Agent-Dev Friendliness Score
+
+**Score: 68/100 — 🟡 Solid** *(no cap)*
+*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+
+| # | Dimension | Score | Notes |
+|---|---|---:|---|
+| 1 | API correctness | **8** | All 15 public methods verified in `config.test.ts`. Fixed: README had 2 calls to `config.getModuleConfig()` (instance) — should be `configClass.getModuleConfig()` (class). Fixed: `examples/config.ts` called `config.validateRequired()` on the instance. Fixed: `config.get('database.url')` with comment "throws if not set" — changed to `config.getRequired()`. |
+| 2 | Doc consistency | **7** | Class-level vs instance-level method split is correct everywhere after fixes. Remaining gap: no explicit callout at the top of README distinguishing which methods live on `configClass` vs the instance returned by `configClass.get()`. |
+| 3 | Runtime verification | **8** | `config.test.ts` is thorough: drift-checks 10 class methods + 5 instance methods, validates `NOT_ON_INSTANCE`, tests `validateRequired` behaviour, tests env detection mutual exclusion. |
+| 4 | Type safety | **7** | `ConfigValue` union is tight. `AppConfig` has `[key: string]: any` which leaks. `config.get<T = any>()` defaults the generic to `any` — callers must cast themselves. |
+| 5 | Discoverability | **8** | README hero has a working 30-second example. Canonical import (`from '@bloomneo/appkit/config'`) consistent across README and examples. No pointer to AGENTS.md or llms.txt from the top. |
+| 6 | Example completeness | **5** | `examples/config.ts` covers `get()`, `getRequired()`, `isDevelopment()`, `isProduction()`, `validateRequired()`. Missing: `getMany()`, `getAll()`, `has()`, `getModuleConfig()`, `getEnvVars()`, `reset()`, `clearCache()`. |
+| 7 | Composability | **5** | None of the 5 cookbook recipes demonstrate config usage. Config is used implicitly in the AGENTS.md canonical endpoint pattern but no dedicated recipe. |
+| 8 | Educational errors | **8** | `getRequired()` throws `Missing required configuration: "${path}". Set environment variable: DATABASE_URL` ✅. `validateRequired()` lists all missing vars in one shot ✅. |
+| 9 | Convention enforcement | **6** | One canonical way to read config (`config.get()`). But the two-level API (`configClass.get()` → returns instance → `instance.get()`) is a recurring convention confusion point; could be clearer without a header callout. |
+| 10 | Drift prevention | **6** | Drift-check test in `config.test.ts` covers both class and instance. No CI gate. |
+| 11 | Reading order | **5** | README is well-structured but has no links to AGENTS.md, llms.txt, or examples from its opening section. |
+| **12** | **Simplicity** | **5** | 15 public methods across two tiers (`configClass.*` and `config.*`). The two-tier API is the core complexity tax. 80% case: `configClass.get()` → `config.get('path', default)`. The split between "where does `isDevelopment()` live?" is a repeated trip-wire. |
+| **13** | **Clarity** | **9** | All names are self-documenting. `getRequired`, `getModuleConfig`, `validateRequired`, `isDevelopment` — no ambiguity on what any method does. |
+| **14** | **Unambiguity** | **5** | `configClass.get()` and `config.get()` share the name `get` but return completely different things (an object vs a value). A fresh reader doing `configClass.get().get(...)` is following the correct pattern but could easily write `configClass.get('path')` by mistake. |
+| **15** | **Learning curve** | **7** | "30 seconds" claim is achievable with the README hero. The one learning bump is the two-tier API; once understood it's mechanical. Env convention (UPPER_SNAKE_CASE → dot.notation) is well documented. |
+
+### Weighted (v1.1)
+
+```
+(8×.12)+(7×.08)+(8×.09)+(7×.06)+(8×.06)+(5×.08)+(5×.06)+(8×.05)+(6×.05)+(6×.04)+(5×.03)
++(5×.09)+(9×.09)+(5×.05)+(7×.05) = 6.79 → 68/100
+```
+
+### Gaps to reach 🟢 85+
+
+1. **D12 Simplicity → 8**: Add a prominent "Two-tier cheat sheet" table at top of README: `configClass.*` (class helpers) vs `config.*` (value access). Reduces the mental model to one page.
+2. **D6 Example completeness → 8**: Add `getMany()`, `has()`, `getAll()`, `getModuleConfig()` to `examples/config.ts`
+3. **D7 Composability → 8**: Add a config-first startup snippet to one cookbook recipe showing `validateRequired` + `getModuleConfig` wiring for database + auth
+4. **D14 Unambiguity → 8**: Rename `configClass.get()` → `configClass.load()` (or `configClass.parse()`) so the two `get` methods no longer share a name
+5. **D11 Reading order → 8**: Add "See also" links to AGENTS.md, examples/config.ts at top of README
+
+**Realistic ceiling:** ~83/100 with all 5 fixes. Beyond that requires renaming `configClass.get()` to remove the shared-name ambiguity (API-breaking).

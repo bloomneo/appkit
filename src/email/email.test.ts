@@ -109,12 +109,23 @@ describe('Public API surface — drift check', () => {
     'disconnect', 'getStrategy', 'getConfig',
   ];
 
-  // Methods that do NOT exist — previously hallucinated
-  const HALLUCINATED = ['sendWithTemplate', 'queue', 'schedule'];
+  // Instance methods that do NOT exist — previously hallucinated
+  const HALLUCINATED_INSTANCE = ['sendWithTemplate', 'queue', 'schedule'];
+
+  // Class-level methods that MUST NOT exist — drift trap for docs.
+  // `disconnectAll`/`flush`/`connect` have never been exposed at the class
+  // level; `clear()` and `shutdown()` are the documented lifecycle hooks.
+  const HALLUCINATED_CLASS = ['disconnectAll', 'flush', 'connect'];
 
   for (const m of CLASS_METHODS) {
     it(`emailClass.${m} exists`, () => {
       expect(typeof (emailClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`emailClass.${m} does NOT exist (not part of the public API)`, () => {
+      expect(typeof (emailClass as any)[m]).not.toBe('function');
     });
   }
 
@@ -125,7 +136,7 @@ describe('Public API surface — drift check', () => {
     });
   }
 
-  for (const m of HALLUCINATED) {
+  for (const m of HALLUCINATED_INSTANCE) {
     it(`email.${m} does NOT exist`, () => {
       expect(typeof (email as any)[m]).not.toBe('function');
     });

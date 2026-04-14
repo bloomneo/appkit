@@ -11,6 +11,8 @@
 import type { EmailStrategy, EmailData, EmailResult, EmailAddress, EmailAttachment } from '../email.js';
 import type { EmailConfig } from '../defaults.js';
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
+
 /**
  * SMTP email strategy with connection pooling and reliability features
  */
@@ -53,7 +55,7 @@ export class SmtpStrategy implements EmailStrategy {
       const errorMessage = this.parseSmtpError(error);
       
       if (this.config.environment.isDevelopment) {
-        console.error(`[AppKit] SMTP error:`, errorMessage);
+        console.error(`[@bloomneo/appkit/email] SMTP error:`, errorMessage);
       }
 
       return {
@@ -77,10 +79,10 @@ export class SmtpStrategy implements EmailStrategy {
       this.transporter = null;
 
       if (this.config.environment.isDevelopment) {
-        console.log(`👋 [AppKit] SMTP disconnected`);
+        console.log(`👋 [@bloomneo/appkit/email] SMTP disconnected`);
       }
     } catch (error) {
-      console.error(`⚠️ [AppKit] SMTP disconnect error:`, (error as Error).message);
+      console.error(`⚠️ [@bloomneo/appkit/email] SMTP disconnect error:`, (error as Error).message);
     }
   }
 
@@ -125,12 +127,14 @@ export class SmtpStrategy implements EmailStrategy {
       this.connected = true;
 
       if (this.config.environment.isDevelopment) {
-        console.log(`✅ [AppKit] SMTP connected to ${smtpConfig.host}:${smtpConfig.port}`);
+        console.log(`✅ [@bloomneo/appkit/email] SMTP connected to ${smtpConfig.host}:${smtpConfig.port}`);
       }
     } catch (error) {
       this.connected = false;
       this.transporter = null;
-      throw new Error(`SMTP connection failed: ${(error as Error).message}`);
+      throw new Error(
+        `[@bloomneo/appkit/email] SMTP connection failed: ${(error as Error).message}. See: ${DOCS_URL}#smtp-universal`
+      );
     }
   }
 

@@ -40,7 +40,7 @@ const id = util.uuid();                               // → 'a1b2c3d4-...'
 const slug = util.slugify('My Awesome Post!');        // → 'my-awesome-post'
 const size = util.formatBytes(1_572_864);             // → '1.5 MB'
 const clamped = util.clamp(150, 0, 100);              // → 100
-const short = util.truncate('A very long string', 10); // → 'A very lon...'
+const short = util.truncate('A very long string', { length: 10 }); // → 'A very lon...'
 
 await util.sleep(100);                                // → wait 100ms
 

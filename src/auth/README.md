@@ -14,7 +14,7 @@
 - **🎯 Clear Separation** - No confusion between user auth and API auth
 - **👥 Smart Role Hierarchy** - Built-in role.level inheritance (user.basic → admin.system)
 - **🔧 Zero Configuration** - Smart defaults for everything
-- **🛡️ Null-Safe Access** - Safe user extraction with `auth.user(req)`
+- **🛡️ Null-Safe Access** - Safe user extraction with `auth.getUser(req)`
 - **🤖 AI-Ready** - Optimized for LLM code generation with clear method names
 
 ## 📦 Installation
@@ -102,6 +102,12 @@ app.get('/api/public-data', auth.requireApiToken(), handler);
 ```
 
 ## 🏗️ Role-Level-Permission Architecture
+
+> 🧩 **Two forms of the same identity — don't mix them up.**
+> - **Token payloads** use two separate fields: `{ role: 'admin', level: 'tenant' }`
+> - **Middleware, `hasRole`, and the hierarchy map** use the dotted form: `'admin.tenant'`
+>
+> `role.level` is literally `` `${role}.${level}` ``. Every entry in the hierarchy is keyed by the dotted form. If you pass `role: 'admin.tenant'` to `generateLoginToken`, the token will fail validation — split it into the two fields.
 
 **Built-in Role Hierarchy (9 levels):**
 
@@ -215,7 +221,7 @@ const token = auth.generateLoginToken({
 
 // Routes look identical to Case 1. Org isolation happens at the data layer:
 app.get('/projects', auth.requireLoginToken(), async (req, res) => {
-  const u = auth.user(req)!;
+  const u = auth.getUser(req)!;
   // Query is scoped by org_id from your database, not from the JWT
   const rows = await db.project.findMany({ where: { org_id: u.orgId } });
   res.json(rows);
@@ -283,7 +289,7 @@ app.get('/orders', auth.requireLoginToken(), async (req, res) => {
 ```typescript
 // Step 1: Authenticate user
 app.get('/user/dashboard', auth.requireLoginToken(), (req, res) => {
-  const user = auth.user(req); // Safe access, never null here
+  const user = auth.getUser(req); // Safe access, never null here
   res.json({ userId: user.userId, role: user.role });
 });
 
@@ -306,7 +312,7 @@ app.post('/admin/users',
 ```typescript
 // Simple API protection (no roles/permissions)
 app.post('/api/webhook', auth.requireApiToken(), (req, res) => {
-  const token = auth.user(req); // Gets API token info
+  const token = auth.getUser(req); // Gets API token info
   console.log('API call from:', token.keyId);
   res.json({ status: 'received' });
 });
@@ -432,8 +438,8 @@ const u2 = auth.generateLoginToken({
   level: 'tenant',
   permissions: ['view:own'],   // ← user can ONLY view:own, despite being admin.tenant
 });
-// → auth.can(u2, 'manage:tenant') === false
-// → auth.can(u2, 'view:own')      === true
+// → auth.hasPermission(u2, 'manage:tenant') === false
+// → auth.hasPermission(u2, 'view:own')      === true
 
 // ✅ Empty array = ZERO permissions (explicit downgrade)
 const u3 = auth.generateLoginToken({
@@ -442,7 +448,7 @@ const u3 = auth.generateLoginToken({
   level: 'tenant',
   permissions: [],  // ← user has no permissions despite admin role
 });
-// → auth.can(u3, 'view:own') === false
+// → auth.hasPermission(u3, 'view:own') === false
 
 // ✅ Action inheritance still works WITHIN the explicit set
 const u4 = auth.generateLoginToken({
@@ -451,9 +457,9 @@ const u4 = auth.generateLoginToken({
   level: 'tenant',
   permissions: ['manage:tenant'],
 });
-// → auth.can(u4, 'edit:tenant') === true   (manage inherits all sub-actions)
-// → auth.can(u4, 'view:tenant') === true
-// → auth.can(u4, 'manage:org')  === false  (different scope)
+// → auth.hasPermission(u4, 'edit:tenant') === true   (manage inherits all sub-actions)
+// → auth.hasPermission(u4, 'view:tenant') === true
+// → auth.hasPermission(u4, 'manage:org')  === false  (different scope)
 
 // ❌ Common mistake: assuming permissions are ADDITIVE
 // Old (pre-1.5.2) behavior was buggy and additive. If you've seen examples
@@ -478,11 +484,16 @@ try {
   return res.status(500).json({ error: 'Token creation failed' });
 }
 
+import { TokenError } from '@bloomneo/appkit/auth';
+
 try {
   const payload = auth.verifyToken(token);
   // Use payload...
 } catch (error) {
-  if (error.message === 'Token has expired') {
+  // verifyToken throws a typed TokenError with a stable `code` discriminant.
+  // Do NOT string-match on error.message — messages are prefixed
+  // ("[@bloomneo/appkit/auth] ...") and may be reworded.
+  if (error instanceof TokenError && error.code === 'expired') {
     return res.status(401).json({ error: 'Session expired' });
   }
   return res.status(401).json({ error: 'Invalid token' });
@@ -498,7 +509,7 @@ app.get('/admin',
   auth.requireUserRoles(['admin.tenant']), // 403 if insufficient role
   (req, res) => {
     // This only runs if all auth succeeds
-    const user = auth.user(req); // Safe - never null here
+    const user = auth.getUser(req); // Safe - never null here
     res.json({ message: 'Welcome admin!' });
   }
 );
@@ -623,8 +634,6 @@ BLOOM_AUTH_SECRET=your-super-secure-jwt-secret-key-2024-minimum-32-chars
 # Optional
 BLOOM_AUTH_BCRYPT_ROUNDS=12        # Default: 10
 BLOOM_AUTH_EXPIRES_IN=1h           # Default: 7d
-BLOOM_AUTH_DEFAULT_ROLE=user       # Default: user
-BLOOM_AUTH_DEFAULT_LEVEL=basic     # Default: basic
 
 # Custom role hierarchy (optional)
 BLOOM_AUTH_ROLES=user.basic:1,user.pro:2,admin.system:9
@@ -659,14 +668,14 @@ auth.comparePassword(password, hash); // Verify password
 ### **User Access**
 
 ```typescript
-auth.user(req); // Safe user extraction (returns null if not authenticated)
+auth.getUser(req); // Safe user extraction (returns null if not authenticated)
 ```
 
 ### **Authorization**
 
 ```typescript
 auth.hasRole(userRole, requiredRole); // Check role hierarchy
-auth.can(user, permission); // Check permission
+auth.hasPermission(user, permission); // Check permission
 ```
 
 ### **Express Middleware**
@@ -761,7 +770,7 @@ import type {
 } from '@bloomneo/appkit/auth';
 
 // All methods are fully typed
-const user: JwtPayload | null = auth.user(req);
+const user: JwtPayload | null = auth.getUser(req);
 const middleware: ExpressMiddleware = auth.requireUserRoles(['admin.tenant']);
 ```
 
@@ -807,7 +816,7 @@ A: Roles are hierarchical (admin.org > admin.tenant), permissions are specific a
 | 11 | Reading order | **10** ⬆ | **Was 9.** "Which case is your app?" decision tree maps the 9-level hierarchy to 3 real-world app shapes — devs no longer have to guess which roles matter. |
 | **12** | **Simplicity** | **7** | 12 methods (>8 ideal). 5 concepts to learn (tokens, role.level, perms, middleware chaining, req.user). The decision tree reframes 9 roles → 3 core, which softens the perceived surface area. |
 | **13** | **Clarity** | **8** | `user` and `can` are too short — `getUser` / `canPerform` would be better. |
-| **14** | **Unambiguity** | **8** ⬆ | **Was 4. Fixed in earlier round**: `auth.can()` rewritten so explicit `permissions` array REPLACES role defaults instead of supplementing. Matches AWS IAM / Casbin / OPA / Auth0 RBAC. Remaining gaps: `user(req)` null overload (3 conditions), `hasRole(a,b)` arg-order ambiguity, OR-vs-AND in `requireUserRoles` / `requireUserPermissions`, near-identical token methods. |
+| **14** | **Unambiguity** | **8** ⬆ | **Was 4. Fixed in earlier round**: `auth.hasPermission()` rewritten so explicit `permissions` array REPLACES role defaults instead of supplementing. Matches AWS IAM / Casbin / OPA / Auth0 RBAC. Remaining gaps: `user(req)` null overload (3 conditions), `hasRole(a,b)` arg-order ambiguity, OR-vs-AND in `requireUserRoles` / `requireUserPermissions`, near-identical token methods. |
 | **15** | **Learning curve** | **9** ⬆ | **Was 7.** Decision tree gives a clear 30-second answer to "which roles do I need?" — most devs will identify their case, copy 3 roles, and ship. The 9-level hierarchy is now scaffolding, not a wall. |
 
 ### Weighted (v1.1)
@@ -824,7 +833,7 @@ Anti-pattern cap (D7): 50/100
 |---|---|---:|---:|---|
 | v1.0 initial | 2026-04-11 | 79.5 | 50 | First scoring against 11 dimensions |
 | v1.1 (4 new dims) | 2026-04-11 | 79.5 | 50 | +D12 Simplicity, D13 Clarity, D14 Unambiguity, D15 Learning curve |
-| v1.1 + can() fix | 2026-04-11 | 82.3 | 50 | `auth.can()` now correctly REPLACES role defaults instead of supplementing. D14 4 → 8. |
+| v1.1 + can() fix | 2026-04-11 | 82.3 | 50 | `auth.hasPermission()` now correctly REPLACES role defaults instead of supplementing. D14 4 → 8. |
 | **v1.1 + decision tree** | **2026-04-11** | **83.6** | **50** | **Added "Which case is your app?" mapping the 9-level hierarchy to 3 real-world shapes. D11 9→10, D15 7→9.** |
 
 ### Gaps to reach 🟢 90+
