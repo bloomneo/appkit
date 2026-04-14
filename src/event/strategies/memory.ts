@@ -41,7 +41,7 @@ export class MemoryStrategy implements EventStrategy {
     }
 
     if (this.config.environment.isDevelopment) {
-      console.log(`✅ [AppKit] Memory event strategy initialized (namespace: ${namespace}, maxListeners: ${this.emitter.getMaxListeners()})`);
+      console.log(`✅ [@bloomneo/appkit/event] Memory event strategy initialized (namespace: ${namespace}, maxListeners: ${this.emitter.getMaxListeners()})`);
     }
   }
 
@@ -61,7 +61,7 @@ export class MemoryStrategy implements EventStrategy {
       
       return result;
     } catch (error) {
-      console.error(`[AppKit] Memory emit error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Memory emit error for event "${event}":`, (error as Error).message);
       return false;
     }
   }
@@ -83,10 +83,10 @@ export class MemoryStrategy implements EventStrategy {
       this.incrementListenerCount(event);
       
       if (this.config.environment.isDevelopment) {
-        console.log(`📥 [AppKit] Memory listener added for: ${event} (total: ${this.emitter.listenerCount(event)})`);
+        console.log(`📥 [@bloomneo/appkit/event] Memory listener added for: ${event} (total: ${this.emitter.listenerCount(event)})`);
       }
     } catch (error) {
-      console.error(`[AppKit] Memory on error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Memory on error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -113,10 +113,10 @@ export class MemoryStrategy implements EventStrategy {
       this.incrementListenerCount(event);
       
       if (this.config.environment.isDevelopment) {
-        console.log(`📥 [AppKit] Memory once listener added for: ${event}`);
+        console.log(`📥 [@bloomneo/appkit/event] Memory once listener added for: ${event}`);
       }
     } catch (error) {
-      console.error(`[AppKit] Memory once error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Memory once error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -138,11 +138,11 @@ export class MemoryStrategy implements EventStrategy {
         this.listenerCounts.set(event, 0);
         
         if (this.config.environment.isDevelopment && count > 0) {
-          console.log(`📤 [AppKit] Memory removed ${count} listeners for: ${event}`);
+          console.log(`📤 [@bloomneo/appkit/event] Memory removed ${count} listeners for: ${event}`);
         }
       }
     } catch (error) {
-      console.error(`[AppKit] Memory off error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Memory off error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -192,10 +192,10 @@ export class MemoryStrategy implements EventStrategy {
       this.listenerCounts.clear();
       
       if (this.config.environment.isDevelopment) {
-        console.log(`👋 [AppKit] Memory event strategy disconnected (namespace: ${this.namespace})`);
+        console.log(`👋 [@bloomneo/appkit/event] Memory event strategy disconnected (namespace: ${this.namespace})`);
       }
     } catch (error) {
-      console.error(`[AppKit] Memory disconnect error:`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Memory disconnect error:`, (error as Error).message);
     }
   }
 
@@ -210,7 +210,7 @@ export class MemoryStrategy implements EventStrategy {
     
     if (currentCount >= maxListeners) {
       console.warn(
-        `[AppKit] Memory event listener limit reached for "${event}" ` +
+        `[@bloomneo/appkit/event] Memory event listener limit reached for "${event}" ` +
         `(${currentCount}/${maxListeners}). Consider removing unused listeners.`
       );
     }
@@ -292,13 +292,13 @@ export class MemoryStrategy implements EventStrategy {
         const stats = this.getMemoryStats();
         if (stats.totalListeners > 0) {
           console.log(
-            `🧹 [AppKit] Memory cleanup completed: ` +
+            `🧹 [@bloomneo/appkit/event] Memory cleanup completed: ` +
             `${stats.totalEvents} events, ${stats.totalListeners} listeners`
           );
         }
       }
     } catch (error) {
-      console.error(`[AppKit] Memory cleanup error:`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Memory cleanup error:`, (error as Error).message);
     }
   }
 

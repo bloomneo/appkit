@@ -8,6 +8,8 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
+
 export interface CSRFConfig {
   secret: string;
   tokenField: string;
@@ -126,9 +128,9 @@ function validateEnvironment(): void {
   const csrfSecret = process.env.BLOOM_SECURITY_CSRF_SECRET || process.env.BLOOM_AUTH_SECRET;
   if (!csrfSecret && nodeEnv === 'production') {
     console.warn(
-      '[Bloomneo AppKit] BLOOM_SECURITY_CSRF_SECRET not set. ' +
-      'CSRF protection will not work in production. ' +
-      'Set BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET environment variable.'
+      `[@bloomneo/appkit/security] BLOOM_SECURITY_CSRF_SECRET not set. ` +
+      `CSRF protection will not work in production. ` +
+      `Set BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -144,7 +146,7 @@ function validateEnvironment(): void {
     const rateLimitNum = parseInt(rateLimit);
     if (isNaN(rateLimitNum) || rateLimitNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_SECURITY_RATE_LIMIT: "${rateLimit}". Must be a positive number.`
+        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_RATE_LIMIT: "${rateLimit}". Must be a positive number. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -154,7 +156,7 @@ function validateEnvironment(): void {
     const rateWindowNum = parseInt(rateWindow);
     if (isNaN(rateWindowNum) || rateWindowNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_SECURITY_RATE_WINDOW: "${rateWindow}". Must be a positive number (milliseconds).`
+        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_RATE_WINDOW: "${rateWindow}". Must be a positive number (milliseconds). See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -165,7 +167,7 @@ function validateEnvironment(): void {
     const maxLengthNum = parseInt(maxLength);
     if (isNaN(maxLengthNum) || maxLengthNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_SECURITY_MAX_INPUT_LENGTH: "${maxLength}". Must be a positive number.`
+        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_MAX_INPUT_LENGTH: "${maxLength}". Must be a positive number. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -176,7 +178,7 @@ function validateEnvironment(): void {
     const csrfExpiryNum = parseInt(csrfExpiry);
     if (isNaN(csrfExpiryNum) || csrfExpiryNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_SECURITY_CSRF_EXPIRY: "${csrfExpiry}". Must be a positive number (minutes).`
+        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_CSRF_EXPIRY: "${csrfExpiry}". Must be a positive number (minutes). See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -185,8 +187,8 @@ function validateEnvironment(): void {
   if (nodeEnv === 'production') {
     if (!encryptionKey) {
       console.warn(
-        '[Bloomneo AppKit] BLOOM_SECURITY_ENCRYPTION_KEY not set. ' +
-        'Data encryption will not be available in production.'
+        `[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY not set. ` +
+        `Data encryption will not be available in production. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -194,8 +196,8 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
-      `Expected: development, production, test, or staging`
+      `[@bloomneo/appkit/security] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `Expected: development, production, test, or staging. See: ${DOCS_URL}#environment-variables`
     );
   }
 }
@@ -208,23 +210,23 @@ function validateEnvironment(): void {
  */
 function validateEncryptionKey(key: string): void {
   if (typeof key !== 'string') {
-    throw new Error('BLOOM_SECURITY_ENCRYPTION_KEY must be a string.');
+    throw new Error(`[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY must be a string. See: ${DOCS_URL}#environment-variables`);
   }
 
   // Check if it's a valid hex string
   if (!/^[0-9a-fA-F]+$/.test(key)) {
     throw new Error(
-      'BLOOM_SECURITY_ENCRYPTION_KEY must be a valid hexadecimal string. ' +
-      'Generate one using: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+      `[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY must be a valid hexadecimal string. ` +
+      `Generate one using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))". See: ${DOCS_URL}#environment-variables`
     );
   }
 
   // Check length (should be 64 hex characters for 32 bytes)
   if (key.length !== 64) {
     throw new Error(
-      `BLOOM_SECURITY_ENCRYPTION_KEY must be 64 hex characters (32 bytes). ` +
+      `[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY must be 64 hex characters (32 bytes). ` +
       `Current length: ${key.length}. ` +
-      `Generate one using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+      `Generate one using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))". See: ${DOCS_URL}#environment-variables`
     );
   }
 }

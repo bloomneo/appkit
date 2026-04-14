@@ -11,6 +11,8 @@
 import type { EventStrategy, EventHandler } from '../event.js';
 import type { EventConfig } from '../defaults.js';
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/event/README.md';
+
 /**
  * Redis event strategy with distributed pub/sub and reliability features
  */
@@ -55,12 +57,12 @@ export class RedisStrategy implements EventStrategy {
           connectTimeout: redisConfig.connectTimeout,
           reconnectStrategy: (retries: number) => {
             if (retries >= redisConfig.maxRetries) {
-              console.error(`[AppKit] Redis max retries (${redisConfig.maxRetries}) exceeded`);
+              console.error(`[@bloomneo/appkit/event] Redis max retries (${redisConfig.maxRetries}) exceeded`);
               return new Error('Redis connection failed');
             }
             
             const delay = Math.min(redisConfig.retryDelay * Math.pow(2, retries), 10000);
-            console.warn(`[AppKit] Redis reconnecting in ${delay}ms (attempt ${retries + 1})`);
+            console.warn(`[@bloomneo/appkit/event] Redis reconnecting in ${delay}ms (attempt ${retries + 1})`);
             return delay;
           },
         },
@@ -82,13 +84,13 @@ export class RedisStrategy implements EventStrategy {
       this.connected = true;
 
       if (this.config.environment.isDevelopment) {
-        console.log(`✅ [AppKit] Redis event strategy connected (namespace: ${this.namespace})`);
+        console.log(`✅ [@bloomneo/appkit/event] Redis event strategy connected (namespace: ${this.namespace})`);
       }
     } catch (error) {
       this.connected = false;
       this.publisher = null;
       this.subscriber = null;
-      throw new Error(`Redis event connection failed: ${(error as Error).message}`);
+      throw new Error(`[@bloomneo/appkit/event] Redis event connection failed: ${(error as Error).message}. See: ${DOCS_URL}#environment-variables`);
     }
   }
 
@@ -100,25 +102,25 @@ export class RedisStrategy implements EventStrategy {
 
     // Publisher events
     this.publisher.on('error', (error: Error) => {
-      console.error('[AppKit] Redis publisher error:', error.message);
+      console.error('[@bloomneo/appkit/event] Redis publisher error:', error.message);
       this.connected = false;
     });
 
     this.publisher.on('ready', () => {
       if (this.config.environment.isDevelopment) {
-        console.log('✅ [AppKit] Redis publisher ready');
+        console.log('✅ [@bloomneo/appkit/event] Redis publisher ready');
       }
     });
 
     // Subscriber events
     this.subscriber.on('error', (error: Error) => {
-      console.error('[AppKit] Redis subscriber error:', error.message);
+      console.error('[@bloomneo/appkit/event] Redis subscriber error:', error.message);
       this.connected = false;
     });
 
     this.subscriber.on('ready', () => {
       if (this.config.environment.isDevelopment) {
-        console.log('✅ [AppKit] Redis subscriber ready');
+        console.log('✅ [@bloomneo/appkit/event] Redis subscriber ready');
       }
     });
 
@@ -126,14 +128,14 @@ export class RedisStrategy implements EventStrategy {
     this.subscriber.on('reconnecting', () => {
       this.connected = false;
       if (this.config.environment.isDevelopment) {
-        console.log('🔄 [AppKit] Redis subscriber reconnecting...');
+        console.log('🔄 [@bloomneo/appkit/event] Redis subscriber reconnecting...');
       }
     });
 
     this.subscriber.on('end', () => {
       this.connected = false;
       if (this.config.environment.isDevelopment) {
-        console.log('👋 [AppKit] Redis subscriber connection ended');
+        console.log('👋 [@bloomneo/appkit/event] Redis subscriber connection ended');
       }
     });
   }
@@ -146,7 +148,7 @@ export class RedisStrategy implements EventStrategy {
    */
   async emit(event: string, data: any): Promise<boolean> {
     if (!this.connected || !this.publisher) {
-      console.error(`[AppKit] Redis not connected, cannot emit event: ${event}`);
+      console.error(`[@bloomneo/appkit/event] Redis not connected, cannot emit event: ${event}`);
       return false;
     }
 
@@ -162,12 +164,12 @@ export class RedisStrategy implements EventStrategy {
       
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`📤 [AppKit] Redis event published: ${event} (subscribers: ${result})`);
+        console.log(`📤 [@bloomneo/appkit/event] Redis event published: ${event} (subscribers: ${result})`);
       }
       
       return result >= 0; // Redis returns number of subscribers
     } catch (error) {
-      console.error(`[AppKit] Redis emit error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis emit error for event "${event}":`, (error as Error).message);
       return false;
     }
   }
@@ -191,10 +193,10 @@ export class RedisStrategy implements EventStrategy {
       }
 
       if (this.config.environment.isDevelopment) {
-        console.log(`📥 [AppKit] Redis listener added for: ${event} (total: ${this.listeners.get(event)!.size})`);
+        console.log(`📥 [@bloomneo/appkit/event] Redis listener added for: ${event} (total: ${this.listeners.get(event)!.size})`);
       }
     } catch (error) {
-      console.error(`[AppKit] Redis on error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis on error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -215,10 +217,10 @@ export class RedisStrategy implements EventStrategy {
       this.on(event, onceWrapper);
 
       if (this.config.environment.isDevelopment) {
-        console.log(`📥 [AppKit] Redis once listener added for: ${event}`);
+        console.log(`📥 [@bloomneo/appkit/event] Redis once listener added for: ${event}`);
       }
     } catch (error) {
-      console.error(`[AppKit] Redis once error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis once error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -248,11 +250,11 @@ export class RedisStrategy implements EventStrategy {
         this.unsubscribeFromEvent(event);
         
         if (this.config.environment.isDevelopment && count > 0) {
-          console.log(`📤 [AppKit] Redis removed ${count} listeners for: ${event}`);
+          console.log(`📤 [@bloomneo/appkit/event] Redis removed ${count} listeners for: ${event}`);
         }
       }
     } catch (error) {
-      console.error(`[AppKit] Redis off error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis off error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -317,10 +319,10 @@ export class RedisStrategy implements EventStrategy {
       this.subscriber = null;
 
       if (this.config.environment.isDevelopment) {
-        console.log(`👋 [AppKit] Redis event strategy disconnected (namespace: ${this.namespace})`);
+        console.log(`👋 [@bloomneo/appkit/event] Redis event strategy disconnected (namespace: ${this.namespace})`);
       }
     } catch (error) {
-      console.error(`[AppKit] Redis disconnect error:`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis disconnect error:`, (error as Error).message);
       // Force close if graceful quit fails
       if (this.publisher) this.publisher.disconnect();
       if (this.subscriber) this.subscriber.disconnect();
@@ -350,7 +352,7 @@ export class RedisStrategy implements EventStrategy {
         namespace: this.namespace,
       });
     } catch (error) {
-      throw new Error(`Failed to serialize event data: ${(error as Error).message}`);
+      throw new Error(`[@bloomneo/appkit/event] Failed to serialize event data: ${(error as Error).message}`);
     }
   }
 
@@ -362,7 +364,7 @@ export class RedisStrategy implements EventStrategy {
       const parsed = JSON.parse(message);
       return parsed.data;
     } catch (error) {
-      console.error('Failed to deserialize Redis message:', error);
+      console.error('[@bloomneo/appkit/event] Failed to deserialize Redis message:', error);
       return message; // Return raw message as fallback
     }
   }
@@ -382,10 +384,10 @@ export class RedisStrategy implements EventStrategy {
       });
 
       if (this.config.environment.isDevelopment) {
-        console.log(`🔗 [AppKit] Redis subscribed to: ${channel}`);
+        console.log(`🔗 [@bloomneo/appkit/event] Redis subscribed to: ${channel}`);
       }
     } catch (error) {
-      console.error(`[AppKit] Redis subscribe error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis subscribe error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -402,10 +404,10 @@ export class RedisStrategy implements EventStrategy {
       await this.subscriber.unsubscribe(channel);
 
       if (this.config.environment.isDevelopment) {
-        console.log(`🔓 [AppKit] Redis unsubscribed from: ${channel}`);
+        console.log(`🔓 [@bloomneo/appkit/event] Redis unsubscribed from: ${channel}`);
       }
     } catch (error) {
-      console.error(`[AppKit] Redis unsubscribe error for event "${event}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis unsubscribe error for event "${event}":`, (error as Error).message);
     }
   }
 
@@ -427,19 +429,19 @@ export class RedisStrategy implements EventStrategy {
           const result = handler(data);
           if (result && typeof result.then === 'function') {
             result.catch((error: Error) => {
-              console.error(`Redis event handler error for "${event}":`, error.message);
+              console.error(`[@bloomneo/appkit/event] Redis event handler error for "${event}":`, error.message);
             });
           }
         } catch (error) {
-          console.error(`Redis event handler error for "${event}":`, (error as Error).message);
+          console.error(`[@bloomneo/appkit/event] Redis event handler error for "${event}":`, (error as Error).message);
         }
       }
 
       if (this.config.environment.isDevelopment) {
-        console.log(`📨 [AppKit] Redis message received: ${event} (${eventListeners.size} handlers)`);
+        console.log(`📨 [@bloomneo/appkit/event] Redis message received: ${event} (${eventListeners.size} handlers)`);
       }
     } catch (error) {
-      console.error(`[AppKit] Redis message handling error:`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/event] Redis message handling error:`, (error as Error).message);
     }
   }
 

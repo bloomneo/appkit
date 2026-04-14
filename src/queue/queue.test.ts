@@ -81,12 +81,26 @@ describe('Public API surface — drift check', () => {
     'getStats', 'getJobs', 'retry', 'remove', 'clean', 'close',
   ];
 
-  // Methods that do NOT exist — previously hallucinated
-  const HALLUCINATED = ['enqueue', 'subscribe', 'cron'];
+  // Instance methods that do NOT exist — previously hallucinated
+  const HALLUCINATED_INSTANCE = ['enqueue', 'subscribe', 'cron'];
+
+  // Class-level methods that MUST NOT exist — drift trap for docs that
+  // assume symmetry with the instance surface.
+  const HALLUCINATED_CLASS = [
+    'add', 'process', 'schedule', 'pause', 'resume',
+    'retry', 'remove', 'clean', 'close', 'getStats', 'getJobs',
+    'getValidatedDefaults',
+  ];
 
   for (const m of CLASS_METHODS) {
     it(`queueClass.${m} exists`, () => {
       expect(typeof (queueClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`queueClass.${m} does NOT exist (call via queueClass.get().${m}() instead)`, () => {
+      expect(typeof (queueClass as any)[m]).not.toBe('function');
     });
   }
 
@@ -97,7 +111,7 @@ describe('Public API surface — drift check', () => {
     });
   }
 
-  for (const m of HALLUCINATED) {
+  for (const m of HALLUCINATED_INSTANCE) {
     it(`queue.${m} does NOT exist`, () => {
       expect(typeof (queue as any)[m]).not.toBe('function');
     });

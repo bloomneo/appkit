@@ -69,8 +69,18 @@ describe('loggerClass utility methods', () => {
 });
 
 describe('Public API surface — drift check', () => {
-  const INSTANCE_METHODS = ['info', 'warn', 'error', 'debug', 'fatal', 'child', 'flush', 'close'];
+  const INSTANCE_METHODS = [
+    'info', 'warn', 'error', 'debug', 'fatal', 'child', 'flush', 'close',
+    'setLevel', 'getLevel', 'isLevelEnabled',
+  ];
   const CLASS_METHODS    = ['get', 'clear', 'getActiveTransports', 'hasTransport', 'getConfig'];
+
+  // Methods that do NOT exist — drift trap.
+  const HALLUCINATED_INSTANCE = ['trace', 'silly', 'verbose'];
+
+  // Class-level methods that MUST NOT exist — drift trap for docs that
+  // assume symmetry with the instance surface.
+  const HALLUCINATED_CLASS = ['setLevel', 'getLevel', 'isLevelEnabled', 'flush', 'close'];
 
   const logger = loggerClass.get('drift');
   for (const m of INSTANCE_METHODS) {
@@ -79,9 +89,21 @@ describe('Public API surface — drift check', () => {
     });
   }
 
+  for (const m of HALLUCINATED_INSTANCE) {
+    it(`logger.${m} does NOT exist`, () => {
+      expect(typeof (logger as any)[m]).not.toBe('function');
+    });
+  }
+
   for (const m of CLASS_METHODS) {
     it(`loggerClass.${m} exists and is a function`, () => {
       expect(typeof (loggerClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`loggerClass.${m} does NOT exist (call via loggerClass.get().${m}() instead)`, () => {
+      expect(typeof (loggerClass as any)[m]).not.toBe('function');
     });
   }
 });

@@ -187,12 +187,25 @@ describe('Public API surface — drift check', () => {
     'pick', 'unique', 'clamp', 'formatBytes', 'truncate', 'sleep', 'uuid',
   ];
 
-  // Methods that do NOT exist — previously hallucinated
-  const HALLUCINATED = ['set', 'omit', 'throttle', 'retry'];
+  // Instance methods that do NOT exist — previously hallucinated
+  const HALLUCINATED_INSTANCE = ['set', 'omit', 'throttle', 'retry'];
+
+  // Class-level methods that MUST NOT exist — drift trap for docs that
+  // assume symmetry with the instance surface.
+  const HALLUCINATED_CLASS = [
+    'isEmpty', 'slugify', 'chunk', 'debounce', 'pick', 'unique',
+    'clamp', 'formatBytes', 'truncate', 'sleep', 'uuid',
+  ];
 
   for (const m of CLASS_METHODS) {
     it(`utilClass.${m} exists`, () => {
       expect(typeof (utilClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`utilClass.${m} does NOT exist (call via utilClass.get().${m}() instead)`, () => {
+      expect(typeof (utilClass as any)[m]).not.toBe('function');
     });
   }
 
@@ -203,7 +216,7 @@ describe('Public API surface — drift check', () => {
     });
   }
 
-  for (const m of HALLUCINATED) {
+  for (const m of HALLUCINATED_INSTANCE) {
     it(`util.${m} does NOT exist`, () => {
       expect(typeof (util as any)[m]).not.toBe('function');
     });

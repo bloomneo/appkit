@@ -212,7 +212,7 @@ export class UtilClass {
 
     // Performance warning for large arrays
     if (this.config.performance.enabled && array.length > this.config.performance.chunkSizeLimit) {
-      console.warn(`[Bloomneo Utils] Chunking large array (${array.length} items). Consider streaming or pagination.`);
+      console.warn(`[@bloomneo/appkit/util] Chunking large array (${array.length} items). Consider streaming or pagination.`);
     }
 
     const result: T[][] = [];
@@ -434,9 +434,9 @@ export class UtilClass {
     const clampedIndex = Math.min(unitIndex, units.length - 1);
     
     const value = bytes / Math.pow(base, clampedIndex);
-    const formattedValue = clampedIndex === 0 
-      ? value.toString() 
-      : value.toFixed(decimals);
+    const formattedValue = clampedIndex === 0
+      ? value.toString()
+      : parseFloat(value.toFixed(decimals)).toString();
 
     return `${formattedValue}${unitSeparator}${units[clampedIndex]}`;
   }

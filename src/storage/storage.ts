@@ -13,6 +13,8 @@ import { S3Strategy } from './strategies/s3.js';
 import { R2Strategy } from './strategies/r2.js';
 import type { StorageConfig } from './defaults.js';
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
+
 export interface StorageStrategy {
   put(key: string, data: Buffer | Uint8Array | string): Promise<string>;
   get(key: string): Promise<Buffer>;
@@ -66,7 +68,7 @@ export class StorageClass {
       case 'r2':
         return new R2Strategy(this.config);
       default:
-        throw new Error(`Unknown storage strategy: ${this.config.strategy}`);
+        throw new Error(`[@bloomneo/appkit/storage] Unknown storage strategy: ${this.config.strategy}. See: ${DOCS_URL}#environment-variables`);
     }
   }
 
@@ -87,10 +89,10 @@ export class StorageClass {
       this.connected = true;
 
       if (this.config.environment.isDevelopment) {
-        console.log(`✅ [AppKit] Storage system connected using ${this.config.strategy} strategy`);
+        console.log(`✅ [@bloomneo/appkit/storage] Storage system connected using ${this.config.strategy} strategy`);
       }
     } catch (error) {
-      console.error(`❌ [AppKit] Storage connection failed:`, (error as Error).message);
+      console.error(`❌ [@bloomneo/appkit/storage] Storage connection failed:`, (error as Error).message);
       throw error;
     }
   }
@@ -108,10 +110,10 @@ export class StorageClass {
       this.connected = false;
 
       if (this.config.environment.isDevelopment) {
-        console.log(`👋 [AppKit] Storage system disconnected`);
+        console.log(`👋 [@bloomneo/appkit/storage] Storage system disconnected`);
       }
     } catch (error) {
-      console.error(`⚠️ [AppKit] Storage disconnect error:`, (error as Error).message);
+      console.error(`⚠️ [@bloomneo/appkit/storage] Storage disconnect error:`, (error as Error).message);
     }
   }
 
@@ -148,12 +150,12 @@ export class StorageClass {
 
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`📤 [AppKit] File stored: ${key} (${buffer.length} bytes, ${contentType})`);
+        console.log(`📤 [@bloomneo/appkit/storage] File stored: ${key} (${buffer.length} bytes, ${contentType})`);
       }
 
       return result;
     } catch (error) {
-      console.error(`[AppKit] Storage put error for "${key}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/storage] Storage put error for "${key}":`, (error as Error).message);
       throw error;
     }
   }
@@ -172,13 +174,13 @@ export class StorageClass {
 
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`📥 [AppKit] File retrieved: ${key} (${result.length} bytes)`);
+        console.log(`📥 [@bloomneo/appkit/storage] File retrieved: ${key} (${result.length} bytes)`);
       }
 
       return result;
     } catch (error) {
-      console.error(`[AppKit] Storage get error for "${key}":`, (error as Error).message);
-      throw new Error(`File not found: ${key}`);
+      console.error(`[@bloomneo/appkit/storage] Storage get error for "${key}":`, (error as Error).message);
+      throw new Error(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`);
     }
   }
 
@@ -196,12 +198,12 @@ export class StorageClass {
 
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`🗑️ [AppKit] File deleted: ${key} (success: ${result})`);
+        console.log(`🗑️ [@bloomneo/appkit/storage] File deleted: ${key} (success: ${result})`);
       }
 
       return result;
     } catch (error) {
-      console.error(`[AppKit] Storage delete error for "${key}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/storage] Storage delete error for "${key}":`, (error as Error).message);
       return false;
     }
   }
@@ -222,12 +224,12 @@ export class StorageClass {
 
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`📋 [AppKit] Files listed: ${prefix}* (${result.length} files)`);
+        console.log(`📋 [@bloomneo/appkit/storage] Files listed: ${prefix}* (${result.length} files)`);
       }
 
       return result;
     } catch (error) {
-      console.error(`[AppKit] Storage list error for prefix "${prefix}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/storage] Storage list error for prefix "${prefix}":`, (error as Error).message);
       return [];
     }
   }
@@ -245,12 +247,12 @@ export class StorageClass {
 
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`🔗 [AppKit] URL generated: ${key} → ${url}`);
+        console.log(`🔗 [@bloomneo/appkit/storage] URL generated: ${key} → ${url}`);
       }
 
       return url;
     } catch (error) {
-      console.error(`[AppKit] URL generation error for "${key}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/storage] URL generation error for "${key}":`, (error as Error).message);
       throw error;
     }
   }
@@ -266,19 +268,19 @@ export class StorageClass {
 
     try {
       if (!this.strategy.signedUrl) {
-        throw new Error(`Signed URLs not supported with ${this.config.strategy} strategy`);
+        throw new Error(`[@bloomneo/appkit/storage] Signed URLs not supported with ${this.config.strategy} strategy. See: ${DOCS_URL}#common-issues`);
       }
 
       const url = await this.strategy.signedUrl(key, expiresIn);
 
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`🔐 [AppKit] Signed URL generated: ${key} (expires in ${expiresIn}s)`);
+        console.log(`🔐 [@bloomneo/appkit/storage] Signed URL generated: ${key} (expires in ${expiresIn}s)`);
       }
 
       return url;
     } catch (error) {
-      console.error(`[AppKit] Signed URL error for "${key}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/storage] Signed URL error for "${key}":`, (error as Error).message);
       throw error;
     }
   }
@@ -297,12 +299,12 @@ export class StorageClass {
 
       // Log in development
       if (this.config.environment.isDevelopment) {
-        console.log(`🔍 [AppKit] File exists check: ${key} → ${result}`);
+        console.log(`🔍 [@bloomneo/appkit/storage] File exists check: ${key} → ${result}`);
       }
 
       return result;
     } catch (error) {
-      console.error(`[AppKit] Exists check error for "${key}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/storage] Exists check error for "${key}":`, (error as Error).message);
       return false;
     }
   }
@@ -327,7 +329,7 @@ export class StorageClass {
       const data = await this.get(sourceKey);
       return await this.put(destKey, data);
     } catch (error) {
-      console.error(`[AppKit] Copy error "${sourceKey}" → "${destKey}":`, (error as Error).message);
+      console.error(`[@bloomneo/appkit/storage] Copy error "${sourceKey}" → "${destKey}":`, (error as Error).message);
       throw error;
     }
   }
@@ -389,26 +391,26 @@ export class StorageClass {
    */
   private validateKey(key: string): void {
     if (!key || typeof key !== 'string') {
-      throw new Error('Storage key must be a non-empty string');
+      throw new Error(`[@bloomneo/appkit/storage] Storage key must be a non-empty string. See: ${DOCS_URL}#common-issues`);
     }
 
     if (key.length > 1024) {
-      throw new Error('Storage key too long (max 1024 characters)');
+      throw new Error(`[@bloomneo/appkit/storage] Storage key too long (max 1024 characters). See: ${DOCS_URL}#common-issues`);
     }
 
     // Security: prevent path traversal
     if (key.includes('..') || key.includes('//')) {
-      throw new Error('Storage key contains invalid path components');
+      throw new Error(`[@bloomneo/appkit/storage] Storage key contains invalid path components. See: ${DOCS_URL}#common-issues`);
     }
 
     // Normalize separators
     if (key.includes('\\')) {
-      throw new Error('Storage key must use forward slashes (/) as separators');
+      throw new Error(`[@bloomneo/appkit/storage] Storage key must use forward slashes (/) as separators. See: ${DOCS_URL}#common-issues`);
     }
 
     // Remove leading slash for consistency
     if (key.startsWith('/')) {
-      throw new Error('Storage key should not start with forward slash');
+      throw new Error(`[@bloomneo/appkit/storage] Storage key should not start with forward slash. See: ${DOCS_URL}#common-issues`);
     }
   }
 
@@ -428,7 +430,7 @@ export class StorageClass {
       return Buffer.from(data, 'utf8');
     }
 
-    throw new Error('Data must be Buffer, Uint8Array, or string');
+    throw new Error(`[@bloomneo/appkit/storage] Data must be Buffer, Uint8Array, or string. See: ${DOCS_URL}#common-issues`);
   }
 
   /**
@@ -445,7 +447,7 @@ export class StorageClass {
     if (buffer.length > maxSize) {
       const maxMB = Math.round(maxSize / 1048576);
       const fileMB = Math.round(buffer.length / 1048576);
-      throw new Error(`File too large: ${fileMB}MB (max: ${maxMB}MB)`);
+      throw new Error(`[@bloomneo/appkit/storage] File too large: ${fileMB}MB (max: ${maxMB}MB). See: ${DOCS_URL}#common-issues`);
     }
   }
 
@@ -532,8 +534,8 @@ export class StorageClass {
 
     if (!isAllowed) {
       throw new Error(
-        `File type not allowed: ${contentType}. ` +
-        `Allowed types: ${allowedTypes.join(', ')}`
+        `[@bloomneo/appkit/storage] File type not allowed: ${contentType}. ` +
+        `Allowed types: ${allowedTypes.join(', ')}. See: ${DOCS_URL}#common-issues`
       );
     }
   }

@@ -9,6 +9,8 @@
  * @llm-rule NOTE: Auto-detects Local vs S3 vs R2 based on environment variables
  */
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
+
 export interface LocalConfig {
   dir: string;
   baseUrl: string;
@@ -137,9 +139,9 @@ function detectStorageStrategy(): 'local' | 's3' | 'r2' {
   // Default to local for development/single server
   if (process.env.NODE_ENV === 'production') {
     console.warn(
-      '[Bloomneo AppKit] No cloud storage configured in production. ' +
-      'Using local filesystem which may not scale. ' +
-      'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for cloud storage.'
+      `[@bloomneo/appkit/storage] No cloud storage configured in production. ` +
+      `Using local filesystem which may not scale. ` +
+      `Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for cloud storage. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -167,8 +169,8 @@ function parseAllowedTypes(): string[] {
   if (envTypes === '*') {
     if (process.env.NODE_ENV === 'production') {
       console.warn(
-        '[Bloomneo AppKit] SECURITY WARNING: All file types allowed in production. ' +
-        'Set BLOOM_STORAGE_ALLOWED_TYPES to specific types for security.'
+        `[@bloomneo/appkit/storage] SECURITY WARNING: All file types allowed in production. ` +
+        `Set BLOOM_STORAGE_ALLOWED_TYPES to specific types for security. See: ${DOCS_URL}#environment-variables`
       );
     }
     return ['*']; // Allow all types (use with caution)
@@ -188,7 +190,7 @@ function validateEnvironment(): void {
   const strategy = process.env.BLOOM_STORAGE_STRATEGY;
   if (strategy && !['local', 's3', 'r2'].includes(strategy.toLowerCase())) {
     throw new Error(
-      `Invalid BLOOM_STORAGE_STRATEGY: "${strategy}". Must be "local", "s3", or "r2"`
+      `[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_STRATEGY: "${strategy}". Must be "local", "s3", or "r2". See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -220,8 +222,8 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
-      `Expected: development, production, test, or staging`
+      `[@bloomneo/appkit/storage] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `Expected: development, production, test, or staging. See: ${DOCS_URL}#environment-variables`
     );
   }
 }
@@ -254,11 +256,11 @@ function shouldValidateLocal(): boolean {
 function validateS3Config(): void {
   const bucket = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET;
   if (!bucket) {
-    throw new Error('S3 bucket name required. Set AWS_S3_BUCKET or S3_BUCKET environment variable');
+    throw new Error(`[@bloomneo/appkit/storage] S3 bucket name required. Set AWS_S3_BUCKET or S3_BUCKET environment variable. See: ${DOCS_URL}#environment-variables`);
   }
 
   if (!isValidBucketName(bucket)) {
-    throw new Error(`Invalid S3 bucket name: "${bucket}". Must be 3-63 characters, lowercase, no dots`);
+    throw new Error(`[@bloomneo/appkit/storage] Invalid S3 bucket name: "${bucket}". Must be 3-63 characters, lowercase, no dots. See: ${DOCS_URL}#environment-variables`);
   }
 
   const accessKey = process.env.AWS_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY_ID;
@@ -266,13 +268,13 @@ function validateS3Config(): void {
 
   if (!accessKey || !secretKey) {
     throw new Error(
-      'S3 credentials required. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables'
+      `[@bloomneo/appkit/storage] S3 credentials required. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. See: ${DOCS_URL}#environment-variables`
     );
   }
 
   const endpoint = process.env.S3_ENDPOINT;
   if (endpoint && !isValidUrl(endpoint)) {
-    throw new Error(`Invalid S3 endpoint: "${endpoint}". Must be a valid URL`);
+    throw new Error(`[@bloomneo/appkit/storage] Invalid S3 endpoint: "${endpoint}". Must be a valid URL. See: ${DOCS_URL}#environment-variables`);
   }
 }
 
@@ -282,11 +284,11 @@ function validateS3Config(): void {
 function validateR2Config(): void {
   const bucket = process.env.CLOUDFLARE_R2_BUCKET;
   if (!bucket) {
-    throw new Error('R2 bucket name required. Set CLOUDFLARE_R2_BUCKET environment variable');
+    throw new Error(`[@bloomneo/appkit/storage] R2 bucket name required. Set CLOUDFLARE_R2_BUCKET environment variable. See: ${DOCS_URL}#environment-variables`);
   }
 
   if (!isValidBucketName(bucket)) {
-    throw new Error(`Invalid R2 bucket name: "${bucket}". Must be 3-63 characters, lowercase`);
+    throw new Error(`[@bloomneo/appkit/storage] Invalid R2 bucket name: "${bucket}". Must be 3-63 characters, lowercase. See: ${DOCS_URL}#environment-variables`);
   }
 
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
@@ -295,7 +297,7 @@ function validateR2Config(): void {
 
   if (!accountId || !accessKey || !secretKey) {
     throw new Error(
-      'R2 credentials required. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID, and CLOUDFLARE_R2_SECRET_ACCESS_KEY environment variables'
+      `[@bloomneo/appkit/storage] R2 credentials required. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID, and CLOUDFLARE_R2_SECRET_ACCESS_KEY environment variables. See: ${DOCS_URL}#environment-variables`
     );
   }
 }
@@ -307,14 +309,14 @@ function validateLocalConfig(): void {
   const dir = process.env.BLOOM_STORAGE_DIR;
   if (dir && (dir.includes('..') || dir.startsWith('/') && process.env.NODE_ENV === 'production')) {
     console.warn(
-      `[Bloomneo AppKit] Potentially unsafe storage directory: "${dir}". ` +
-      `Consider using a relative path for security.`
+      `[@bloomneo/appkit/storage] Potentially unsafe storage directory: "${dir}". ` +
+      `Consider using a relative path for security. See: ${DOCS_URL}#environment-variables`
     );
   }
 
   const baseUrl = process.env.BLOOM_STORAGE_BASE_URL;
   if (baseUrl && !baseUrl.startsWith('/') && !isValidUrl(baseUrl)) {
-    throw new Error(`Invalid BLOOM_STORAGE_BASE_URL: "${baseUrl}". Must be a path or valid URL`);
+    throw new Error(`[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_BASE_URL: "${baseUrl}". Must be a path or valid URL. See: ${DOCS_URL}#environment-variables`);
   }
 }
 
@@ -328,9 +330,9 @@ function validateProductionConfig(): void {
   
   if (strategy === 'local') {
     console.warn(
-      '[Bloomneo AppKit] Using local storage in production. ' +
-      'Files will only exist on single server instance. ' +
-      'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for distributed storage.'
+      `[@bloomneo/appkit/storage] Using local storage in production. ` +
+      `Files will only exist on single server instance. ` +
+      `Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for distributed storage. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -338,8 +340,8 @@ function validateProductionConfig(): void {
   const cdnUrl = process.env.BLOOM_STORAGE_CDN_URL || process.env.CLOUDFLARE_R2_CDN_URL;
   if (!cdnUrl && strategy !== 'local') {
     console.warn(
-      '[Bloomneo AppKit] No CDN URL configured in production. ' +
-      'Set BLOOM_STORAGE_CDN_URL for better performance.'
+      `[@bloomneo/appkit/storage] No CDN URL configured in production. ` +
+      `Set BLOOM_STORAGE_CDN_URL for better performance. See: ${DOCS_URL}#environment-variables`
     );
   }
 }
@@ -378,32 +380,9 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
     throw new Error(
-      `Invalid ${name}: "${value}". Must be a number between ${min} and ${max}`
+      `[@bloomneo/appkit/storage] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`
     );
   }
-}
-
-/**
- * Gets storage configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging storage configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive connection details - this only shows safe info
- */
-export function getConfigSummary(): {
-  strategy: string;
-  local: boolean;
-  s3: boolean;
-  r2: boolean;
-  environment: string;
-} {
-  const config = getSmartDefaults();
-  
-  return {
-    strategy: config.strategy,
-    local: config.strategy === 'local',
-    s3: config.strategy === 's3',
-    r2: config.strategy === 'r2',
-    environment: config.environment.nodeEnv,
-  };
 }
 
 /**
@@ -414,56 +393,4 @@ export function getConfigSummary(): {
 export function hasCloudStorage(): boolean {
   const strategy = detectStorageStrategy();
   return strategy === 's3' || strategy === 'r2';
-}
-
-/**
- * Gets recommended configuration for different deployment types
- * @llm-rule WHEN: Setting up storage for specific deployment scenarios
- * @llm-rule AVOID: Default config for specialized deployments - needs specific tuning
- */
-export function getDeploymentConfig(type: 'development' | 'staging' | 'production'): Partial<StorageConfig> {
-  switch (type) {
-    case 'development':
-      return {
-        strategy: 'local',
-        local: {
-          dir: './uploads',
-          baseUrl: '/uploads',
-          maxFileSize: 10485760, // 10MB
-          allowedTypes: ['*'], // Allow all for development
-          createDirs: true,
-        },
-      };
-
-    case 'staging':
-      return {
-        strategy: hasCloudStorage() ? detectStorageStrategy() : 'local',
-        local: {
-          dir: './uploads-staging',
-          baseUrl: '/uploads',
-          maxFileSize: 26214400, // 25MB
-          allowedTypes: parseAllowedTypes(),
-          createDirs: true,
-        },
-      };
-
-    case 'production':
-      const strategy = detectStorageStrategy();
-      if (strategy === 'local') {
-        console.warn('[Bloomneo AppKit] Local storage not recommended for production');
-      }
-      return {
-        strategy,
-        local: {
-          dir: './uploads-prod',
-          baseUrl: '/uploads',
-          maxFileSize: 52428800, // 50MB
-          allowedTypes: parseAllowedTypes(),
-          createDirs: false, // Don't auto-create in production
-        },
-      };
-
-    default:
-      throw new Error(`Unknown deployment type: ${type}`);
-  }
 }

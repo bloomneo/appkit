@@ -82,12 +82,24 @@ describe('Public API surface — drift check', () => {
     'disconnect', 'getStrategy', 'getConfig',
   ];
 
-  // Methods that do NOT exist — previously hallucinated
-  const HALLUCINATED = ['has', 'save', 'upload', 'fetch'];
+  // Instance methods that do NOT exist — previously hallucinated
+  const HALLUCINATED_INSTANCE = ['has', 'save', 'upload', 'fetch'];
+
+  // Class-level methods that MUST NOT exist — drift trap for docs that
+  // assume symmetry with the instance surface.
+  const HALLUCINATED_CLASS = [
+    'put', 'delete', 'list', 'url', 'signedUrl', 'exists', 'copy', 'disconnect',
+  ];
 
   for (const m of CLASS_METHODS) {
     it(`storageClass.${m} exists`, () => {
       expect(typeof (storageClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`storageClass.${m} does NOT exist (call via storageClass.get().${m}() instead)`, () => {
+      expect(typeof (storageClass as any)[m]).not.toBe('function');
     });
   }
 
@@ -98,7 +110,7 @@ describe('Public API surface — drift check', () => {
     });
   }
 
-  for (const m of HALLUCINATED) {
+  for (const m of HALLUCINATED_INSTANCE) {
     it(`storage instance .${m} does NOT exist`, () => {
       // Note: storageClass.upload helper exists but NOT on the Storage instance
       expect(typeof (storage as any)[m]).not.toBe('function');

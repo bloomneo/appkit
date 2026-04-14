@@ -667,6 +667,7 @@ BLOOM_UTIL_TRACK_PERF=false             # Default: true in dev
 BLOOM_UTIL_LOCALE=en-US                 # Default: en-US
 BLOOM_UTIL_CURRENCY=USD                 # Default: USD
 BLOOM_UTIL_NUMBER_PRECISION=2           # Default: 2 decimal places
+BLOOM_UTIL_DATE_FORMAT=YYYY-MM-DD       # Default: YYYY-MM-DD
 
 # Slugify settings
 BLOOM_UTIL_SLUGIFY_REPLACEMENT=-        # Default: -
@@ -908,7 +909,7 @@ Full TypeScript support with comprehensive types:
 
 ```typescript
 import type {
-  UtilityConfig,
+  UtilConfig,
   GetOptions,
   ChunkOptions,
   TruncateOptions,
@@ -972,7 +973,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 | 1 | API correctness | **9** | After fixes: all 12 instance methods (`get`, `isEmpty`, `slugify`, `chunk`, `debounce`, `pick`, `unique`, `clamp`, `formatBytes`, `truncate`, `sleep`, `uuid`) and 9 class methods correct. Import path fixed (`/utils` → `/util`). |
 | 2 | Doc consistency | **8** | After fixes, README and examples align. Testing section uses correct `utilClass.clearCache()`. |
 | 3 | Runtime verification | **9** | Testing section covers all 12 instance methods with expected values. Clean `clearCache()` in `beforeEach`. |
-| 4 | Type safety | **7** | 7 TypeScript option types exported (`UtilityConfig`, `GetOptions`, `ChunkOptions`, `TruncateOptions`, `DebounceOptions`, `FormatBytesOptions`, `SlugifyOptions`). Generic `get<T>()` shown. |
+| 4 | Type safety | **7** | 7 TypeScript option types exported (`UtilConfig`, `GetOptions`, `ChunkOptions`, `TruncateOptions`, `DebounceOptions`, `FormatBytesOptions`, `SlugifyOptions`). Generic `get<T>()` shown. |
 | 5 | Discoverability | **8** | "The Essential 12" section is an excellent navigational anchor. No AGENTS.md pointer. |
 | 6 | Example completeness | **9** | All 12 utilities documented with examples, edge cases, and options variants. Best coverage of any module. |
 | 7 | Composability | **8** | Multiple realistic compositions shown (data processing, API service, form handling). |

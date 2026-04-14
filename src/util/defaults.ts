@@ -8,6 +8,8 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance like other modules
  */
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/util/README.md';
+
 export interface CacheConfig {
   enabled: boolean;
   maxSize: number;
@@ -138,12 +140,12 @@ function validateEnvironment(): void {
     const cacheSizeNum = parseInt(cacheSize);
     if (isNaN(cacheSizeNum) || cacheSizeNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_UTIL_CACHE_SIZE: "${cacheSize}". Must be a positive number.`
+        `[@bloomneo/appkit/util] Invalid BLOOM_UTIL_CACHE_SIZE: "${cacheSize}". Must be a positive number. See: ${DOCS_URL}#environment-variables`
       );
     }
     if (cacheSizeNum > 100000) {
       console.warn(
-        `[Bloomneo AppKit] Large cache size: ${cacheSizeNum}. This may impact memory usage.`
+        `[@bloomneo/appkit/util] Large cache size: ${cacheSizeNum}. This may impact memory usage. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -154,7 +156,7 @@ function validateEnvironment(): void {
     const cacheTTLNum = parseInt(cacheTTL);
     if (isNaN(cacheTTLNum) || cacheTTLNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_UTIL_CACHE_TTL: "${cacheTTL}". Must be a positive number (milliseconds).`
+        `[@bloomneo/appkit/util] Invalid BLOOM_UTIL_CACHE_TTL: "${cacheTTL}". Must be a positive number (milliseconds). See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -165,7 +167,7 @@ function validateEnvironment(): void {
     const thresholdNum = parseInt(arrayThreshold);
     if (isNaN(thresholdNum) || thresholdNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_UTIL_ARRAY_THRESHOLD: "${arrayThreshold}". Must be a positive number.`
+        `[@bloomneo/appkit/util] Invalid BLOOM_UTIL_ARRAY_THRESHOLD: "${arrayThreshold}". Must be a positive number. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -176,7 +178,7 @@ function validateEnvironment(): void {
     const chunkLimitNum = parseInt(chunkLimit);
     if (isNaN(chunkLimitNum) || chunkLimitNum <= 0) {
       throw new Error(
-        `Invalid BLOOM_UTIL_CHUNK_LIMIT: "${chunkLimit}". Must be a positive number.`
+        `[@bloomneo/appkit/util] Invalid BLOOM_UTIL_CHUNK_LIMIT: "${chunkLimit}". Must be a positive number. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -187,7 +189,7 @@ function validateEnvironment(): void {
     const precisionNum = parseInt(numberPrecision);
     if (isNaN(precisionNum) || precisionNum < 0 || precisionNum > 20) {
       throw new Error(
-        `Invalid BLOOM_UTIL_NUMBER_PRECISION: "${numberPrecision}". Must be between 0 and 20.`
+        `[@bloomneo/appkit/util] Invalid BLOOM_UTIL_NUMBER_PRECISION: "${numberPrecision}". Must be between 0 and 20. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -196,7 +198,7 @@ function validateEnvironment(): void {
   const locale = process.env.BLOOM_UTIL_LOCALE;
   if (locale && !isValidLocale(locale)) {
     console.warn(
-      `[Bloomneo AppKit] Invalid locale: "${locale}". Using default 'en-US'.`
+      `[@bloomneo/appkit/util] Invalid locale: "${locale}". Using default 'en-US'. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -204,7 +206,7 @@ function validateEnvironment(): void {
   const currency = process.env.BLOOM_UTIL_CURRENCY;
   if (currency && !isValidCurrency(currency)) {
     console.warn(
-      `[Bloomneo AppKit] Invalid currency: "${currency}". Using default 'USD'.`
+      `[@bloomneo/appkit/util] Invalid currency: "${currency}". Using default 'USD'. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -212,7 +214,7 @@ function validateEnvironment(): void {
   const replacement = process.env.BLOOM_UTIL_SLUGIFY_REPLACEMENT;
   if (replacement && replacement.length > 5) {
     console.warn(
-      `[Bloomneo AppKit] Long slugify replacement: "${replacement}". Consider using shorter replacement.`
+      `[@bloomneo/appkit/util] Long slugify replacement: "${replacement}". Consider using shorter replacement. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -220,13 +222,13 @@ function validateEnvironment(): void {
   if (nodeEnv === 'production') {
     if (process.env.BLOOM_UTIL_DEBUG === 'true') {
       console.warn(
-        '[Bloomneo AppKit] Debug mode enabled in production. This may impact performance.'
+        `[@bloomneo/appkit/util] Debug mode enabled in production. This may impact performance. See: ${DOCS_URL}#environment-variables`
       );
     }
 
     if (process.env.BLOOM_UTIL_LOG_OPS === 'true') {
       console.warn(
-        '[Bloomneo AppKit] Operation logging enabled in production. This may impact performance.'
+        `[@bloomneo/appkit/util] Operation logging enabled in production. This may impact performance. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -234,8 +236,8 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
-      `Expected: development, production, test, or staging`
+      `[@bloomneo/appkit/util] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `Expected: development, production, test, or staging. See: ${DOCS_URL}#environment-variables`
     );
   }
 }

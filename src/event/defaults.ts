@@ -9,6 +9,8 @@
  * @llm-rule NOTE: Auto-detects Redis vs Memory based on REDIS_URL environment variable
  */
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/event/README.md';
+
 export interface RedisConfig {
   url: string;
   password?: string;
@@ -123,9 +125,9 @@ function detectEventStrategy(): 'redis' | 'memory' {
   // Default to memory for development/testing
   if (process.env.NODE_ENV === 'production') {
     console.warn(
-      '[Bloomneo AppKit] No REDIS_URL found in production. ' +
+      '[@bloomneo/appkit/event] No REDIS_URL found in production. ' +
       'Using memory event strategy which will not work across multiple servers. ' +
-      'Set REDIS_URL for distributed events.'
+      `Set REDIS_URL for distributed events. See: ${DOCS_URL}#production-deployment`
     );
   }
 
@@ -143,21 +145,21 @@ function validateEnvironment(): void {
   const strategy = process.env.BLOOM_EVENT_STRATEGY;
   if (strategy && !['redis', 'memory'].includes(strategy.toLowerCase())) {
     throw new Error(
-      `Invalid BLOOM_EVENT_STRATEGY: "${strategy}". Must be "redis" or "memory"`
+      `[@bloomneo/appkit/event] Invalid BLOOM_EVENT_STRATEGY: "${strategy}". Must be "redis" or "memory". See: ${DOCS_URL}#environment-variables`
     );
   }
 
   // Validate Redis URL if provided
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl && !isValidRedisUrl(redisUrl)) {
-    throw new Error(`Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://`);
+    throw new Error(`[@bloomneo/appkit/event] Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://. See: ${DOCS_URL}#environment-variables`);
   }
 
   // Validate namespace
   const namespace = process.env.BLOOM_EVENT_NAMESPACE;
   if (namespace && !/^[a-zA-Z0-9_-]+$/.test(namespace)) {
     throw new Error(
-      `Invalid BLOOM_EVENT_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens`
+      `[@bloomneo/appkit/event] Invalid BLOOM_EVENT_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -175,7 +177,7 @@ function validateEnvironment(): void {
   const keyPrefix = process.env.BLOOM_EVENT_REDIS_PREFIX;
   if (keyPrefix && !/^[a-zA-Z0-9_-]+$/.test(keyPrefix)) {
     throw new Error(
-      `Invalid BLOOM_EVENT_REDIS_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens`
+      `[@bloomneo/appkit/event] Invalid BLOOM_EVENT_REDIS_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -188,7 +190,7 @@ function validateEnvironment(): void {
   // Validate NODE_ENV
   if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
     console.warn(
-      `[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
+      `[@bloomneo/appkit/event] Unusual NODE_ENV: "${nodeEnv}". ` +
       `Expected: development, production, test, or staging`
     );
   }
@@ -220,7 +222,7 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
     throw new Error(
-      `Invalid ${name}: "${value}". Must be a number between ${min} and ${max}`
+      `[@bloomneo/appkit/event] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`
     );
   }
 }
@@ -232,12 +234,12 @@ function validateNumericEnv(name: string, min: number, max: number): void {
  */
 function validateProductionConfig(): void {
   const strategy = detectEventStrategy();
-  
+
   if (strategy === 'memory') {
     console.warn(
-      '[Bloomneo AppKit] Using memory event strategy in production. ' +
+      '[@bloomneo/appkit/event] Using memory event strategy in production. ' +
       'Events will only work within single server instance. ' +
-      'Set REDIS_URL for distributed events across multiple servers.'
+      `Set REDIS_URL for distributed events across multiple servers. See: ${DOCS_URL}#production-deployment`
     );
   }
 
@@ -245,33 +247,10 @@ function validateProductionConfig(): void {
   const namespace = process.env.BLOOM_EVENT_NAMESPACE;
   if (!namespace) {
     console.warn(
-      '[Bloomneo AppKit] No event namespace configured in production. ' +
-      'Set BLOOM_EVENT_NAMESPACE for proper event isolation.'
+      '[@bloomneo/appkit/event] No event namespace configured in production. ' +
+      `Set BLOOM_EVENT_NAMESPACE for proper event isolation. See: ${DOCS_URL}#production-deployment`
     );
   }
-}
-
-/**
- * Gets event configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging event configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive connection details - this only shows safe info
- */
-export function getConfigSummary(): {
-  strategy: string;
-  namespace: string;
-  historyEnabled: boolean;
-  redisConnected: boolean;
-  environment: string;
-} {
-  const config = getSmartDefaults();
-  
-  return {
-    strategy: config.strategy,
-    namespace: config.namespace,
-    historyEnabled: config.history.enabled,
-    redisConnected: config.strategy === 'redis' && !!config.redis?.url,
-    environment: config.environment.nodeEnv,
-  };
 }
 
 /**
@@ -293,8 +272,8 @@ export function validateProductionRequirements(): void {
     
     if (config.strategy === 'redis' && !config.redis?.url) {
       throw new Error(
-        'Redis strategy selected but REDIS_URL not configured. ' +
-        'Set REDIS_URL environment variable for Redis events.'
+        `[@bloomneo/appkit/event] Redis strategy selected but REDIS_URL not configured. ` +
+        `Set REDIS_URL environment variable for Redis events. See: ${DOCS_URL}#environment-variables`
       );
     }
   }
@@ -424,70 +403,3 @@ export function performHealthCheck(): {
   }
 }
 
-/**
- * Gets optimal event configuration for different environments
- * @llm-rule WHEN: Setting up environment-specific event behavior
- * @llm-rule AVOID: Manual environment handling - this provides optimal defaults
- */
-export function getEnvironmentOptimizedConfig(): EventConfig {
-  const config = getSmartDefaults();
-  
-  // Optimize for different environments
-  if (config.environment.isDevelopment) {
-    // Development: More history, frequent GC
-    config.history.maxSize = 100;
-    if (config.memory) {
-      config.memory.checkInterval = 10000; // 10 seconds
-      config.memory.enableGC = true;
-    }
-  } else if (config.environment.isProduction) {
-    // Production: Less history, less frequent GC
-    config.history.maxSize = 50;
-    if (config.memory) {
-      config.memory.checkInterval = 60000; // 1 minute
-      config.memory.enableGC = true;
-    }
-  } else if (config.environment.isTest) {
-    // Test: Minimal history, no GC
-    config.history.maxSize = 10;
-    if (config.memory) {
-      config.memory.checkInterval = 1000; // 1 second
-      config.memory.enableGC = false;
-    }
-  }
-  
-  return config;
-}
-
-/**
- * Checks if Redis is available and properly configured
- * @llm-rule WHEN: Conditional logic based on event capabilities
- * @llm-rule AVOID: Complex event detection - just use events normally, strategy handles it
- */
-export function hasRedis(): boolean {
-  const redisUrl = process.env.REDIS_URL;
-  return !!(redisUrl && isValidRedisUrl(redisUrl));
-}
-
-/**
- * Gets recommended configuration for microservices
- * @llm-rule WHEN: Setting up events for microservices architecture
- * @llm-rule AVOID: Default config for microservices - needs specific tuning
- */
-export function getMicroservicesConfig(): Partial<EventConfig> {
-  return {
-    strategy: 'redis', // Always use Redis for microservices
-    history: {
-      enabled: true,
-      maxSize: 25, // Less history per service
-    },
-    redis: {
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
-      maxRetries: 5, // More retries for reliability
-      retryDelay: 2000, // Longer delays
-      connectTimeout: 15000, // Longer timeout
-      commandTimeout: 10000, // Longer command timeout
-      keyPrefix: 'microservices:events',
-    } as RedisConfig,
-  };
-}

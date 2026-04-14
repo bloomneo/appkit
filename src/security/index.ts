@@ -12,6 +12,8 @@
 import { SecurityClass } from './security.js';
 import { getSmartDefaults, type SecurityConfig } from './defaults.js';
 
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
+
 // Global security instance for performance
 let globalSecurity: SecurityClass | null = null;
 
@@ -150,8 +152,8 @@ function validateRequired(checks: {
 
   if (missing.length > 0) {
     throw new Error(
-      `Missing required security configuration: ${missing.join(', ')}\n` +
-      `Set environment variables for production security.`
+      `[@bloomneo/appkit/security] Missing required security configuration: ${missing.join(', ')}. ` +
+      `Set environment variables for production security. See: ${DOCS_URL}#environment-variables`
     );
   }
 }

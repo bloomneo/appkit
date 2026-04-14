@@ -135,21 +135,30 @@ queueClass.getActiveTransport(); // See which transport is running
 queueClass.hasTransport('redis'); // Check specific transport
 queueClass.getConfig(); // Debug configuration
 queueClass.getHealth(); // Health status
-queueClass.clear(); // Clear all (testing)
+await queueClass.clear(); // Clear all (testing)
+queueClass.reset(overrides?); // Reset with new config (testing)
 ```
+
+> Use `await queue.close()` on the instance for graceful shutdown; `close()` is an instance method, not a class method.
+
 
 ## 🌍 Environment Variables
 
 ### Basic Setup
 
 ```bash
-# Transport selection (auto-detected)
+# Transport selection (auto-detected: REDIS_URL → redis, DATABASE_URL → database, else → memory)
 REDIS_URL=redis://localhost:6379              # Enables Redis transport
 DATABASE_URL=postgres://user:pass@host/db     # Enables Database transport
+BLOOM_QUEUE_TRANSPORT=memory                  # Manual override: memory|redis|database
 
 # Worker configuration
 BLOOM_QUEUE_WORKER=true                       # Enable job processing
-BLOOM_QUEUE_CONCURRENCY=10                    # Jobs processed simultaneously
+BLOOM_QUEUE_CONCURRENCY=10                    # Jobs processed simultaneously (1-100)
+
+# Service identification (used in log context)
+BLOOM_SERVICE_NAME=my-app                     # Default: package.json name
+BLOOM_SERVICE_VERSION=1.0.0                   # Default: package.json version
 ```
 
 ### Advanced Configuration
@@ -166,7 +175,11 @@ BLOOM_QUEUE_REMOVE_FAILED=500                 # Keep last 500 failed jobs
 
 # Performance tuning
 BLOOM_QUEUE_DEFAULT_PRIORITY=0                # Default job priority
-BLOOM_QUEUE_SHUTDOWN_TIMEOUT=30000            # Graceful shutdown timeout
+BLOOM_QUEUE_SHUTDOWN_TIMEOUT=30000            # Graceful shutdown timeout (5000-120000ms)
+
+# Stalled job detection
+BLOOM_QUEUE_STALLED_INTERVAL=30000            # Stalled job check interval (default: 30000)
+BLOOM_QUEUE_MAX_STALLED=1                     # Max times a job can stall before failing (default: 1)
 ```
 
 ### Transport-Specific Settings
@@ -177,8 +190,9 @@ BLOOM_QUEUE_MEMORY_MAX_JOBS=1000              # Max jobs in memory
 BLOOM_QUEUE_MEMORY_CLEANUP=30000              # Cleanup interval
 
 # Redis Transport (Production)
-BLOOM_QUEUE_REDIS_PREFIX=myapp                # Redis key prefix
-BLOOM_QUEUE_REDIS_RETRIES=3                   # Connection retries
+BLOOM_QUEUE_REDIS_PREFIX=myapp                # Redis key prefix (default: queue)
+BLOOM_QUEUE_REDIS_RETRIES=3                   # Connection retries (default: 3)
+BLOOM_QUEUE_REDIS_FAILOVER_DELAY=100          # Retry delay on failover in ms (default: 100)
 
 # Database Transport (Simple Persistent)
 BLOOM_QUEUE_DB_TABLE=queue_jobs               # Table name
@@ -420,12 +434,11 @@ app.get('/api/queue/stats', async (req, res) => {
 
 // Get jobs by status
 app.get('/api/queue/jobs', async (req, res) => {
-  const { status, jobType, limit = 50 } = req.query;
+  const { status, jobType } = req.query;
 
   const jobs = await queue.getJobs(
     status as any,
-    jobType as string,
-    parseInt(limit as string)
+    jobType as string
   );
 
   res.json(jobs);

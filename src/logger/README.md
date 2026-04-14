@@ -475,7 +475,7 @@ Hallucinated methods cap: 40/100 (gethasTransport, getclear — now fixed)
 1. **D1 → 9 (after fix)**: With the 3 method-name fixes applied, D1 rises to ~9 → uncapped score ~82
 2. **D6 → 9**: Add `flush()`, `close()`, `hasTransport()` to `examples/logger.ts`
 3. **D11 → 8**: Add "See also: AGENTS.md | examples/logger.ts" at the top of README
-4. **D8 → 8**: Transport init failures should log `[@bloomneo/appkit/logger] File transport failed: <reason>. Check BLOOM_LOGGER_FILE_PATH is writable.`
+4. **D8 → 8**: Transport init failures should log `[@bloomneo/appkit/logger] File transport failed: <reason>. Check BLOOM_LOGGER_DIR is writable.`
 5. **D10 → 9**: Add CI drift check
 
 **Realistic ceiling:** ~84/100 after all fixes. The module itself is excellent — the only real gaps are the hallucinated names (fixed) and missing example coverage.

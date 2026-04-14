@@ -133,12 +133,25 @@ describe('Public API surface — drift check', () => {
     'getListeners', 'disconnect', 'getStrategy', 'getConfig',
   ];
 
-  // Methods that do NOT exist — previously hallucinated
-  const HALLUCINATED = ['subscribe', 'unsubscribe', 'publish', 'listen'];
+  // Instance methods that do NOT exist — previously hallucinated
+  const HALLUCINATED_INSTANCE = ['subscribe', 'unsubscribe', 'publish', 'listen'];
+
+  // Class-level methods that MUST NOT exist — removed dead exports that
+  // were never part of the public surface (getConfigSummary,
+  // getEnvironmentOptimizedConfig, getMicroservicesConfig).
+  const HALLUCINATED_CLASS = [
+    'getConfigSummary', 'getEnvironmentOptimizedConfig', 'getMicroservicesConfig',
+  ];
 
   for (const m of CLASS_METHODS) {
     it(`eventClass.${m} exists`, () => {
       expect(typeof (eventClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`eventClass.${m} does NOT exist (not part of the public API)`, () => {
+      expect(typeof (eventClass as any)[m]).not.toBe('function');
     });
   }
 
@@ -149,7 +162,7 @@ describe('Public API surface — drift check', () => {
     });
   }
 
-  for (const m of HALLUCINATED) {
+  for (const m of HALLUCINATED_INSTANCE) {
     it(`event.${m} does NOT exist`, () => {
       expect(typeof (event as any)[m]).not.toBe('function');
     });

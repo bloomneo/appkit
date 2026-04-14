@@ -97,12 +97,24 @@ describe('Public API surface — drift check', () => {
     'forms', 'requests', 'input', 'html', 'escape', 'encrypt', 'decrypt', 'generateKey',
   ];
 
-  // Methods that do NOT exist — previously hallucinated
-  const HALLUCINATED = ['csrf', 'requireCsrf', 'email', 'url'];
+  // Instance methods that do NOT exist — previously hallucinated
+  const HALLUCINATED_INSTANCE = ['csrf', 'requireCsrf', 'email', 'url'];
+
+  // Class-level methods that MUST NOT exist — drift trap for docs that
+  // assume symmetry with the instance surface.
+  const HALLUCINATED_CLASS = [
+    'forms', 'requests', 'input', 'html', 'escape', 'encrypt', 'decrypt',
+  ];
 
   for (const m of CLASS_METHODS) {
     it(`securityClass.${m} exists`, () => {
       expect(typeof (securityClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`securityClass.${m} does NOT exist (call via securityClass.get().${m}() instead)`, () => {
+      expect(typeof (securityClass as any)[m]).not.toBe('function');
     });
   }
 
@@ -113,7 +125,7 @@ describe('Public API surface — drift check', () => {
     });
   }
 
-  for (const m of HALLUCINATED) {
+  for (const m of HALLUCINATED_INSTANCE) {
     it(`security.${m} does NOT exist`, () => {
       expect(typeof (security as any)[m]).not.toBe('function');
     });
