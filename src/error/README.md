@@ -684,42 +684,45 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 60/100 — 🟡 Solid** *(uncapped: 75/100 — cap applied for runtime bug in Fastify example)*
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 83/100 — 🟡 Solid** *(uncapped: 83/100 — no cap applies)*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Delta vs previous (2026-04-13): **+23** (previous 60 capped / 75 uncapped → now 83 uncapped, no cap).*
 
-> ⚠️ **Cap reason**: The Fastify and Koa example code blocks in the README shadowed the outer `error` variable with the caught error parameter, making `error.serverError(error.message)` call `.serverError()` on a plain Error object (which doesn't have that method) — a runtime TypeError. This is the "doc file contradicts examples file" anti-pattern → cap 60. **Fixed in this version.**
+> ✅ **Cap lifted**: The prior Fastify/Koa variable-shadowing runtime bug has been fixed — the current README Fastify snippet uses `err` (not `error`) as the caught-param name, so `error.serverError(err.message)` resolves correctly. `examples/error.ts` is runtime-verified and uses the correct `handleErrors({ showStack, logErrors })` signature (the `includeStack` hallucination from the prior round is gone). `llms.txt` and the root `README.md` were aligned today, and `dist/` was rebuilt today. No anti-pattern cap applies.
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **7** | All 15 methods exist and are tested. Fixed: 3 code blocks (2× Fastify, 1× Koa) used `error` as both the class instance and the caught error parameter — `error.serverError(error.message)` would TypeError at runtime. Also fixed stale `VOILA_ERROR_*` brand string. |
-| 2 | Doc consistency | **8** | README, examples, AGENTS.md, and tests all use `errorClass.get()` consistently. The dual invocation paths (instance methods + `errorClass` shortcuts) are clearly documented. |
-| 3 | Runtime verification | **9** | Excellent test suite: all 8 semantic errors tested with exact `statusCode` + `type`, `handleErrors()` verified to return 4-arg function, `asyncRoute` verified, `isClientError/isServerError` tested. Drift check for all 15 instance methods. |
-| 4 | Type safety | **7** | `AppError`, `ErrorHandlerOptions`, `AsyncRouteHandler`, `ExpressErrorHandler` are all typed. Framework interfaces use `any` index signatures — acceptable for framework-agnostic design. |
-| 5 | Discoverability | **9** | README hero is 10 lines to a working setup. Import is consistent. "Must be LAST middleware" is called out repeatedly. |
-| 6 | Example completeness | **6** | `examples/error.ts` covers 6 of 15 methods. Missing from examples: `unauthorized`, `conflict`, `serverError`, `tooMany`, `internal`, `createError`, `isClientError`, `isServerError`, `getEnvironmentInfo`, `getConfig`, `reset`, `clearCache`. README compensates with inline code blocks for all cases. |
-| 7 | Composability | **7** | `cookbook/auth-protected-crud.ts` composes error + auth + database + logger. `examples/error.ts` shows error + database combo. |
-| 8 | Educational errors | **7** | The module *creates* educational errors for consumers (`badRequest`, `notFound`, etc.) — all well-named. The module itself doesn't throw many internal errors. Transport/config failures are logged generically. |
-| 9 | Convention enforcement | **8** | One canonical setup: `get()` → `asyncRoute()` → `throw error.X()` → `handleErrors()` last. `serverError` vs `internal` aliasing is the only ambiguity (documented). |
-| 10 | Drift prevention | **6** | Drift check test covers all 15 instance methods. No CI gate. |
-| 11 | Reading order | **6** | README is well-structured with clear sections. No explicit pointer to AGENTS.md or examples at top. |
-| **12** | **Simplicity** | **8** | 15 methods, but 8 are semantic errors following identical shapes. Minimum viable setup is 4 concepts: `get()`, `asyncRoute()`, `throw error.X()`, `handleErrors()`. |
-| **13** | **Clarity** | **10** | `badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `serverError`, `asyncRoute`, `handleErrors` — every name reads as an English sentence. Best clarity score of any module reviewed so far. |
-| **14** | **Unambiguity** | **7** | `serverError` and `internal` are aliases — documented but creates two valid ways to do the same thing. Otherwise every method has exactly one valid interpretation. |
-| **15** | **Learning curve** | **9** | Fastest time-to-first-working-call of any module. README hero is complete in 10 lines. Errors self-explain via semantic names. |
+| 1 | API correctness | **9** | Every method named in README, `examples/error.ts`, `llms.txt`, and `cookbook/` exists on `ErrorClass` / `errorClass`. `internal` is correctly labeled as an alias of `serverError`. `handleErrors` options (`showStack`, `logErrors`) match source exactly. |
+| 2 | Doc consistency | **9** | README, `examples/error.ts`, `llms.txt`, and tests all converge on `errorClass.get()` / `errorClass.X()` shortcuts. Dual surfaces (instance vs class-level shortcut) are explicitly disambiguated in the README's "Two surfaces" callout. |
+| 3 | Runtime verification | **9** | `error.test.ts` covers all 8 semantic constructors with exact `statusCode`+`type` assertions, `handleErrors()` arity (4), `asyncRoute` wrapping, `isClientError/isServerError`, and an exhaustive drift check listing all 15 instance methods + 16 class-level members + 2 instance-only exclusions. |
+| 4 | Type safety | **7** | `AppError`, `ErrorHandlerOptions`, `AsyncRouteHandler`, `ExpressErrorHandler` are tight. `ExpressRequest` uses `[key: string]: any` — deliberate for framework-agnostic interop, but still permits `any` leakage into consumer callbacks. |
+| 5 | Discoverability | **9** | 30-second path: README hero (lines 32-56) is a complete copy-pasteable Express app. One canonical import (`@bloomneo/appkit/error`). package.json description is prompt-shaped. |
+| 6 | Example completeness | **8** | `examples/error.ts` now exercises 8 of the core surfaces (`badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `tooMany`, `serverError`, `createError`, `isClientError`, `isServerError`, `asyncRoute`, `handleErrors`). Still missing runnable demos of `internal`, `getEnvironmentInfo`, `getConfig`, `reset`, `clearCache`, but README + tests cover them. |
+| 7 | Composability | **7** | `llms.txt` (lines 131-170) shows error composed with auth + database in a login/me flow. Cookbook recipes integrate error indirectly via route-level patterns, though most don't import the error module directly. |
+| 8 | Educational errors | **7** | The module's *product* is educational errors — `badRequest('Email required')` teaches by name. Internally the module rarely throws; `handleErrors` logs with the `[@bloomneo/appkit/error]` prefix which is agent-parseable. |
+| 9 | Convention enforcement | **8** | One canonical path: `errorClass.get()` → `error.asyncRoute()` → `throw error.X()` → `error.handleErrors()` last. `internal` is explicitly flagged as an alias of `serverError` ("use either, not both in the same codebase"). |
+| 10 | Drift prevention | **6** | Exhaustive drift-check test in `error.test.ts` enumerating all public members. No CI gate wiring this into PR checks. |
+| 11 | Reading order | **7** | README is well-sectioned; hero → LLM Quick Reference → framework setups → API reference. No explicit "See also" links to `AGENTS.md` / `examples/error.ts` at the top of the module README. |
+| **12** | **Simplicity** | **8** | 15 instance methods, but the 80% case is 4 concepts (`get`, `asyncRoute`, `throw error.X`, `handleErrors`). 8 of the 15 are semantic error constructors with identical `(message?: string) → AppError` shape. |
+| **13** | **Clarity** | **10** | `badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `tooMany`, `serverError`, `asyncRoute`, `handleErrors`, `isClientError`, `isServerError` — every name reads as a sentence. No vague verbs. |
+| **14** | **Unambiguity** | **7** | `serverError` ≡ `internal` is the only duplication. Now explicitly marked as an alias in source, README, and `llms.txt`, but both remain callable. Everything else has exactly one interpretation. |
+| **15** | **Learning curve** | **9** | Fresh-dev time-to-first-working-call ≈ 2 min from README hero alone. Error names self-teach. No env vars required for happy path. |
 
 ### Weighted (v1.1)
 
 ```
-(7×.12)+(8×.08)+(9×.09)+(7×.06)+(9×.06)+(6×.08)+(7×.06)+(7×.05)+(8×.05)+(6×.04)+(6×.03)
-+(8×.09)+(10×.09)+(7×.05)+(9×.05) = 7.5 → 75/100
-Doc-contradiction cap: 60/100 (Fastify/Koa variable shadowing bug — now fixed)
+(9×.12)+(9×.08)+(9×.09)+(7×.06)+(9×.06)+(8×.08)+(7×.06)+(7×.05)+(8×.05)+(6×.04)+(7×.03)
++(8×.09)+(10×.09)+(7×.05)+(9×.05)
+= 1.08+0.72+0.81+0.42+0.54+0.64+0.42+0.35+0.40+0.24+0.21+0.72+0.90+0.35+0.45
+= 8.25 → 83/100
+No anti-pattern cap applies (prior Fastify runtime bug fixed; no hallucinated methods; examples typecheck and run).
 ```
 
 ### Gaps to reach 🟢 85+
 
-1. **D6 Example completeness → 9**: Add `unauthorized`, `conflict`, `serverError`, `tooMany`, `createError`, `isClientError`, `isServerError` to `examples/error.ts`
-2. **D14 Unambiguity → 9**: Deprecate `internal()` in favour of `serverError()` — document the alias explicitly so agents pick one
-3. **D10 Drift prevention → 9**: Add CI check
-4. **D11 Reading order → 8**: Add "See also: AGENTS.md | examples/error.ts" at the top
+1. **D10 Drift prevention → 9**: Wire the existing drift test into a CI gate on PR.
+2. **D14 Unambiguity → 9**: Formally deprecate `internal()` (JSDoc `@deprecated`) so agents converge on `serverError()`.
+3. **D4 Type safety → 9**: Narrow `ExpressRequest[key]: any` to `unknown` or swap in `@types/express` `Request` when available.
+4. **D11 Reading order → 9**: Add a "See also: `AGENTS.md` · `examples/error.ts` · `cookbook/`" pointer near the top of this README.
 
-**Realistic ceiling:** ~82/100 with all 4 fixes.
+**Realistic ceiling:** ~88/100 with all 4 fixes.

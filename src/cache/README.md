@@ -727,43 +727,46 @@ await cache.set('user:123', userData, 3600);
 
 ## Agent-Dev Friendliness Score
 
-**Score: 75.3/100 — 🟡 Solid** *(no cap)*
-*Scored 2026-04-11 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 89.1/100 — 🟢 Exemplary** *(no cap)*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Delta vs previous (75.3, 2026-04-11): **+13.8***
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **9** | `examples/cache.ts` had `cache.has()` (not public) and `cache.del()` (wrong name) — both fixed. |
-| 2 | Doc consistency | **9** | README now matches source after fixing test-cleanup pattern (`flushAll` vs `clear`). |
-| 3 | Runtime verification | **9** | 49 vitest tests covering all public methods + drift-check section. |
-| 4 | Type safety | **5** | `Cache` interface uses `any` for all values — no generics like `cache.get<T>()`. |
-| 5 | Discoverability | **8** | Quick Start is clear and concise. |
-| 6 | Example completeness | **7** | `examples/cache.ts` covers main patterns. Utility methods (`getConfig`, `getActiveNamespaces`) not shown. |
-| 7 | Composability | **8** | `examples/cache.ts` now compiles. Patterns compose naturally. |
-| 8 | Educational errors | **5** | Errors are plain English but missing `[@bloomneo/appkit/cache]` prefix + DOCS_URL anchor format used by auth module. |
-| 9 | Convention enforcement | **9** | One canonical entry point: `cacheClass.get(namespace)`. Consistent across all examples. |
-| 10 | Drift prevention | **5** | Drift-check section in test catches runtime drift. No scripted doc-vs-source checker. |
-| 11 | Reading order | **8** | Quick Start → LLM ref → errors → API → examples → testing — no dead ends. |
-| **12** | **Simplicity** | **8** | 5 core ops on instance + 9 class utilities. Dual surface is minimal. |
-| **13** | **Clarity** | **6** | `cacheClass.clear()` (disconnects all instances) vs `cache.clear()` (clears namespace data) — same name, different effects. Confusing. |
-| **14** | **Unambiguity** | **5** | The `clear()` collision is the dominant ambiguity — easy to call the wrong one in teardown. Also: `getOrSet` miss-then-throw behavior (does not cache error path) could surprise users. |
-| **15** | **Learning curve** | **9** | Zero config. `cacheClass.get(ns) → cache.set/get/delete`. First call in < 2 minutes. |
+| 1 | API correctness | **10** | Every method referenced in README, `examples/cache.ts`, cookbook, and `llms.txt` exists in source. Fresh audit, no hallucinations. |
+| 2 | Doc consistency | **10** | README, llms.txt, AGENTS.md, examples, and 3 cookbook recipes all use `cacheClass.get(namespace)` with identical signatures. |
+| 3 | Runtime verification | **10** | 382-line `cache.test.ts` exercises every public method; fresh `examples/cache.ts` runtime-verified today. |
+| 4 | Type safety | **9** | `Cache` interface now uses generics: `get<T>() → Promise<T \| null>`, `set<T>()`, `getOrSet<T>()`. No `any` on the public surface (strategy-internal `any` is not exported). |
+| 5 | Discoverability | **10** | `package.json` description is prompt-shaped, README hero is a copy-pasteable 3-line import, one canonical pattern. |
+| 6 | Example completeness | **9** | `examples/cache.ts` covers get/set/delete/clear/getOrSet + every utility method (`getStrategy`, `hasRedis`, `getActiveNamespaces`, `getConfig`, `flushAll`, `disconnectAll`). |
+| 7 | Composability | **9** | Used in 3 cookbook recipes (`real-time-chat`, `multi-tenant-saas`, `file-upload-pipeline`) composing cache with auth/db/event. |
+| 8 | Educational errors | **7** | All throws use `[@bloomneo/appkit/cache] …` prefix + stable `code` (e.g. `CACHE_INVALID_KEY`). Missing DOCS_URL anchor. |
+| 9 | Convention enforcement | **9** | Exactly one way to construct (`cacheClass.get`), one teardown pattern (`flushAll` per-test / `disconnectAll` per-suite), explicitly documented. |
+| 10 | Drift prevention | **5** | Tests catch runtime drift; no scripted doc-vs-source checker. |
+| 11 | Reading order | **9** | README → Quick Start → API → examples → cookbook forms a complete path; all internal links resolve. |
+| **12** | **Simplicity** | **8** | 5 instance ops + 8 class utilities. 80% case uses 3 methods (`get`, `set`, `getOrSet`). |
+| **13** | **Clarity** | **8** | Previous `cacheClass.clear()` collision is gone — teardown now uses distinct names (`flushAll` / `disconnectAll` / `shutdown`). `getOrSet`, `hasRedis`, `getActiveNamespaces` all self-documenting. |
+| **14** | **Unambiguity** | **8** | `getOrSet` explicitly documents cached-null handling via `has()` membership check. `flushAll` vs `disconnectAll` semantics spelled out inline in both source and README. |
+| **15** | **Learning curve** | **10** | Zero config, first working call in < 2 minutes from README hero alone. Strategy auto-detected from `REDIS_URL`. |
 
 ### Weighted (v1.1)
 
 ```
-(9×.12)+(9×.08)+(9×.09)+(5×.06)+(8×.06)+(7×.08)+(8×.06)+(5×.05)+(9×.05)+(5×.04)+(8×.03)
-+(8×.09)+(6×.09)+(5×.05)+(9×.05) = 7.53 → 75.3/100
-No anti-pattern cap (examples compile after fixes).
+(10×.12)+(10×.08)+(10×.09)+(9×.06)+(10×.06)+(9×.08)+(9×.06)+(7×.05)+(9×.05)+(5×.04)+(9×.03)
++(8×.09)+(8×.09)+(8×.05)+(10×.05)
+= 1.20+0.80+0.90+0.54+0.60+0.72+0.54+0.35+0.45+0.20+0.27
+ +0.72+0.72+0.40+0.50
+= 8.91 → 89.1/100
+No anti-pattern cap (examples compile and run; no hallucinations; no contradicting docs; no `any` on public inputs).
 ```
 
-### Gaps to reach 🟢 90+
+### Gaps to close to reach 95+
 
-1. **D13/D14 → 9**: Rename `cacheClass.clear()` → `cacheClass.disconnect()` (or `shutdown()` — already exists) to eliminate the collision with `cache.clear()`. The two `clear()` callsites should behave consistently.
-2. **D4 Type safety → 9**: Add generic overload `get<T>(key: string): Promise<T | null>` and `set<T>(key, value: T, ttl?)`.
-3. **D8 Educational errors → 9**: Adopt `[@bloomneo/appkit/cache] message + DOCS_URL#anchor` format from auth module.
-4. **D10 Drift prevention → 8**: Scripted doc-vs-source drift checker.
+1. **D10 Drift prevention → 9**: Add a CI script that greps every doc file for `cache.<method>(` / `cacheClass.<method>(` and asserts each name against the exported surface in `dist/types/cache/index.d.ts`.
+2. **D8 Educational errors → 9**: Append `See https://…/cache#<code>` anchors to each `CacheError` message, as the auth module does.
+3. **D13/D14 → 9**: Collapse the 8 `cacheClass.*` utility methods by dropping `getStrategy`/`getConfig` (subsumed by `getConfig().strategy`) and merging `shutdown` into `disconnectAll`. Shrinks surface area; removes the `shutdown` vs `disconnectAll` choice.
 
-**Realistic ceiling:** ~88/100 with fixes 1–4.
+**Realistic ceiling:** ~94/100 with fixes 1–3.
 
 ## 📄 License
 

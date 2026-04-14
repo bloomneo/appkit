@@ -765,40 +765,42 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 73/100 — 🟡 Solid**
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 81/100 — 🟡 Solid**
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Delta vs previous (2026-04-13): **+8** (73 → 81)*
 
-> No anti-pattern caps applied. All 14 class + instance methods documented correctly. Examples are copy-paste safe.
+> No anti-pattern caps applied. All 16 public surface methods on `emailClass` resolve to real runtime functions; `examples/email.ts` was runtime-verified today; `llms.txt` and root `README.md` re-aligned with source on 2026-04-14; `dist/` rebuilt same day.
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **9** | All 14 methods (`get`, `send`, `sendText`, `sendHtml`, `sendTemplate`, `sendBatch`, `disconnect`, `getStrategy`, `getConfig`, `clear`, `reset`, `hasResend`, `hasSmtp`, `hasProvider`) documented correctly. No hallucinated names. |
-| 2 | Doc consistency | **8** | README, examples, and quick-start all agree. Minor gap: testing section uses `emailClass.reset()` before calling class-level `emailClass.send()` — valid but pattern switch could confuse. |
-| 3 | Runtime verification | **7** | Testing section covers basic `send`, `reset`, and `clear`. Missing lifecycle methods (`shutdown`, `validateProduction`, `getHealthStatus`). |
-| 4 | Type safety | **7** | `EmailData` and `EmailResult` types exported and shown. `sendTemplate` data is untyped `any`. |
-| 5 | Discoverability | **7** | Clear import, clean hero. No pointer to AGENTS.md or examples at top. |
-| 6 | Example completeness | **6** | Covers `send`, `sendText`, `sendTemplate`, `sendBatch`, `hasProvider`, `getStrategy`, `getConfig`. Missing: `shutdown`, `validateProduction`, `getHealthStatus`, `validateConfig`. |
-| 7 | Composability | **7** | `examples/email.ts` shows email + error module composition. |
-| 8 | Educational errors | **6** | Generic errors emitted internally; no fix suggestions. |
-| 9 | Convention enforcement | **8** | Consistent `emailClass.get()` + `.send()` pattern throughout. |
-| 10 | Drift prevention | **5** | No CI drift check. |
-| 11 | Reading order | **4** | No "See also: AGENTS.md" pointer at README top. |
-| **12** | **Simplicity** | **8** | Auto-strategy selection hides complexity well. |
-| **13** | **Clarity** | **8** | `send`, `sendText`, `sendHtml`, `sendTemplate`, `sendBatch` — all unambiguous. |
-| **14** | **Unambiguity** | **7** | Console strategy in dev vs real-send in prod is documented in common mistakes. |
-| **15** | **Learning curve** | **8** | One class, two lines to send email. Excellent entry barrier. |
+| 1 | API correctness | **10** | All 16 surface methods (`get`, `clear`, `reset`, `getStrategy`, `getConfig`, `hasResend`, `hasSmtp`, `hasProvider`, `send`, `sendText`, `validateConfig`, `validateProduction`, `getHealthStatus`, `shutdown`, plus instance `sendHtml`, `sendTemplate`, `sendBatch`, `disconnect`) exist verbatim in `src/email/index.ts` + `email.ts`. No hallucinations found in README, AGENTS.md, llms.txt, or examples. |
+| 2 | Doc consistency | **9** | README, AGENTS.md (Module 8), llms.txt, and `examples/email.ts` all use `emailClass.get()` → `email.send(...)` canonical pattern. Minor: README testing snippet still calls `emailClass.reset()` then `emailClass.send()` rather than `email.send()` — legal alias, slight pattern flicker. |
+| 3 | Runtime verification | **8** | `email.test.ts` (149 LOC) exercises `send`, `sendText`, `sendHtml`, `sendBatch`, `sendTemplate`, `reset`, `clear`, `getStrategy`, `hasProvider`. `examples/email.ts` was runtime-verified today. Still no explicit test for `validateProduction` / `getHealthStatus`. |
+| 4 | Type safety | **7** | `EmailData`, `EmailResult`, `EmailConfig` exported; recipient unions are precise. `sendTemplate(data: any)` and `Email.getConfig(): any` on the interface remain loose. No `any` in core `send()` path. |
+| 5 | Discoverability | **8** | `package.json` exposes `./email` subpath; README hero has one copy-pasteable import that matches llms.txt and AGENTS.md Module 8 exactly. Still no inline "See also" pointer block at the very top. |
+| 6 | Example completeness | **9** | Fresh `examples/email.ts` now covers `validateConfig`, `get`, `sendText`, `sendHtml`, `send` (full options + attachments + cc/replyTo), `sendBatch`, `getStrategy`, `hasProvider`, `getConfig`, `getHealthStatus`, `clear`. Remaining gap: no standalone demo for `sendTemplate`, `validateProduction`, `reset`, `shutdown`. |
+| 7 | Composability | **6** | `cookbook/` has no email-first recipe; email only appears as a comment mention in `file-upload-pipeline.ts`. `examples/email.ts` composes config+send+health but is single-module. |
+| 8 | Educational errors | **7** | Every internal `throw` is branded `[@bloomneo/appkit/email]`, names the offending field, and links to a specific README anchor (`#complete-api`, `#common-mistakes`, `#environment-variables`, `#built-in-templates`). Downside: provider-side errors (Resend/SMTP) pass through unwrapped. |
+| 9 | Convention enforcement | **9** | Exactly one canonical path: `emailClass.get()` then instance methods, or `emailClass.send()/sendText()` shortcuts. `new EmailClass()` is explicitly flagged as anti-pattern in README's LLM Guidelines. |
+| 10 | Drift prevention | **5** | No CI gate compares docs against source. Re-alignment today was manual. |
+| 11 | Reading order | **6** | Root `README.md` and `llms.txt` both point at module README and `examples/email.ts`; module README still lacks a top-of-file "See also: AGENTS.md · examples/email.ts" block. |
+| **12** | **Simplicity** | **8** | 16 exports but 80% case is 2 methods (`get`, `send`). Auto-strategy selection removes the provider-choice concept entirely. |
+| **13** | **Clarity** | **9** | Every method name is a verb phrase that reads as a sentence: `sendText`, `sendHtml`, `sendBatch`, `hasProvider`, `validateProduction`, `getHealthStatus`. No `process`/`handle`/`run`. |
+| **14** | **Unambiguity** | **7** | `validateConfig` (returns report) vs `validateProduction` (throws) is now called out in a callout box. Console strategy silently dropping mail in prod is flagged in "Common Mistakes". |
+| **15** | **Learning curve** | **9** | README hero gives a working call in ≤10 lines with zero env vars (console strategy). Agent reading AGENTS.md Module 8 alone produces correct code first try. |
 
 ### Weighted (v1.1)
 
 ```
-(9×.12)+(8×.08)+(7×.09)+(7×.06)+(7×.06)+(6×.08)+(7×.06)+(6×.05)+(8×.05)+(5×.04)+(4×.03)
-+(8×.09)+(8×.09)+(7×.05)+(8×.05) = 7.30 → 73/100
+(10×.12)+(9×.08)+(8×.09)+(7×.06)+(8×.06)+(9×.08)+(6×.06)+(7×.05)+(9×.05)+(5×.04)+(6×.03)
++(8×.09)+(9×.09)+(7×.05)+(9×.05) = 8.13 → 81/100
 No cap applied.
 ```
 
 ### Gaps to reach 🟢 85+
 
-1. **D6 → 9**: Add `shutdown`, `validateProduction`, `getHealthStatus` to examples
-2. **D11 → 8**: Add "See also: AGENTS.md | examples/email.ts" at README top
-3. **D10 → 9**: Add CI drift check
-4. **D3 → 9**: Expand testing section to cover lifecycle methods
+1. **D7 → 8**: Add an email-first cookbook recipe (e.g. `cookbook/transactional-email.ts` composing email + error + logger for a signup flow).
+2. **D10 → 8**: Wire a CI drift check that greps doc files for `emailClass.<method>` and fails if the method is not exported.
+3. **D11 → 8**: Add a top-of-file "See also" pointer block to this README (AGENTS.md Module 8, `examples/email.ts`, `llms.txt`).
+4. **D4 → 9**: Tighten `sendTemplate` to a generic `sendTemplate<T extends TemplateName>(name: T, data: TemplateData<T>)` and narrow `Email.getConfig()` away from `any`.
+5. **D3 → 9**: Add tests for `validateProduction` (prod-missing-provider branch) and `getHealthStatus`.

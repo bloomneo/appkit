@@ -1011,40 +1011,42 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 77/100 — 🟡 Solid**
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 85/100 — 🟢 Exemplary** *(Δ +8 vs 77/100 on 2026-04-13)*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
-> No anti-pattern caps applied. All 11 instance methods and 12 class methods documented correctly. `storageClass` is the named export; default export is `StorageClass` (the constructor) — README correctly warns against using `new StorageClass()`.
+> No anti-pattern caps applied. Pre-v1 audit complete: `examples/storage.ts` runtime-verified, `cookbook/file-upload-pipeline.ts` typechecks clean, `storage.test.ts` now includes an explicit drift-check block that fails the build if class/instance methods diverge from the documented surface, and `llms.txt` lists the full storage API with anti-drift notes (`delete NOT del`, `exists NOT has`). `storageClass` is the named export; default export is `StorageClass` (the constructor) — README correctly warns against `new StorageClass()`.
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **9** | All 11 instance methods (`put`, `get`, `delete`, `list`, `url`, `signedUrl`, `exists`, `copy`, `disconnect`, `getStrategy`, `getConfig`) and class methods (`clear`, `reset`, `getStrategy`, `getConfig`, `hasCloudStorage`, `isLocal`, `getStats`, `validateConfig`, `shutdown`, `upload`, `download`) documented correctly. Named export `storageClass` is correct (default export is `StorageClass` constructor — not for direct use). |
-| 2 | Doc consistency | **9** | README, `examples/storage.ts`, and testing section all agree on method names and signatures. |
-| 3 | Runtime verification | **8** | Testing section covers `put`, `get`, `url`, `exists`, `reset`, `clear`. `storageClass.reset()` pattern shown. |
-| 4 | Type safety | **7** | `Storage`, `StorageFile`, `PutOptions` exported and shown. |
-| 5 | Discoverability | **8** | Clear import. Auto-strategy table is excellent. No AGENTS.md pointer at top. |
-| 6 | Example completeness | **7** | Covers all core operations. Missing: explicit `shutdown` call, `getStats` example. |
-| 7 | Composability | **8** | `examples/storage.ts` shows storage + error + security module composition. |
-| 8 | Educational errors | **6** | Storage validation emits `console.warn` — no actionable env var suggestions in error messages. |
-| 9 | Convention enforcement | **9** | Consistent `storage = storageClass.get()` + method calls throughout. Anti-pattern `new StorageClass()` explicitly called out. |
-| 10 | Drift prevention | **5** | No CI drift check. |
-| 11 | Reading order | **4** | No "See also" pointer at top. |
-| **12** | **Simplicity** | **8** | `put`, `get`, `url` covers 80% of usage. Cost comparison table is a great addition. |
-| **13** | **Clarity** | **9** | `put`, `get`, `delete`, `list`, `url`, `signedUrl`, `exists`, `copy` — all names are self-documenting. |
-| **14** | **Unambiguity** | **8** | `url()` vs `signedUrl()` distinction (public vs temporary) clearly documented. |
-| **15** | **Learning curve** | **8** | Two lines, no config, works locally. Excellent entry barrier. |
+| 1 | API correctness | **10** | All 11 instance methods and 12 class methods documented correctly across README, `examples/storage.ts`, `cookbook/file-upload-pipeline.ts`, `llms.txt`, and `AGENTS.md`. `storage.test.ts` drift-check asserts each name AND asserts that hallucinated names (`has`, `save`, `fetch`, class-level `put/delete/list/url/…`) do NOT exist. |
+| 2 | Doc consistency | **9** | README, `examples/storage.ts`, `cookbook/file-upload-pipeline.ts`, `llms.txt` §Module 6, and `AGENTS.md` all show `storage = storageClass.get()` then `storage.<method>(…)`. Minor: `llms.txt` shows `opts?: { contentType?: string }` while `PutOptions` also accepts `metadata`/`cacheControl`/`expires` — a trim, not a contradiction. |
+| 3 | Runtime verification | **9** | `storage.test.ts` exercises `put`/`get`/`delete`/`exists`/`url`/`list` against the built module via `storageClass.get()`; `examples/storage.ts` was runtime-verified in today's audit. Drift-check tests guard the method surface itself. |
+| 4 | Type safety | **7** | `Storage`, `StorageFile`, `PutOptions`, `StorageConfig` all exported and tight. One soft spot: `Storage.getConfig(): any` (in `src/storage/index.ts` line 31) — the concrete implementation returns a tighter shape; the interface loses it. |
+| 5 | Discoverability | **8** | First code block is the canonical two-line import. Auto-strategy priority table + env var reference make the 80% path obvious. Still no top-of-README "See also" pointer to AGENTS.md / examples / cookbook. |
+| 6 | Example completeness | **9** | `examples/storage.ts` covers `validateConfig`, `put`, `get`, `url`, `signedUrl`, `exists`, `copy`, `list`, `delete`, `upload`, `download`, `getStrategy`, `hasCloudStorage`, `isLocal`, `getStats`, `clear` — effectively the full public surface in one runnable tour. |
+| 7 | Composability | **9** | `cookbook/file-upload-pipeline.ts` wires storage + auth + security + queue + event + error + logger into a real upload-then-process pipeline, the canonical multi-module recipe this domain needs. |
+| 8 | Educational errors | **7** | Every thrown `Error` is prefixed `[@bloomneo/appkit/storage]`, names the offending input, and links `DOCS_URL#common-issues` or `#environment-variables`. Production misconfig still goes through `console.warn` rather than actionable throws — the one remaining gap. |
+| 9 | Convention enforcement | **9** | Exactly one canonical entry (`storageClass.get()`) and one canonical upload key pattern (`folder/file.ext`, no leading slash, no `..`). Anti-pattern `new StorageClass()` is called out in the README "Common LLM Mistakes" section AND enforced by the validateKey security checks. |
+| 10 | Drift prevention | **7** | `storage.test.ts` "Public API surface — drift check" block asserts both the positive surface (22 method names) and the negative surface (hallucinated names); `npm test` fails if docs/source drift. Still runs as a local test, not a dedicated CI gate comparing docs↔source. |
+| 11 | Reading order | **5** | README→AGENTS→llms→source path works, but the module README still lacks a "See also" pointer at the top; consumers landing on `src/storage/README.md` have to guess that `examples/storage.ts` and `cookbook/file-upload-pipeline.ts` exist. |
+| **12** | **Simplicity** | **8** | 80% case is `put` + `get` + `url`. 11 instance methods + 12 class helpers is at the upper end of "acceptable" but every method has a clear, non-overlapping job. |
+| **13** | **Clarity** | **9** | `put`, `get`, `delete`, `list`, `url`, `signedUrl`, `exists`, `copy`, `disconnect` — every name reads as a sentence. No vague verbs. |
+| **14** | **Unambiguity** | **8** | `url()` (public) vs `signedUrl()` (temporary) distinction is explicit; `upload` exists on `storageClass` (helper) but NOT on the instance, which is a genuine shape-vs-semantics trap — mitigated by an explicit drift-check test but not visually flagged in docs. |
+| **15** | **Learning curve** | **9** | Canonical fresh-dev path: read README hero → `npm install` → two lines → working local upload. Cookbook recipe is there when they need auth+queue. No custom ecosystem idioms — Buffers, Promises, string keys. |
 
 ### Weighted (v1.1)
 
 ```
-(9×.12)+(9×.08)+(8×.09)+(7×.06)+(8×.06)+(7×.08)+(8×.06)+(6×.05)+(9×.05)+(5×.04)+(4×.03)
-+(8×.09)+(9×.09)+(8×.05)+(8×.05) = 7.83 → 78/100
-No cap applied. (Rounded 77→78 after recalculation.)
+(10×.12)+(9×.08)+(9×.09)+(7×.06)+(8×.06)+(9×.08)+(9×.06)+(7×.05)+(9×.05)+(7×.04)+(5×.03)
++(8×.09)+(9×.09)+(8×.05)+(9×.05)
+= 1.20+0.72+0.81+0.42+0.48+0.72+0.54+0.35+0.45+0.28+0.15+0.72+0.81+0.40+0.45
+= 8.50 → 85/100
+No cap applied.  Δ = +8 vs 77/100 (2026-04-13).
 ```
 
-### Gaps to reach 🟢 85+
+### Gaps to reach 🟢 90+
 
-1. **D11 → 8**: Add "See also: AGENTS.md | examples/storage.ts" at README top
-2. **D6 → 9**: Add `getStats()` and `shutdown()` to examples section
-3. **D8 → 8**: Storage init failures should include `[@bloomneo/appkit/storage] Local strategy failed: check BLOOM_STORAGE_DIR is writable`
-4. **D10 → 9**: Add CI drift check
+1. **D4 → 9**: Replace `Storage.getConfig(): any` with the concrete `{ strategy; connected; maxFileSize; allowedTypes }` shape.
+2. **D8 → 9**: Convert production misconfig `console.warn` calls in `defaults.ts` into throws that name the missing env var.
+3. **D11 → 8**: Add a top-of-README "See also: [`AGENTS.md`](../../AGENTS.md) · [`examples/storage.ts`](../../examples/storage.ts) · [`cookbook/file-upload-pipeline.ts`](../../cookbook/file-upload-pipeline.ts)" line.
+4. **D10 → 9**: Promote `storage.test.ts` drift-check into a CI gate that also greps README/llms.txt/AGENTS.md for method references.

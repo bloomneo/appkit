@@ -732,40 +732,49 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 73/100 — 🟡 Solid**
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 82/100 — 🟡 Solid**
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Delta vs previous (2026-04-13): **+9** (73 → 82)*
 
-> No anti-pattern caps applied. All class and instance methods correct. `validateConfig()` returns an object (not void) — README call sites ignore the return value, which is functional but misses useful result.
+> No anti-pattern caps applied. Fresh `examples/event.ts` and `cookbook/*.ts` are runtime-verified and typecheck-clean. `event.test.ts` now includes a dedicated "Public API surface — drift check" suite that asserts every real class + instance method exists AND that previously-hallucinated names (`subscribe`, `publish`, `getConfigSummary`, etc.) do not. `llms.txt` and root `README.md` are aligned with source as of today.
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **8** | All 10 instance methods (`emit`, `on`, `once`, `off`, `emitBatch`, `history`, `getListeners`, `disconnect`, `getStrategy`, `getConfig`) and 13 class methods correct. Minor: `validateConfig()` returns `{ valid, strategy, warnings, errors, ready }` but README shows it called without using the result — callers miss the validation outcome. |
-| 2 | Doc consistency | **8** | README and `examples/event.ts` align. Wildcard handler signature `(eventName, data)` correctly shown. |
-| 3 | Runtime verification | **8** | Testing section covers `on`, `emit`, `clear`. Cleanup via `afterEach(() => eventClass.clear())` is correct — Jest awaits the returned Promise. |
-| 4 | Type safety | **7** | `Event`, `EventHandler`, `WildcardHandler`, `BatchEvent`, `EventHistoryEntry` all exported and shown. |
-| 5 | Discoverability | **7** | Clean hero. No AGENTS.md pointer at top. |
-| 6 | Example completeness | **6** | Covers `emit`, `on`, `once`, `off`, `emitBatch`, `history`, `getListeners`, `getStrategy`, `hasRedis`. Missing: `broadcast`, `validateProduction`, `getHealthStatus`, `shutdown`. |
-| 7 | Composability | **7** | `examples/event.ts` shows event + logger + error composition. |
-| 8 | Educational errors | **6** | Internal transport errors not surfaced with actionable messages. |
-| 9 | Convention enforcement | **8** | Namespace pattern (`eventClass.get('users')`) shown consistently. |
-| 10 | Drift prevention | **5** | No CI drift check. |
-| 11 | Reading order | **4** | No "See also" pointer at top. |
-| **12** | **Simplicity** | **8** | Namespace isolation + strategy auto-detection = clean mental model. |
-| **13** | **Clarity** | **8** | `emit`, `on`, `once`, `off`, `emitBatch` — all self-evident. |
-| **14** | **Unambiguity** | **7** | Wildcard handler `(eventName, data)` vs regular `(data)` distinction is documented. |
-| **15** | **Learning curve** | **8** | Two lines to get distributed events. Very low barrier. |
+| 1 | API correctness | **9** | All 13 class methods + 10 instance methods verified by `event.test.ts`. Drift-check suite explicitly asserts non-existence of `subscribe`, `unsubscribe`, `publish`, `listen`, `getConfigSummary`, `getEnvironmentOptimizedConfig`, `getMicroservicesConfig`. Tiny gap: README Quick Start still calls `validateConfig()` without using the returned object. |
+| 2 | Doc consistency | **9** | `README.md`, `src/event/README.md`, `llms.txt` module 9, `AGENTS.md`, `examples/event.ts`, cookbook recipes all show the same `eventClass.get(ns)` → `event.on/emit` pattern. |
+| 3 | Runtime verification | **9** | Test suite covers `emit`, `on`, `once`, `off`, `emitBatch`, `broadcast`, `getActiveNamespaces`, namespace validation, singleton-per-namespace, and the full public-surface drift check. Asserts real return values, not just existence. |
+| 4 | Type safety | **7** | `Event`, `EventHandler`, `WildcardHandler`, `BatchEvent`, `EventHistoryEntry` all exported. Handler payloads and `getListeners(): any` remain loose — not a caps-violation since event payload is genuinely polymorphic. |
+| 5 | Discoverability | **8** | `package.json` description + root README + `llms.txt` all point to the canonical `import { eventClass } from '@bloomneo/appkit/event'`. Single import style enforced across the repo. |
+| 6 | Example completeness | **9** | Fresh `examples/event.ts` exercises `on`, `once`, `off`, `emit`, `emitBatch`, `history`, `getListeners`, `getStrategy`, `getActiveNamespaces`, `getStats`, `getHealthStatus`, `broadcast`, `shutdown`. Runtime-verified today. |
+| 7 | Composability | **8** | `cookbook/real-time-chat.ts` composes `eventClass` with auth + logger. `cookbook/file-upload-pipeline.ts` composes events with storage + queue. Both typecheck clean. |
+| 8 | Educational errors | **7** | Every thrown `Error` is prefixed `[@bloomneo/appkit/event]` and names the offending input (event name, handler type, namespace). Strategy-selection error includes `DOCS_URL`. Internal transport errors are logged but not re-surfaced with fix links. |
+| 9 | Convention enforcement | **8** | One canonical way per task: `eventClass.get(ns)` for acquisition, `event.on/emit` for pub/sub, `eventClass.broadcast` for cross-namespace (explicitly marked "dangerous / admin-style"). `EventClass` direct construction is warned against in README. |
+| 10 | Drift prevention | **7** | `event.test.ts` "Public API surface — drift check" suite runs on every `npm test` — fails the build if a hallucinated method reappears or a real method is removed. Not a dedicated README↔source linter, but catches the class of bug the rubric was built around. |
+| 11 | Reading order | **7** | Root `README.md` → `AGENTS.md` → `llms.txt` module 9 → `src/event/README.md` → `examples/event.ts` → source forms a clickable path. Module README still lacks a top-of-file "See also" pointer line. |
+| **12** | **Simplicity** | **8** | One function (`eventClass.get`) covers the 80% case. 10 instance methods, 13 class methods, but 80% use only `get` + `on` + `emit`. Strategy auto-detection removes config friction. |
+| **13** | **Clarity** | **8** | Every public name is a self-describing verb phrase (`emit`, `on`, `once`, `off`, `emitBatch`, `broadcast`, `shutdown`, `getHealthStatus`). No `process`/`handle`/`run` vagueness. |
+| **14** | **Unambiguity** | **7** | Wildcard handler `(eventName, data)` vs regular `(data)` is a shape-but-not-semantics split that relies on pattern inspection at call time. Documented, but the overload is intrinsic. `emit` returning `boolean` is unambiguous; `getListeners` returning `any` is not. |
+| **15** | **Learning curve** | **9** | Two lines reach a working distributed event system (`const events = eventClass.get('ns'); await events.emit(...)`). Errors name modules. `examples/event.ts` is copy-pasteable end-to-end. |
 
 ### Weighted (v1.1)
 
 ```
-(8×.12)+(8×.08)+(8×.09)+(7×.06)+(7×.06)+(6×.08)+(7×.06)+(6×.05)+(8×.05)+(5×.04)+(4×.03)
-+(8×.09)+(8×.09)+(7×.05)+(8×.05) = 7.27 → 73/100
+(9×.12)+(9×.08)+(9×.09)+(7×.06)+(8×.06)+(9×.08)+(8×.06)+(7×.05)+(8×.05)+(7×.04)+(7×.03)
++(8×.09)+(8×.09)+(7×.05)+(9×.05)
+= 1.08+0.72+0.81+0.42+0.48+0.72+0.48+0.35+0.40+0.28+0.21+0.72+0.72+0.35+0.45
+= 8.19 → 82/100
 No cap applied.
 ```
 
+### Top dimension deltas vs 2026-04-13
+
+- **D6 Example completeness: 6 → 9 (+3)** — `examples/event.ts` now covers `broadcast`, `shutdown`, `getHealthStatus`, `getStats`, `getActiveNamespaces` that were previously missing.
+- **D11 Reading order: 4 → 7 (+3)** — `llms.txt` and root `README.md` aligned today; clickable path README → AGENTS.md → llms.txt → examples/source is now intact.
+- **D10 Drift prevention: 5 → 7 (+2)** — `event.test.ts` has a dedicated public-surface drift suite that asserts every real method exists AND every previously-hallucinated name does not.
+
 ### Gaps to reach 🟢 85+
 
-1. **D1 → 9**: Show `validateConfig()` return value used: `const { valid, warnings } = eventClass.validateConfig()`
-2. **D6 → 9**: Add `broadcast`, `getHealthStatus`, `shutdown` to API reference examples
-3. **D11 → 8**: Add "See also: AGENTS.md | examples/event.ts" at README top
-4. **D10 → 9**: Add CI drift check
+1. **D4 → 9**: Narrow `getListeners` return type from `any` to a concrete `{ direct, wildcards }` shape.
+2. **D8 → 9**: Wrap Redis transport errors with an actionable message + `DOCS_URL` link the same way strategy-selection errors are.
+3. **D11 → 9**: Add a one-line "See also: [`AGENTS.md`](../../AGENTS.md) · [`examples/event.ts`](../../examples/event.ts) · [`llms.txt`](../../llms.txt)" at the top of this README.
+4. **D14 → 8**: Split the `on` overload into `on(event, handler)` and `onPattern(pattern, wildcardHandler)` so the signature difference is visible at the type level.

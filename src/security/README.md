@@ -633,41 +633,54 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 74/100 — 🟡 Good** *(cap lifted 2026-04-14 after runtime-ReferenceError fix applied repo-wide)*
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 83/100 — 🟡 Solid** *(Δ +9 vs 2026-04-13 — post pre-v1 audit: `csrf()` → `forms()` rename enforced, fresh runtime-verified example, cookbook typecheck-clean, docs aligned with source)*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
-> ✅ **Previously capped**: Code blocks declared `const security = securityClass.get()` but then called `secure.forms()` etc. — `secure` was never defined → ReferenceError. All occurrences corrected to `security.*` on 2026-04-14.
+> ✅ **No anti-pattern caps active.** Previous `secure.*`/`security.*` ReferenceError resolved; `security.csrf()` → `security.forms()` rename enforced with no alias; `llms.txt`, `AGENTS.md`, root `README.md`, `examples/security.ts`, and `cookbook/*.ts` all aligned with source as of 2026-04-14; `dist/` rebuilt today.
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **9** | Fixed: Quick Start, LLM Quick Reference, and testing block corrected (`secure.*` → `security.*`). All 10 class methods (`get`, `reset`, `clearCache`, `getConfig`, `isDevelopment`, `isProduction`, `generateKey`, `quickSetup`, `validateRequired`, `getStatus`) and 8 instance methods (`forms`, `requests`, `input`, `html`, `escape`, `encrypt`, `decrypt`, `generateKey`) documented correctly. |
-| 2 | Doc consistency | **8** | After fixes, Quick Start, LLM Quick Reference, and testing all use `security` consistently. |
-| 3 | Runtime verification | **8** | Testing section covers CSRF token generation, encrypt/decrypt, HTML sanitization. Lifecycle (`clearCache`, `reset`) shown. |
-| 4 | Type safety | **7** | Types exported: `SecurityConfig`, `ExpressMiddleware`, `CSRFOptions`, `RateLimitOptions`. `input()` options not shown in type imports. |
-| 5 | Discoverability | **8** | Clear import, required env vars in Quick Start. Good first-screen info density. |
-| 6 | Example completeness | **7** | Covers `forms`, `requests`, `input`, `html`, `escape`, `encrypt`, `decrypt`, `generateKey`, `validateRequired`, `quickSetup`. Missing: `getStatus` in examples. |
-| 7 | Composability | **7** | `examples/security.ts` shows security + error module composition. Storage example shows security + storage. |
-| 8 | Educational errors | **7** | `validateRequired` error message includes env var names — actionable. |
-| 9 | Convention enforcement | **8** | `security = securityClass.get()` + middleware chain shown consistently (after fix). |
-| 10 | Drift prevention | **5** | No CI drift check. |
-| 11 | Reading order | **4** | No "See also" pointer at top. |
-| **12** | **Simplicity** | **7** | Four protection types cleanly separated. `quickSetup()` reduces boilerplate. |
-| **13** | **Clarity** | **8** | `forms`, `requests`, `input`, `html`, `escape`, `encrypt`, `decrypt` — all self-evident. |
-| **14** | **Unambiguity** | **7** | Session-before-CSRF ordering is clearly documented in common mistakes. |
-| **15** | **Learning curve** | **7** | Security concepts are inherently complex; module does well to hide it. |
+| 1 | API correctness | **10** | All 8 instance methods (`forms`, `requests`, `input`, `html`, `escape`, `encrypt`, `decrypt`, `generateKey`) and 10 class methods (`get`, `reset`, `clearCache`, `getConfig`, `isDevelopment`, `isProduction`, `generateKey`, `quickSetup`, `validateRequired`, `getStatus`) verified against `src/security/security.ts` and `index.ts`. `forms()` is the only CSRF method — no `csrf()` alias exists. |
+| 2 | Doc consistency | **9** | README, `AGENTS.md`, `llms.txt`, `examples/security.ts`, and `cookbook/*.ts` all invoke `security.forms()` / `security.requests(maxRequests, windowMs)` / `security.encrypt` / `security.decrypt` with identical shapes. |
+| 3 | Runtime verification | **8** | `src/security/security.test.ts` covers the class + `examples/security.ts` is runtime-verified today (forms, requests, input, html, escape, encrypt/decrypt round-trip, generateKey, getStatus). |
+| 4 | Type safety | **8** | `SecurityConfig`, `ExpressMiddleware`, `CSRFOptions`, `RateLimitOptions`, `InputOptions`, `HTMLOptions` all exported. `input(text: any)` / `html(html: any)` intentionally accept `any` for defensive sanitization. |
+| 5 | Discoverability | **8** | Canonical import on first code block, env vars in Quick Start, single entry point via `securityClass.get()`. |
+| 6 | Example completeness | **9** | `examples/security.ts` exercises 9 primitives (forms, requests, quickSetup, input, html, escape, encrypt, decrypt, generateKey, getStatus, validateRequired). Missing: `getConfig`, `isDevelopment`, `isProduction` (trivial helpers). |
+| 7 | Composability | **8** | `cookbook/api-key-service.ts` composes security.encrypt + auth + database. `cookbook/file-upload-pipeline.ts` composes security.requests + storage + auth. All typecheck clean. |
+| 8 | Educational errors | **8** | `createSecurityError` messages name the missing env var (`BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET`, `BLOOM_SECURITY_ENCRYPTION_KEY`), include HTTP status, and module-prefix `[@bloomneo/appkit/security]` on warnings. |
+| 9 | Convention enforcement | **9** | Exactly one canonical pattern per task after the pre-v1 audit: `forms()` for CSRF (no alias), `requests(max, window)` for rate limiting, `encrypt/decrypt` for data. |
+| 10 | Drift prevention | **5** | No automated CI drift check; manual audit only. |
+| 11 | Reading order | **5** | README is dense but lacks a top-level "See also: AGENTS.md · examples/security.ts · cookbook/" pointer block. |
+| **12** | **Simplicity** | **8** | 8 instance methods, 4 concept groups (forms / requests / sanitize / crypto), `quickSetup()` collapses common wiring. Minimum viable use is one method with zero args. |
+| **13** | **Clarity** | **9** | Every public name reads as a verb-phrase: `forms()`, `requests()`, `input()`, `html()`, `escape()`, `encrypt()`, `decrypt()`, `generateKey()`. No vague verbs. |
+| **14** | **Unambiguity** | **8** | `forms()` name removes the prior `csrf()` ambiguity (it does both inject + validate in one middleware, now reflected in the name). `requests(max, window)` has one positional signature. |
+| **15** | **Learning curve** | **8** | Hero block is copy-pasteable; runtime-verified example runs end-to-end in `tsx examples/security.ts`; errors teach env-var setup on first failure. |
 
 ### Weighted (v1.1)
 
 ```
-(9×.12)+(8×.08)+(8×.09)+(7×.06)+(8×.06)+(7×.08)+(7×.06)+(7×.05)+(8×.05)+(5×.04)+(4×.03)
-+(7×.09)+(8×.09)+(7×.05)+(7×.05) = 7.35 → 74/100
-Cap lifted: 74/100 (secure.* → security.* fixed repo-wide on 2026-04-14)
+(10×.12)+(9×.08)+(8×.09)+(8×.06)+(8×.06)+(9×.08)+(8×.06)+(8×.05)+(9×.05)+(5×.04)+(5×.03)
++(8×.09)+(9×.09)+(8×.05)+(8×.05)
+= 1.20 + 0.72 + 0.72 + 0.48 + 0.48 + 0.72 + 0.48 + 0.40 + 0.45 + 0.20 + 0.15
++ 0.72 + 0.81 + 0.40 + 0.40
+= 8.33 → 83/100
 ```
+
+### Delta vs previous (74 → 83, +9)
+
+- **D1 9 → 10** (+1): `forms()` rename enforced with no alias; full method audit clean after repo-wide alignment.
+- **D9 8 → 9** (+1): Exactly one canonical CSRF method (`forms()`), no alias drift.
+- **D6 7 → 9** (+2): Fresh runtime-verified `examples/security.ts` covers `getStatus`, `quickSetup`, `validateRequired`, `generateKey`, and the crypto round-trip.
+- **D13 8 → 9** (+1): `forms()` reads as a sentence ("protect forms") — final vague-name gap closed.
+- **D7 7 → 8** (+1): Typecheck-clean cookbook recipes now exercise `security.encrypt` and `security.requests(max, window)` in multi-module contexts.
+- **D11 4 → 5** (+1): README's internal links point to examples + AGENTS.md, though no explicit "See also" block yet.
+- **D14 7 → 8** (+1): Rename collapsed the `csrf()` dual-role ambiguity.
+- **D15 7 → 8** (+1): Runtime-verified example shortens time-to-first-working-call.
 
 ### Gaps to reach 🟢 85+
 
-1. **D1 → 9 (after fix)**: With 3 variable-name fixes applied, D1 rises to ~9 → uncapped score ~74
-2. **D11 → 8**: Add "See also: AGENTS.md | examples/security.ts" at README top
-3. **D6 → 9**: Add `getStatus()` to examples section
-4. **D10 → 9**: Add CI drift check
-5. **D12 → 9**: Document `quickSetup()` in the hero/Quick Start instead of only in API Reference
+1. **D10 → 9**: Add CI drift check comparing doc method references against `src/security/security.ts` + `index.ts`.
+2. **D11 → 8**: Add a top-of-README "See also: [AGENTS.md](../../AGENTS.md) · [examples/security.ts](../../examples/security.ts) · [cookbook/](../../cookbook/)" pointer block.
+3. **D3 → 9**: Add negative tests for `decrypt` tampering (EBADTAG) and CSRF token expiry.
+4. **D6 → 10**: Add `getConfig`, `isDevelopment`, `isProduction` to the example file.
+5. **D12 → 9**: Surface `quickSetup()` in the Quick Start hero rather than only in API Reference.

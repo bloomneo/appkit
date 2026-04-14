@@ -439,43 +439,56 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 40/100 — 🟠 Usable with caveats** *(uncapped: 66/100 — cap applied for hallucinated method names)*
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 82/100 — 🟡 Solid** *(+42 vs previous 40/100 capped; +16 vs previous 66/100 uncapped)*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
-> ⚠️ **Cap reason**: The "Utility Methods" section in the Complete API Reference listed `loggerClass.gethasTransport()` and `loggerClass.getclear()` — neither method exists. The real names are `hasTransport()` and `clear()`. An agent copying from that section would generate code that throws `TypeError: loggerClass.gethasTransport is not a function`. Anti-pattern "any documented method is hallucinated" → **40 max**. **Fixed in this version.**
+> ✅ **Cap lifted**: Previous round was capped at 40 for hallucinated `gethasTransport`/`getclear` names. Those were fixed, and today's audit re-verified:
+> - `src/logger/README.md` — every method reference resolves to a real export.
+> - `examples/logger.ts` — rewritten from scratch, runtime-verified with `tsx`, uses only real method names (`get`, `info/warn/error/debug/fatal`, `child`, `flush`, `getActiveTransports`, `hasTransport`, `getConfig`, `clear`).
+> - `cookbook/*.ts` — all 5 recipes use `loggerClass.get('component')` + `.info/.warn/.error/.debug` consistently; typecheck clean.
+> - `llms.txt` and root `README.md` — aligned with source on 2026-04-14.
+>
+> No hallucinated methods remain. No anti-pattern caps apply.
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **3** | Fixed: `loggerClass.gethasTransport` → `hasTransport`, `loggerClass.getclear` → `clear` (2 occurrences). Fixed: import path `'@bloomneo/appkit/logging'` → `'@bloomneo/appkit/logger'`. Fixed: README title said `/logging`. Fixed: `fatal()` missing from API reference log methods. All 13 methods now documented correctly. |
-| 2 | Doc consistency | **5** | After fixes, README, test, and examples are consistent. Minor gap: `error()` visual formatting side-effect not mentioned in the quick reference, only in a sub-section. |
-| 3 | Runtime verification | **8** | Solid test: all 5 levels tested (info, warn, error, debug, fatal), child() verified, flush/close verified. Drift check for 8 instance methods + 5 class methods. |
-| 4 | Type safety | **7** | `Logger` interface is tight. `LogMeta = [key: string]: any` is acceptable. `flush()` / `close()` return `Promise<void>` correctly. |
-| 5 | Discoverability | **7** | Clear import, clean hero. Wrong module path (`/logging` vs `/logger`) in TS support section — now fixed. |
-| 6 | Example completeness | **7** | `examples/logger.ts` covers: `get()`, all 5 log levels, `child()`, composing with error module. Missing: `flush()`, `close()`, `getActiveTransports()`, `hasTransport()`, `getConfig()`. |
-| 7 | Composability | **7** | `examples/logger.ts` shows logger + error combo. `cookbook/auth-protected-crud.ts` composes logger with auth + database + error. |
-| 8 | Educational errors | **6** | Logger emits internal transport errors to `console.error` (e.g. `'File transport initialization failed: ...'`) — functional but generic, no fix suggestion. |
-| 9 | Convention enforcement | **8** | One canonical pattern: `loggerClass.get('component')` per file, `.child()` for request scope. Consistently shown. |
-| 10 | Drift prevention | **6** | Drift check test is comprehensive. No CI gate. |
-| 11 | Reading order | **4** | No pointers to AGENTS.md or examples in the README opening. |
-| **12** | **Simplicity** | **9** | 5 class methods + 8 instance methods. Minimum viable use: `loggerClass.get()` + `.info()`. Lowest learning surface of all modules reviewed. |
-| **13** | **Clarity** | **9** | `info`, `warn`, `error`, `debug`, `fatal`, `child`, `flush`, `close`, `getActiveTransports` — all names read exactly as what they do. |
-| **14** | **Unambiguity** | **7** | `error()` silently adds visual formatting in dev — the side-effect is documented but not at the call site. Otherwise clean. |
-| **15** | **Learning curve** | **9** | Simplest API in the package. One function, five methods, done. |
+| 1 | API correctness | **9** | All 13 methods (5 class + 8 instance) in the README match `src/logger/index.ts` + `src/logger/logger.ts` exactly. `examples/logger.ts` and `cookbook/*.ts` re-verified — every `loggerClass.*` and `log.*` call resolves to a real export. No typos, no drift. +6 vs previous. |
+| 2 | Doc consistency | **9** | README, `llms.txt` §Module 12, `AGENTS.md` canonical-pattern block, `examples/logger.ts`, and 5 cookbook files all show the same shape: `const log = loggerClass.get('component'); log.info(msg, meta)`. +4 vs previous. |
+| 3 | Runtime verification | **8** | `logger.test.ts` exercises `get()` singleton semantics, all 5 level methods (info/warn/error/debug/fatal), `child()` merge, and `clear()` teardown via `beforeEach`. Imports from real entry point. |
+| 4 | Type safety | **7** | `Logger` interface is precise; `flush()`/`close()` are `Promise<void>`. `LogMeta = { [key: string]: any }` is intentionally open (structured-log bag) — acceptable for this domain. |
+| 5 | Discoverability | **8** | `package.json` subpath export `@bloomneo/appkit/logger` is canonical. Hero import appears in the first 30 lines of README. One canonical pattern across all docs. +1 vs previous (import-path typo fixed). |
+| 6 | Example completeness | **9** | New `examples/logger.ts` covers: `get()` (with and without component), all 5 levels, `child()` with request-scoped bindings, `flush()`, `getActiveTransports()`, `hasTransport()`, `getConfig()`, and `clear()`. Only `close()` is not directly called (it runs inside `clear()`). +2 vs previous. |
+| 7 | Composability | **9** | 5 cookbook files (`auth-protected-crud`, `api-key-service`, `file-upload-pipeline`, `multi-tenant-saas`, `real-time-chat`) all wire logger with auth + database + error. Coverage spans CRUD, auth-protected APIs, async workers, tenancy, and real-time — the canonical multi-module compositions. +2 vs previous. |
+| 8 | Educational errors | **6** | Transport init errors include module tag (`[@bloomneo/appkit/logger] File transport initialization failed: …`) — names module + failing subsystem, but still no fix pointer or doc link. |
+| 9 | Convention enforcement | **9** | Exactly one canonical path: `loggerClass.get('component')` → `.info/warn/error/debug/fatal`. Child scoping via `.child({...})`. Transports are not exposed as alternative construction paths — they auto-wire from env. +1 vs previous. |
+| 10 | Drift prevention | **6** | Test asserts method presence by name for every level; any rename would break the suite. No CI gate documented. |
+| 11 | Reading order | **5** | README hero is clean and points to API Reference, Environment Variables, and Examples sections. Still no explicit "See also: AGENTS.md · examples/logger.ts" block at the top. +1 vs previous. |
+| **12** | **Simplicity** | **9** | 5 class methods + 8 instance methods. Minimum viable use is `loggerClass.get().info('msg')` — one call, one arg. |
+| **13** | **Clarity** | **9** | Every name reads as a sentence: `info/warn/error/debug/fatal/child/flush/close/getActiveTransports/hasTransport/getConfig/clear`. No vague verbs. |
+| **14** | **Unambiguity** | **7** | `error()` has a documented side effect (visual rendering in dev) not flagged at the call site. Otherwise each method has exactly one mental model. |
+| **15** | **Learning curve** | **9** | Fresh dev reaches a working call in ~2 min from the README hero. No required env vars for the default console+file path. |
 
 ### Weighted (v1.1)
 
 ```
-(3×.12)+(5×.08)+(8×.09)+(7×.06)+(7×.06)+(7×.08)+(7×.06)+(6×.05)+(8×.05)+(6×.04)+(4×.03)
-+(9×.09)+(9×.09)+(7×.05)+(9×.05) = 6.63 → 66/100
-Hallucinated methods cap: 40/100 (gethasTransport, getclear — now fixed)
+(9×.12)+(9×.08)+(8×.09)+(7×.06)+(8×.06)+(9×.08)+(9×.06)+(6×.05)+(9×.05)+(6×.04)+(5×.03)
++(9×.09)+(9×.09)+(7×.05)+(9×.05)
+= 1.08+0.72+0.72+0.42+0.48+0.72+0.54+0.30+0.45+0.24+0.15+0.81+0.81+0.35+0.45
+= 8.24 → 82/100
+No anti-pattern caps apply.
 ```
+
+### Delta vs previous (2026-04-13)
+
+- Previous: **40/100** capped (uncapped 66) — cap for hallucinated `gethasTransport` / `getclear`.
+- Current: **82/100** uncapped. **+42 capped / +16 uncapped.**
+- Top 3 dimension deltas: D1 API correctness **+6** (3→9), D2 Doc consistency **+4** (5→9), D6 Example completeness **+2** (7→9) and D7 Composability **+2** (7→9).
 
 ### Gaps to reach 🟢 85+
 
-1. **D1 → 9 (after fix)**: With the 3 method-name fixes applied, D1 rises to ~9 → uncapped score ~82
-2. **D6 → 9**: Add `flush()`, `close()`, `hasTransport()` to `examples/logger.ts`
-3. **D11 → 8**: Add "See also: AGENTS.md | examples/logger.ts" at the top of README
-4. **D8 → 8**: Transport init failures should log `[@bloomneo/appkit/logger] File transport failed: <reason>. Check BLOOM_LOGGER_DIR is writable.`
-5. **D10 → 9**: Add CI drift check
+1. **D8 → 8**: Transport init failures should log a pointer, e.g. `[@bloomneo/appkit/logger] File transport failed: <reason>. Check BLOOM_LOGGER_FILE_PATH is writable. See src/logger/README.md#transport-control`.
+2. **D10 → 9**: Add a CI drift check that greps doc files for `loggerClass.<name>(` and fails if `<name>` is not on the real export.
+3. **D11 → 8**: Add an explicit "See also: AGENTS.md · examples/logger.ts · llms.txt" block in the first 20 lines of the README.
+4. **D14 → 9**: Call out `error()`'s dev-mode visual side effect at the call-site doc (inline on the `error(message, meta?)` line in API Reference), not only in the "Enhanced error logging" subsection.
 
-**Realistic ceiling:** ~84/100 after all fixes. The module itself is excellent — the only real gaps are the hallucinated names (fixed) and missing example coverage.
+**Realistic ceiling:** ~88/100 after the four gaps above. The module is already in the 🟡 Solid band; none of the remaining gaps are structural.

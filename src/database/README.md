@@ -832,40 +832,46 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 68/100 — 🟡 Solid** *(no cap)*
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 75/100 — 🟡 Solid** *(capped at 75: module README has zero pointers to `AGENTS.md`, `examples/`, or `llms.txt`; weighted raw = 75.5)*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Delta vs previous (2026-04-13, 68/100): **+7***
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **9** | All 9 public methods verified in `database.test.ts`. Fixed: 8 README code blocks had `import { database }` (wrong — named export is `databaseClass`). Also fixed `requireRole` → `requireUserRoles`. |
-| 2 | Doc consistency | **8** | After import-name fix, README, examples, cookbook, AGENTS.md all use `databaseClass`. Minor gap: README doesn't pointer to examples or AGENTS.md. |
-| 3 | Runtime verification | **5** | `database.test.ts` drift-checks all 9 methods exist but only verifies `org()` returns an object. No behavior tests (no real DB in CI). |
-| 4 | Type safety | **5** | `req: any`, `options: any`, `DatabaseClientUnion` has `[key: string]: any`. Return type is a union — consumer can't know if they get Prisma or Mongoose without inspecting at runtime. |
-| 5 | Discoverability | **7** | README hero shows canonical import and pattern. No explicit pointer to AGENTS.md, llms.txt, or `/examples`. |
-| 6 | Example completeness | **5** | `examples/database.ts` covers `get`, `getTenants`, `org().get`, `org().getTenants`. Missing: `health`, `list`, `exists`, `create`, `delete`, `disconnect`. |
-| 7 | Composability | **8** | `cookbook/multi-tenant-saas.ts` (auth+db+cache+security) and `cookbook/auth-protected-crud.ts` (auth+db+error+logger) both compose database with other modules correctly. |
-| 8 | Educational errors | **7** | `DATABASE_URL required. Set DATABASE_URL` ✅. `No database URL found for organization '${orgId}'` ✅. `Tenant deletion requires explicit confirmation` ✅. Generic `Failed to get tenant IDs` without context is the weakest spot. |
-| 9 | Convention enforcement | **8** | One canonical pattern per task: `get()` for user data, `getTenants()` for admin, `org().get()` for per-org. Variable naming convention (`database`, `dbTenants`, `acmedatabase`, `acmeDbTenants`) is consistently documented. |
-| 10 | Drift prevention | **5** | Drift-check test exists; runs under vitest. No CI gate enforcing it. |
-| 11 | Reading order | **4** | README has no pointers to AGENTS.md, llms.txt, examples, or cookbook from the top section. |
-| **12** | **Simplicity** | **7** | 9 methods. 80% case: one call (`databaseClass.get()`). Progressive scaling story is well-told. Tenant management methods are secondary concerns. |
-| **13** | **Clarity** | **9** | All method names are self-documenting: `get`, `getTenants`, `org`, `health`, `list`, `exists`, `create`, `delete`, `disconnect`. |
-| **14** | **Unambiguity** | **5** | Return type is `PrismaClient \| MongooseConnection` — caller doesn't know which until runtime. `create()` name implies registration but is a format-validation no-op (comment is correct but behaviour surprise remains). |
-| **15** | **Learning curve** | **6** | Quick-start is clear. The mental model of single → multi-tenant → multi-org is well-explained with code. Learning curve is from the Prisma vs Mongoose split in the return type. |
+| 1 | API correctness | **10** | All 9 public methods (`get`, `getTenants`, `org`, `health`, `list`, `exists`, `create`, `delete`, `disconnect`) exist as documented. README / `examples/database.ts` / `cookbook/*.ts` / `llms.txt` / root `README.md` all use `databaseClass`. Drift-check test (`database.test.ts`) enforces both the presence list and a hallucination blocklist (`query`, `transaction`, `model`, `findMany`, …). |
+| 2 | Doc consistency | **9** | Every surface uses `databaseClass.get(req)` / `.getTenants()` / `.org(id).get()`. `cookbook/auth-protected-crud.ts` and `multi-tenant-saas.ts` pass `req` consistently for tenant scoping. One minor gap: module README body has no explicit pointer to `AGENTS.md` / `examples/` / `llms.txt`. |
+| 3 | Runtime verification | **6** | `database.test.ts` verifies all 9 methods exist + blocks 9 hallucinated names + checks `org()` contract. `examples/database.ts` is runtime-verified today. Still no behaviour tests for the tenant middleware itself (no fake Prisma/Mongoose harness). |
+| 4 | Type safety | **5** | Unchanged from previous: `req: any`, `options: any`, `DatabaseClientUnion` contains `[key: string]: any`. Return type is a `PrismaClient \| MongooseConnection` union; autocomplete is best-effort at the call site. |
+| 5 | Discoverability | **7** | `package.json` description + README hero give one canonical import in the first 30 lines. `databaseClass` is the only exported entry symbol. Still no explicit "See also" block pointing at `AGENTS.md` / `llms.txt` / `examples/database.ts` from the top of the README. |
+| 6 | Example completeness | **9** | `examples/database.ts` now exercises `get`, `get(req)`, `getTenants`, `org().get`, `org().getTenants`, `health`, `list`, `exists`, `create`, `disconnect`. `delete` is shown as a commented destructive opt-in (intentional — it wipes tenant data). Runtime-verified 2026-04-14. |
+| 7 | Composability | **9** | Two cookbook recipes compose `databaseClass` with the rest of the stack and typecheck clean: `cookbook/auth-protected-crud.ts` (auth + database + error + logger) and `cookbook/multi-tenant-saas.ts` (auth + database + cache + error + logger, with `databaseClass.create` / `exists` / `delete` on the admin path). Both call `databaseClass.get(req)` — the canonical tenant-aware pattern. |
+| 8 | Educational errors | **8** | Every throw site is prefixed `[@bloomneo/appkit/database]`, names the missing/invalid input, and appends `See: ${DOCS_URL}#<anchor>`. Examples: `Database URL required. Set DATABASE_URL environment variable. See …#environment-variables`, `No database URL found for organization 'X'`, `Tenant deletion requires explicit confirmation. Pass { confirm: true }`, `Invalid tenant ID format. Use alphanumeric characters, underscores, and hyphens only`. Weakest spot: `_getDistinctTenantIds` wraps the underlying ORM error verbatim. |
+| 9 | Convention enforcement | **8** | One canonical pattern per task: `get(req)` for user data, `getTenants(req)` for admin, `org(id).get(req)` for per-org. Variable-name convention (`database` / `dbTenants` / `<org>database` / `<org>DbTenants`) is documented and matches examples + cookbook + llms.txt. |
+| 10 | Drift prevention | **5** | `database.test.ts` is the drift gate and runs under `vitest`. No dedicated CI job asserts the doc ↔ source mapping; the gate is only "did someone run the test suite". |
+| 11 | Reading order | **4** | Module README still has no pointer block to `AGENTS.md`, `llms.txt`, `examples/database.ts`, or the cookbook. A fresh agent landing here has to guess where to go next. This is what triggers the 75 anti-pattern cap. |
+| **12** | **Simplicity** | **7** | 9 public methods on `databaseClass`; 2 on the `OrgDatabase` returned by `.org()`. 80% case is one call (`await databaseClass.get(req)`) with one optional arg. Tenant admin methods (`list` / `exists` / `create` / `delete`) are secondary and rarely needed in app code. |
+| **13** | **Clarity** | **9** | Every method reads as its behaviour: `get`, `getTenants`, `org`, `health`, `list`, `exists`, `create`, `delete`, `disconnect`. No vague verbs (`process`, `handle`, `run`). Parameter names (`req`, `tenantId`, `orgId`, `options.confirm`) are self-describing. |
+| **14** | **Unambiguity** | **5** | Unchanged. `get()` can return a Prisma client *or* a Mongoose connection — the caller has to runtime-probe (`db.$queryRaw` vs `db.db`). `create(tenantId)` is a format-validation no-op under the row-level strategy; the name suggests registration. |
+| **15** | **Learning curve** | **6** | Fresh dev hits a working snippet in the first 60 lines of README. Progressive story (single → multi-tenant → multi-org via env vars only) is well-told. Friction remains around (a) the Prisma vs Mongoose return union, and (b) the "pass `req` to enable tenant filtering" implicit contract. |
 
 ### Weighted (v1.1)
 
 ```
-(9×.12)+(8×.08)+(5×.09)+(5×.06)+(7×.06)+(5×.08)+(8×.06)+(7×.05)+(8×.05)+(5×.04)+(4×.03)
-+(7×.09)+(9×.09)+(5×.05)+(6×.05) = 6.83 → 68/100
+(10×.12)+(9×.08)+(6×.09)+(5×.06)+(7×.06)+(9×.08)+(9×.06)+(8×.05)+(8×.05)+(5×.04)+(4×.03)
++(7×.09)+(9×.09)+(5×.05)+(6×.05) = 7.55 → 75.5 → 75/100 (after README-pointer cap)
 ```
+
+### Cap status
+
+- **Active cap:** 75/100 — "README has zero pointers to AGENTS.md, examples, or llms.txt" (anti-pattern table).
+- Raw weighted score (75.5) is already under the cap, so the cap costs ~0.5 points here. Landing a pointer block lifts the ceiling and takes D11 to ~8, pushing the raw score toward 78.
 
 ### Gaps to reach 🟢 85+
 
-1. **D6 Example completeness → 9**: Add `health()`, `list()`, `exists()`, `create()`, `delete()`, `disconnect()` to `examples/database.ts` (+6 methods × 0.08 weight)
-2. **D3 Runtime verification → 8**: Add mock-adapter behavior tests for tenant filtering logic
-3. **D4 Type safety → 8**: Tighten `delete(options: { confirm: boolean })`, narrow return type with adapter-aware generics
-4. **D11 Reading order → 8**: Add "See also: [AGENTS.md](../../AGENTS.md) | [examples/database.ts](../../examples/database.ts)" to the top section
-5. **D14 Unambiguity → 8**: Document clearly whether `get()` returns Prisma or Mongoose; expose `.adapter` property on the returned client
+1. **D11 Reading order → 8 + lift cap**: Add a "See also" block near the top of this README pointing to `AGENTS.md`, `llms.txt`, `examples/database.ts`, `cookbook/auth-protected-crud.ts`, `cookbook/multi-tenant-saas.ts`. Removes the 75 cap.
+2. **D3 Runtime verification → 8**: Add a fake adapter that records `$use` middleware calls so tenant-filter behaviour (create stamping, findMany filter injection, OR/AND rewrite) is exercised under vitest without a real DB.
+3. **D4 Type safety → 8**: Tighten `delete(tenantId, options: { confirm: true })`, narrow `req` to `{ headers?, user?, params?, query?, hostname? }`, and add an adapter-aware return generic (`databaseClass.get<'prisma'>(req)` → `PrismaClient`).
+4. **D14 Unambiguity → 7**: Expose `client._adapter: 'prisma' | 'mongoose'` publicly and document it as the supported runtime discriminator; rename `create()` docs to make the "validate-only" semantics unmistakable.
+5. **D10 Drift prevention → 7**: Wire `database.test.ts` (plus a doc-ref scan) into a dedicated CI job so a README rename breaks the build, not just the test suite.
 
-**Realistic ceiling:** ~82/100 with all 5 fixes. Beyond that requires typed adapter generics at the call site.
+**Realistic ceiling with fixes 1–5:** ~84/100. Breaking past that requires typed adapter generics propagated through `get` and `org().get` at the call site.

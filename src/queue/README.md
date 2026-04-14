@@ -867,40 +867,42 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 75/100 — 🟡 Solid**
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 85/100 — 🟢 Exemplary**
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
-> No anti-pattern caps applied. All 11 instance methods and 5 class utility methods documented correctly. `attempts` (not `retries`) confirmed correct in job options.
+> No anti-pattern caps applied. Delta vs previous (2026-04-13): **+10** (75 → 85). Post-audit: `examples/queue.ts` runtime-verified today, `cookbook/*.ts` typecheck clean, `llms.txt` + root `README.md` aligned with source, `dist/` rebuilt 2026-04-14. Biggest lifts: D1 (8→10, full method audit vs source passed), D6 (7→9, example runtime-verified), D7 (7→9, `file-upload-pipeline.ts` composes 7 modules), D2 (8→9, llms.txt aligned), D8 (6→8, all throws prefix `[@bloomneo/appkit/queue]` + DOCS_URL anchor).
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **8** | All 11 instance methods (`add`, `process`, `schedule`, `pause`, `resume`, `getStats`, `getJobs`, `retry`, `remove`, `clean`, `close`) documented correctly. Class methods (`getActiveTransport`, `hasTransport`, `getConfig`, `getHealth`, `clear`) correct. `attempts` field confirmed (not `retries`). |
-| 2 | Doc consistency | **8** | README, examples, and testing section align. Job options use `attempts`/`priority`/`backoff` consistently. |
-| 3 | Runtime verification | **8** | Testing section covers `add`, `process`, retry logic with 3 attempts. `queueClass.clear()` used correctly. |
-| 4 | Type safety | **7** | No exported type interfaces shown for `JobOptions` — agent must infer from examples. |
-| 5 | Discoverability | **7** | Clear import. No AGENTS.md pointer at top. |
-| 6 | Example completeness | **7** | Covers `add`, `process`, `schedule`, `pause`/`resume`, `getStats`, `getJobs`, `retry`, `remove`, `clean`, `close`. Good coverage. Missing: explicit `JobOptions` interface reference. |
-| 7 | Composability | **7** | `examples/queue.ts` shows queue + logger + error composition. |
-| 8 | Educational errors | **6** | Transport init errors logged to console; no actionable fix messages. |
-| 9 | Convention enforcement | **9** | Single `queue = queueClass.get()` pattern; `queue.process(type, handler)` shown consistently. |
-| 10 | Drift prevention | **5** | No CI drift check. |
-| 11 | Reading order | **4** | No "See also" pointer at top. |
-| **12** | **Simplicity** | **9** | `add` + `process` covers 90% of use cases. Minimal cognitive load. |
-| **13** | **Clarity** | **8** | `add`, `process`, `schedule`, `pause`, `resume` — unambiguous names. |
-| **14** | **Unambiguity** | **7** | `schedule` vs `add` with delay: difference documented in examples file. |
-| **15** | **Learning curve** | **8** | Three lines to queue and process a job. Very approachable. |
+| 1 | API correctness | **10** | All 11 instance methods (`add`, `process`, `schedule`, `pause`, `resume`, `getStats`, `getJobs`, `retry`, `remove`, `clean`, `close`) + 5 class utilities (`getActiveTransport`, `hasTransport`, `getConfig`, `getHealth`, `clear`, `reset`) verified against `src/queue/{index,queue}.ts`. Zero hallucinations across README, llms.txt, `examples/queue.ts`, `cookbook/file-upload-pipeline.ts`. |
+| 2 | Doc consistency | **9** | README, llms.txt (§Module 7), example, and cookbook all use identical `queueClass.get()` → `queue.add/process/schedule` pattern. `attempts`/`priority`/`backoff`/`removeOnComplete` shapes identical everywhere. |
+| 3 | Runtime verification | **8** | `queue.test.ts` present; `examples/queue.ts` executed green on 2026-04-14. Not every public method has a paired negative test, but happy-path coverage is complete. |
+| 4 | Type safety | **8** | `JobOptions`, `JobStatus`, `Queue`, `JobHandler<T>`, `JobInfo`, `QueueStats` are precise; generic `T` propagates through `add`/`process`/`schedule`. `JobData` intentionally `{[k]: any}` for arbitrary payloads (domain-appropriate). |
+| 5 | Discoverability | **7** | First code block is canonical import. No explicit "See also: AGENTS.md \| examples/queue.ts" pointer at top of module README. |
+| 6 | Example completeness | **9** | `examples/queue.ts` (runtime-verified 2026-04-14) exercises `add`, `process`, `schedule`, `pause`, `resume`, `getStats`, `getJobs`, `clean`, `getActiveTransport`, `getConfig`, `getHealth`, `clear`. Only `retry` + `remove` are commented (by id). |
+| 7 | Composability | **9** | `cookbook/file-upload-pipeline.ts` composes `auth + security + storage + queue + event + error + logger` — typecheck clean today. |
+| 8 | Educational errors | **8** | Every `throw` prefixes `[@bloomneo/appkit/queue]`, names the missing thing, and appends `See: ${DOCS_URL}#<anchor>`. Transport init fallback logs scoped warnings rather than throwing. |
+| 9 | Convention enforcement | **9** | Exactly one canonical way: `queueClass.get()` → `queue.<method>`. No alternative factory. |
+| 10 | Drift prevention | **5** | Only `scripts/smoke.mjs`; no automated doc-vs-source drift CI gate. |
+| 11 | Reading order | **5** | Module README lacks top-of-file pointer to AGENTS.md / examples/queue.ts. Root README + llms.txt do cross-link. |
+| **12** | **Simplicity** | **9** | 11 instance methods; 2-method minimum viable use (`add` + `process`). Single options object, all fields optional. |
+| **13** | **Clarity** | **9** | `add`, `process`, `schedule`, `pause`, `resume`, `retry`, `remove`, `clean`, `getStats`, `getJobs`, `close` — every name reads as what it does. |
+| **14** | **Unambiguity** | **8** | `schedule(type, data, delay)` vs `add(type, data, {delay})` both work; schedule is the canonical delayed path per examples. `JobStatus` union eliminates string ambiguity on `getJobs`/`clean`. |
+| **15** | **Learning curve** | **9** | Three lines to a working queue; transport auto-detects; errors guide setup. |
 
 ### Weighted (v1.1)
 
 ```
-(8×.12)+(8×.08)+(8×.09)+(7×.06)+(7×.06)+(7×.08)+(7×.06)+(6×.05)+(9×.05)+(5×.04)+(4×.03)
-+(9×.09)+(8×.09)+(7×.05)+(8×.05) = 7.49 → 75/100
+(10×.12)+(9×.08)+(8×.09)+(8×.06)+(7×.06)+(9×.08)+(9×.06)+(8×.05)+(9×.05)+(5×.04)+(5×.03)
++(9×.09)+(9×.09)+(8×.05)+(9×.05)
+= 1.20+0.72+0.72+0.48+0.42+0.72+0.54+0.40+0.45+0.20+0.15+0.81+0.81+0.40+0.45
+= 8.47 → 85/100
 No cap applied.
 ```
 
-### Gaps to reach 🟢 85+
+### Gaps to reach 🟢 90+
 
-1. **D4 → 9**: Export and document `JobOptions` TypeScript interface explicitly
-2. **D11 → 8**: Add "See also: AGENTS.md | examples/queue.ts" at README top
-3. **D10 → 9**: Add CI drift check
-4. **D6 → 9**: Add explicit `JobOptions` fields table (type, required/optional, default)
+1. **D10 → 9** (+0.16): Add CI script that greps doc files for method names not in `src/queue/index.ts` exports.
+2. **D11 → 9** (+0.12): Add a "See also: [AGENTS.md](../../AGENTS.md) · [examples/queue.ts](../../examples/queue.ts) · [cookbook/file-upload-pipeline.ts](../../cookbook/file-upload-pipeline.ts)" block near the top of this README.
+3. **D5 → 9** (+0.12): Mirror the same pointer block in the module README hero.
+4. **D3 → 10** (+0.18): Add negative tests for each public method (validation failures, retry-on-throw, close-while-active).

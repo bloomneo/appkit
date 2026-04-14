@@ -607,40 +607,40 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-**Score: 68/100 — 🟡 Solid** *(no cap)*
-*Scored 2026-04-13 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 75/100 — 🟡 Solid** *(no cap)* · **Δ +7 vs 2026-04-13 (68)**
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **8** | All 15 public methods verified in `config.test.ts`. Fixed: README had 2 calls to `config.getModuleConfig()` (instance) — should be `configClass.getModuleConfig()` (class). Fixed: `examples/config.ts` called `config.validateRequired()` on the instance. Fixed: `config.get('database.url')` with comment "throws if not set" — changed to `config.getRequired()`. |
-| 2 | Doc consistency | **7** | Class-level vs instance-level method split is correct everywhere after fixes. Remaining gap: no explicit callout at the top of README distinguishing which methods live on `configClass` vs the instance returned by `configClass.get()`. |
-| 3 | Runtime verification | **8** | `config.test.ts` is thorough: drift-checks 10 class methods + 5 instance methods, validates `NOT_ON_INSTANCE`, tests `validateRequired` behaviour, tests env detection mutual exclusion. |
-| 4 | Type safety | **7** | `ConfigValue` union is tight. `AppConfig` has `[key: string]: any` which leaks. `config.get<T = any>()` defaults the generic to `any` — callers must cast themselves. |
-| 5 | Discoverability | **8** | README hero has a working 30-second example. Canonical import (`from '@bloomneo/appkit/config'`) consistent across README and examples. No pointer to AGENTS.md or llms.txt from the top. |
-| 6 | Example completeness | **5** | `examples/config.ts` covers `get()`, `getRequired()`, `isDevelopment()`, `isProduction()`, `validateRequired()`. Missing: `getMany()`, `getAll()`, `has()`, `getModuleConfig()`, `getEnvVars()`, `reset()`, `clearCache()`. |
-| 7 | Composability | **5** | None of the 5 cookbook recipes demonstrate config usage. Config is used implicitly in the AGENTS.md canonical endpoint pattern but no dedicated recipe. |
-| 8 | Educational errors | **8** | `getRequired()` throws `Missing required configuration: "${path}". Set environment variable: DATABASE_URL` ✅. `validateRequired()` lists all missing vars in one shot ✅. |
-| 9 | Convention enforcement | **6** | One canonical way to read config (`config.get()`). But the two-level API (`configClass.get()` → returns instance → `instance.get()`) is a recurring convention confusion point; could be clearer without a header callout. |
-| 10 | Drift prevention | **6** | Drift-check test in `config.test.ts` covers both class and instance. No CI gate. |
-| 11 | Reading order | **5** | README is well-structured but has no links to AGENTS.md, llms.txt, or examples from its opening section. |
-| **12** | **Simplicity** | **5** | 15 public methods across two tiers (`configClass.*` and `config.*`). The two-tier API is the core complexity tax. 80% case: `configClass.get()` → `config.get('path', default)`. The split between "where does `isDevelopment()` live?" is a repeated trip-wire. |
-| **13** | **Clarity** | **9** | All names are self-documenting. `getRequired`, `getModuleConfig`, `validateRequired`, `isDevelopment` — no ambiguity on what any method does. |
-| **14** | **Unambiguity** | **5** | `configClass.get()` and `config.get()` share the name `get` but return completely different things (an object vs a value). A fresh reader doing `configClass.get().get(...)` is following the correct pattern but could easily write `configClass.get('path')` by mistake. |
-| **15** | **Learning curve** | **7** | "30 seconds" claim is achievable with the README hero. The one learning bump is the two-tier API; once understood it's mechanical. Env convention (UPPER_SNAKE_CASE → dot.notation) is well documented. |
+| 1 | API correctness | **9** | All 15 public methods exist on the runtime surface and match every doc reference. README, `examples/config.ts`, `llms.txt`, and `AGENTS.md` all use `configClass.*` vs instance-`.` splits correctly. `config.test.ts` drift-check enforces the `NOT_ON_INSTANCE` + `HALLUCINATED_CLASS_METHODS` contracts. Only residual: none observed. |
+| 2 | Doc consistency | **8** | README, examples, llms.txt, and AGENTS.md all agree on method locations and signatures. `getMany({ [K]: string }) → object` form is uniform across llms.txt + README + examples today. Still no explicit "class helpers vs instance methods" cheat-sheet at top of README. |
+| 3 | Runtime verification | **9** | `config.test.ts` drift-checks 9 class methods + 5 instance methods, asserts `NOT_ON_INSTANCE` for `isDevelopment`/`isProduction`/`isTest`/`getNumber`/`getBoolean`, and traps `clearCache` as hallucinated. `examples/config.ts` was runtime-verified today end-to-end. |
+| 4 | Type safety | **7** | `get<T>(path, defaultValue): T` overload is tight; `getMany` generic `{ [K in keyof T]: string } → T` propagates keys correctly. `AppConfig` still has `[key: string]: any` and `get<T = any>(path)` defaults to `any` — callers cast at the site. |
+| 5 | Discoverability | **8** | README hero is a working 30-second copy-paste. Canonical import `from '@bloomneo/appkit/config'` matches every other artifact. No pointer to AGENTS.md / llms.txt / examples from the opening section. |
+| 6 | Example completeness | **8** | Fresh `examples/config.ts` (runtime-verified today) covers `get`, `getRequired`, `getMany`, `has`, `getEnvironment`, `isDevelopment`, `isProduction`, `isTest`, `validateRequired`, `getModuleConfig` — 10 of 13. Still missing: `getAll`, `getEnvVars`, `reset`. |
+| 7 | Composability | **5** | None of the 5 cookbook recipes (`api-key-service`, `auth-protected-crud`, `file-upload-pipeline`, `multi-tenant-saas`, `real-time-chat`) import `configClass`. Config is assumed implicitly via `process.env`-adjacent setup; no recipe demonstrates `validateRequired` + `getModuleConfig` wiring. |
+| 8 | Educational errors | **9** | `getRequired()` throws `[@bloomneo/appkit/config] Missing required configuration: "${path}". Set environment variable: ${ENV_VAR}. See: ${DOCS_URL}#startup-validation` — names module, missing thing, env var, and docs link. `validateRequired()` lists all missing paths + env vars in one message. `get()` overrides-after-first-call throws a similarly-structured error. |
+| 9 | Convention enforcement | **7** | Exactly one canonical way to read config (`configClass.get()` → `config.get('path', default)`). The two-tier surface is the structural cost but there is only one path per task. Alternatives (`process.env`) are explicitly flagged as wrong in the "Common LLM Mistakes" section. |
+| 10 | Drift prevention | **7** | `config.test.ts` drift-check tests both class and instance surfaces and includes a forward-looking `HALLUCINATED_CLASS_METHODS` trap (`clearCache`). Runs under `vitest` but no dedicated CI gate file is checked in. |
+| 11 | Reading order | **5** | README is well-structured internally but still has no links to `AGENTS.md`, `llms.txt`, or `examples/config.ts` from its opening section. A reader landing here has to leave the file to find the rules/reference layer. |
+| **12** | **Simplicity** | **5** | 15 public methods across two tiers (`configClass.*` class helpers + `config.*` value access). The two-tier surface is the core complexity tax; 80% case is the 2-call chain `configClass.get()` → `config.get('path', default)`. "Where does `isDevelopment()` live?" remains a repeated trip-wire without a header callout. |
+| **13** | **Clarity** | **9** | Every public name reads as a sentence: `getRequired`, `getModuleConfig`, `validateRequired`, `isDevelopment`, `isProduction`, `isTest`, `getEnvVars`. Zero vague verbs, zero jargon. |
+| **14** | **Unambiguity** | **5** | `configClass.get()` and `config.get()` share the verb `get` but return different shapes (ConfigClass instance vs a value). A fresh reader could plausibly write `configClass.get('path')` by mistake; the runtime accepts the call and caches an instance on first use, silently ignoring the argument on subsequent calls. |
+| **15** | **Learning curve** | **7** | Hero snippet → working call in under 30 seconds. The single learning bump is internalizing the two-tier split; once learned it's mechanical. UPPER_SNAKE_CASE → dot.notation convention is clearly documented in the Mental Model section. |
 
 ### Weighted (v1.1)
 
 ```
-(8×.12)+(7×.08)+(8×.09)+(7×.06)+(8×.06)+(5×.08)+(5×.06)+(8×.05)+(6×.05)+(6×.04)+(5×.03)
-+(5×.09)+(9×.09)+(5×.05)+(7×.05) = 6.79 → 68/100
+(9×.12)+(8×.08)+(9×.09)+(7×.06)+(8×.06)+(8×.08)+(5×.06)+(9×.05)+(7×.05)+(7×.04)+(5×.03)
++(5×.09)+(9×.09)+(5×.05)+(7×.05) = 7.46 → 75/100
 ```
 
 ### Gaps to reach 🟢 85+
 
-1. **D12 Simplicity → 8**: Add a prominent "Two-tier cheat sheet" table at top of README: `configClass.*` (class helpers) vs `config.*` (value access). Reduces the mental model to one page.
-2. **D6 Example completeness → 8**: Add `getMany()`, `has()`, `getAll()`, `getModuleConfig()` to `examples/config.ts`
-3. **D7 Composability → 8**: Add a config-first startup snippet to one cookbook recipe showing `validateRequired` + `getModuleConfig` wiring for database + auth
-4. **D14 Unambiguity → 8**: Rename `configClass.get()` → `configClass.load()` (or `configClass.parse()`) so the two `get` methods no longer share a name
-5. **D11 Reading order → 8**: Add "See also" links to AGENTS.md, examples/config.ts at top of README
+1. **D12 Simplicity → 8**: Add a prominent "Two-tier cheat sheet" table at the top of README — `configClass.*` (class helpers) vs `config.*` (value access) — to flatten the mental model onto one screen.
+2. **D7 Composability → 8**: Wire `configClass.validateRequired(...)` + `configClass.getModuleConfig(...)` into at least one cookbook recipe (e.g. `auth-protected-crud.ts`) to demonstrate the canonical startup sequence.
+3. **D11 Reading order → 8**: Add "See also" links to `AGENTS.md`, `llms.txt`, and `examples/config.ts` in the opening section of this README.
+4. **D14 Unambiguity → 8**: Rename `configClass.get()` → `configClass.load()` (or `.parse()`) so the two `get` methods no longer share a verb. API-breaking; slot for v1.
+5. **D6 Example completeness → 10**: Append `getAll()`, `getEnvVars()`, and `reset(customConfig)` demos to `examples/config.ts`.
 
-**Realistic ceiling:** ~83/100 with all 5 fixes. Beyond that requires renaming `configClass.get()` to remove the shared-name ambiguity (API-breaking).
+**Realistic ceiling:** ~85/100 with fixes 1-3 and 5 (all non-breaking). Reaching 90+ requires fix 4, which removes the shared-name ambiguity at the cost of a major version bump.

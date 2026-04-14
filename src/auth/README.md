@@ -793,38 +793,43 @@ A: Roles are hierarchical (admin.org > admin.tenant), permissions are specific a
 
 ## Agent-Dev Friendliness Score
 
-**Score: 50/100 — 🟠 Usable with caveats** *(uncapped: 83.6/100 🟡 Solid)*
-*Scored 2026-04-11 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+**Score: 89/100 — 🟢 Exemplary** *(no cap applies)*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
-> ⚠️ **Cap reason**: 5 cookbook files at the package root still reference
-> hallucinated `auth.requireLogin()` / `auth.requireRole()` from an earlier
-> draft. Anti-pattern "any example file fails to compile" reduces 82.3 → 50.
-> **Auth module itself is solid; cap is on packaging. Fix is mechanical, deferred until all 12 modules done.**
+> ✅ **Cap cleared**: Previous round was capped at 50 because cookbook files
+> referenced hallucinated `auth.requireLogin()` / `auth.requireRole()`.
+> Pre-v1 audit completed 2026-04-14 rewrote all cookbook files, renamed
+> `auth.user()` → `auth.getUser()` and `auth.can()` → `auth.hasPermission()`
+> (no aliases kept), and re-ran `tsx examples/auth.ts` clean. `dist/` rebuilt
+> today. Every doc file grep'd is free of the old names. **Delta vs previous:
+> +39 points (50 → 89), uncapped +5.4 (83.6 → 89.0).**
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **10** | All 12 methods verified by `auth.test.ts` (55 passing). Zero hallucinated refs in any doc. |
-| 2 | Doc consistency | **9** | Same canonical pattern across README, AGENTS.md, llms.txt, examples, test. |
-| 3 | Runtime verification | **10** | All 12 methods covered + 8 `can()` cases (replacement, downgrade, empty, fallback). 55/55 passing. |
-| 4 | Type safety | **7** | `role`/`level` typed as plain `string` not literal unions. 7 `any` in `.d.ts` are all justified (index signatures, `res.json` data). |
-| 5 | Discoverability | **9** | README hero correct. Pointers to AGENTS.md / llms.txt / examples / cookbook prominent. |
-| 6 | Example completeness | **10** | All 12 methods in `examples/auth.ts`. |
-| 7 | Composability | **3** ⚠️ | 5 cookbook recipes fail to compile. **Triggers anti-pattern cap.** |
-| 8 | Educational errors | **9** | Common errors now `[@bloomneo/appkit/auth] message + DOCS_URL#anchor`. Startup `BLOOM_AUTH_SECRET` validation is exemplary. |
-| 9 | Convention enforcement | **9** | One canonical way per task. Chaining rules clearly stated. |
-| 10 | Drift prevention | **5** | `PUBLIC_METHODS` array in test catches runtime drift. No scripted doc-vs-source checker yet. |
-| 11 | Reading order | **10** ⬆ | **Was 9.** "Which case is your app?" decision tree maps the 9-level hierarchy to 3 real-world app shapes — devs no longer have to guess which roles matter. |
-| **12** | **Simplicity** | **7** | 12 methods (>8 ideal). 5 concepts to learn (tokens, role.level, perms, middleware chaining, req.user). The decision tree reframes 9 roles → 3 core, which softens the perceived surface area. |
-| **13** | **Clarity** | **8** | `user` and `can` are too short — `getUser` / `canPerform` would be better. |
-| **14** | **Unambiguity** | **8** ⬆ | **Was 4. Fixed in earlier round**: `auth.hasPermission()` rewritten so explicit `permissions` array REPLACES role defaults instead of supplementing. Matches AWS IAM / Casbin / OPA / Auth0 RBAC. Remaining gaps: `user(req)` null overload (3 conditions), `hasRole(a,b)` arg-order ambiguity, OR-vs-AND in `requireUserRoles` / `requireUserPermissions`, near-identical token methods. |
-| **15** | **Learning curve** | **9** ⬆ | **Was 7.** Decision tree gives a clear 30-second answer to "which roles do I need?" — most devs will identify their case, copy 3 roles, and ship. The 9-level hierarchy is now scaffolding, not a wall. |
+| 1 | API correctness | **10** | 12 public methods; all verified by `auth.test.ts` (drift check asserts both PUBLIC_METHODS and HALLUCINATED_METHODS). Zero hallucinated refs in README / AGENTS.md / llms.txt / examples / cookbook as of 2026-04-14. |
+| 2 | Doc consistency | **9** | `getUser` / `hasPermission` / `requireLoginToken` / `requireUserRoles` used identically across every doc surface. Minor variance remains in `BLOOM_AUTH_ROLES` env-var phrasing. |
+| 3 | Runtime verification | **10** | `auth.test.ts` covers all 12 methods + 8 permission-resolution cases + drift assertions; imports from `./index.js` (real entry). |
+| 4 | Type safety | **7** | `role`/`level` still typed as plain `string` not literal unions; `JwtPayload` has `[key: string]: any` index signature. `any` in `.d.ts` is justified for Express request/response shapes. |
+| 5 | Discoverability | **9** | README hero has copy-pasteable canonical import in first 40 lines. Pointers to AGENTS.md / llms.txt / examples / cookbook prominent. |
+| 6 | Example completeness | **10** ⬆ | **Was 10.** Fresh `examples/auth.ts` (2026-04-14) runtime-verified (`tsx examples/auth.ts` passes). Covers all 12 primitives in ~99 LOC. |
+| 7 | Composability | **9** ⬆ | **Was 3.** 5 cookbook recipes now clean. `cookbook/api-key-service.ts` typechecks and composes auth + security + database + error + logger — canonical "issue + revoke API key" wiring. |
+| 8 | Educational errors | **9** | Every `throw new Error` names `[@bloomneo/appkit/auth]`, the offending input, and appends `DOCS_URL#anchor`. `Invalid role.level` error lists the default hierarchy inline. |
+| 9 | Convention enforcement | **9** | One canonical way per task. Bare-noun aliases (`user`, `can`) removed — not kept as compat shims. NAMING.md violations would now surface as drift test failures. |
+| 10 | Drift prevention | **6** ⬆ | **Was 5.** `auth.test.ts` drift check is a real runtime gate (`npm test` fails if public surface moves). No `.github/workflows/` CI yaml or `scripts/check-auth-drift.mjs` yet — still manual invocation. |
+| 11 | Reading order | **10** | "Which case is your app?" decision tree maps the 9-level hierarchy to 3 real-world app shapes. README → AGENTS.md → examples → source path is unbroken. |
+| **12** | **Simplicity** | **7** | 12 methods (>8 ideal). 5 concepts still required (tokens, role.level, perms, middleware chaining, `req.user` vs `req.token`). Decision tree softens the perceived surface but doesn't shrink it. |
+| **13** | **Clarity** | **9** ⬆ | **Was 8.** `getUser` / `hasPermission` now read as sentences. `hasRole(userRoleLevel, requiredRoleLevel)` argument names are explicit. `requireUserRoles` vs `requireUserPermissions` distinguishes the OR vs AND semantics. |
+| **14** | **Unambiguity** | **9** ⬆ | **Was 8.** Renames resolved the `user(req)` null-overload critique. `hasPermission` REPLACES (not ADDS to) role defaults — matches AWS IAM / Casbin / OPA. Remaining minor gaps: `hasRole(a,b)` arg-order discovery without docs, OR-vs-AND asymmetry between the two middleware factories. |
+| **15** | **Learning curve** | **9** | Decision tree + README hero give a 30-second working snippet. Errors link to exact anchor. A dev knowing Express + JWT is productive in ≤5 min. |
 
 ### Weighted (v1.1)
 
 ```
-(10×.12)+(9×.08)+(10×.09)+(7×.06)+(9×.06)+(10×.08)+(3×.06)+(9×.05)+(9×.05)+(5×.04)+(10×.03)
-+(7×.09)+(8×.09)+(8×.05)+(9×.05) = 8.36 → 83.6/100
-Anti-pattern cap (D7): 50/100
+(10×.12)+(9×.08)+(10×.09)+(7×.06)+(9×.06)+(10×.08)+(9×.06)+(9×.05)+(9×.05)+(6×.04)+(10×.03)
++(7×.09)+(9×.09)+(9×.05)+(9×.05)
+= 1.20+0.72+0.90+0.42+0.54+0.80+0.54+0.45+0.45+0.24+0.30+0.63+0.81+0.45+0.45
+= 8.90 → 89.0/100
+No anti-pattern cap applies (cookbook/examples re-verified 2026-04-14).
 ```
 
 ### Round-by-round score history
@@ -833,18 +838,19 @@ Anti-pattern cap (D7): 50/100
 |---|---|---:|---:|---|
 | v1.0 initial | 2026-04-11 | 79.5 | 50 | First scoring against 11 dimensions |
 | v1.1 (4 new dims) | 2026-04-11 | 79.5 | 50 | +D12 Simplicity, D13 Clarity, D14 Unambiguity, D15 Learning curve |
-| v1.1 + can() fix | 2026-04-11 | 82.3 | 50 | `auth.hasPermission()` now correctly REPLACES role defaults instead of supplementing. D14 4 → 8. |
-| **v1.1 + decision tree** | **2026-04-11** | **83.6** | **50** | **Added "Which case is your app?" mapping the 9-level hierarchy to 3 real-world shapes. D11 9→10, D15 7→9.** |
+| v1.1 + can() fix | 2026-04-11 | 82.3 | 50 | `auth.hasPermission()` REPLACES defaults (not additive). D14 4 → 8. |
+| v1.1 + decision tree | 2026-04-11 | 83.6 | 50 | Added "Which case is your app?". D11 9→10, D15 7→9. |
+| **v1.1 pre-v1 audit** | **2026-04-14** | **89.0** | **89.0** | **Cap cleared. `user()`→`getUser()`, `can()`→`hasPermission()` renames shipped; cookbook and examples re-verified; drift test asserts both presence and absence. D6 10, D7 3→9, D10 5→6, D13 8→9, D14 8→9. Net +39 vs previous capped, +5.4 vs previous uncapped.** |
 
 ### Gaps to reach 🟢 90+
 
-1. **Fix 5 cookbook files** (mechanical sed) → lifts cap, +33 points to 83.6
-2. **D14 → 9+**: rename `user` → `getUser`, `can` → `canPerform`, add explicit "exists" check methods to remove the `null` overload
-3. **D4 Type safety → 9**: export `DefaultRoleLevel` literal union for role/level
-4. **D10 Drift prevention → 10**: scripted doc-vs-source drift checker
-5. **D12 Simplicity → 9**: not really fixable without API redesign
+1. **D10 Drift prevention → 9**: add `.github/workflows/drift.yml` (or husky pre-commit) that runs the drift test on every PR; add `scripts/check-auth-drift.mjs` that greps `AGENTS.md` / `llms.txt` / cookbook / examples for `auth.<method>(` and intersects with the runtime surface. +0.12.
+2. **D4 Type safety → 9**: export `DefaultRoleLevel` as a literal union (`'user.basic' | 'user.pro' | ... | 'admin.system'`) and retype `role` / `level` parameters. +0.12.
+3. **D12 Simplicity → 9**: fold `requireUserRoles` + `requireUserPermissions` into one `require({ roles?, permissions? })` factory, or accept this is an API-design ceiling. +0.18.
+4. **D14 Unambiguity → 10**: rename `hasRole(userRoleLevel, requiredRoleLevel)` → `userHasRole(userRole, requiredRole)` (or flip to method on a user object); align OR vs AND by naming `requireAnyUserRole` / `requireAllUserPermissions`. +0.05.
+5. **D13 Clarity → 10**: same rename pass as #4.
 
-**Realistic ceiling:** ~91/100 (with all 5 fixes). Beyond that requires API redesign.
+**Realistic ceiling:** ~93/100 (with D10 + D4 + D14 fixes). D12 Simplicity remains the structural limit without redesign.
 
 ---
 
