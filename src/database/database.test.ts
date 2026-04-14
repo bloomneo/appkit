@@ -13,9 +13,44 @@ describe('Public API surface — drift check', () => {
     'create', 'delete', 'disconnect',
   ];
 
+  // Class-level methods that MUST NOT exist. Drift trap for docs that assume
+  // query/transaction helpers live on databaseClass instead of the client
+  // returned by .get().
+  const HALLUCINATED_CLASS = [
+    'query', 'transaction', 'model', 'connect', 'close',
+    'put', 'update', 'findMany', 'raw',
+  ];
+
+  // Methods available on the instance returned by databaseClass.org(id).
+  const ORG_INSTANCE_METHODS = ['get', 'getTenants'];
+
+  // Methods that MUST NOT exist on the OrgDatabase instance.
+  const HALLUCINATED_ORG_INSTANCE = [
+    'list', 'exists', 'create', 'delete', 'health', 'disconnect',
+  ];
+
   for (const m of CLASS_METHODS) {
     it(`databaseClass.${m} exists and is a function`, () => {
       expect(typeof (databaseClass as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_CLASS) {
+    it(`databaseClass.${m} does NOT exist`, () => {
+      expect(typeof (databaseClass as any)[m]).not.toBe('function');
+    });
+  }
+
+  const org = databaseClass.org('test-org');
+  for (const m of ORG_INSTANCE_METHODS) {
+    it(`databaseClass.org().${m} exists and is a function`, () => {
+      expect(typeof (org as any)[m]).toBe('function');
+    });
+  }
+
+  for (const m of HALLUCINATED_ORG_INSTANCE) {
+    it(`databaseClass.org().${m} does NOT exist`, () => {
+      expect(typeof (org as any)[m]).not.toBe('function');
     });
   }
 });
@@ -27,7 +62,12 @@ describe('databaseClass.org()', () => {
     expect(typeof org.getTenants).toBe('function');
   });
 
-  it('throws or returns object for different org names', () => {
+  it('accepts various org name formats', () => {
     expect(() => databaseClass.org('test-org')).not.toThrow();
+  });
+
+  it('throws when org ID is missing or wrong type', () => {
+    expect(() => databaseClass.org('' as any)).toThrow(/Organization ID is required/);
+    expect(() => databaseClass.org(null as any)).toThrow(/Organization ID is required/);
   });
 });

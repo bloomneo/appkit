@@ -275,6 +275,15 @@ echo "ORG_NEWCLIENT=postgresql://newclient.com/db" >> .env
 # Connections update instantly - no server restart needed! 🔥
 ```
 
+### **App Discovery (Monorepo)**
+
+```bash
+# Optional: Override the apps directory used by the Prisma / Mongoose
+# adapters for auto-discovering per-app clients and models.
+# Defaults to searching upwards from process.cwd() for an `apps/` folder.
+BLOOM_APPS_DIR=/absolute/path/to/apps
+```
+
 ## 💡 Real-World Examples
 
 ### **Progressive Scaling Journey**
@@ -359,8 +368,8 @@ app.get('/api/admin/users', requireUserRoles(['admin']), async (req, res) => {
 // Organization management
 app.get('/api/orgs/:orgId/users', requireUserRoles(['admin']), async (req, res) => {
   const { orgId } = req.params;
-  const orgdatabase = await databaseClass.org(orgId).get();
-  const users = await orgdatabase.user.findMany();
+  const orgDatabase = await databaseClass.org(orgId).get();
+  const users = await orgDatabase.user.findMany();
   res.json(users); // Specific org data
 });
 ```
@@ -438,11 +447,12 @@ const orgId =
 ### **Manual Override** (when needed)
 
 ```typescript
-// Override auto-detection when needed
-const specificTenantdatabase = await databaseClass.get({
-  tenant: 'specific-tenant',
+// Override auto-detection by passing a request-like object with the
+// expected headers. databaseClass.get(req) reads x-tenant-id / x-org-id.
+const specificTenantDatabase = await databaseClass.get({
+  headers: { 'x-tenant-id': 'specific-tenant' },
 });
-const specificOrgdatabase = await databaseClass.org('specific-org').get();
+const specificOrgDatabase = await databaseClass.org('specific-org').get();
 ```
 
 ## 🚀 Framework Integration
@@ -787,13 +797,14 @@ if (!health.healthy) {
 # Add: tenant_id String? @map("tenant_id") to your Prisma schema
 ```
 
-### **Environment Validation**
+### **Health Checks**
 
 ```typescript
-import { getConfigSummary } from '@bloomneo/appkit/database/defaults';
+import { databaseClass } from '@bloomneo/appkit/database';
 
-console.log(getConfigSummary());
-// Shows current configuration, validation status, and warnings
+// Use in a health endpoint — pings the database and reports open connections.
+const status = await databaseClass.health();
+// { healthy: true, connections: 3, timestamp: '...' }
 ```
 
 ## 📈 Roadmap
