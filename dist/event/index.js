@@ -10,6 +10,7 @@
  */
 import { EventClass } from './event.js';
 import { getSmartDefaults, validateProductionRequirements, validateStartupConfiguration, performHealthCheck } from './defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/event/README.md';
 // Global event instances for performance (like auth module)
 let globalConfig = null;
 const namedEvents = new Map();
@@ -23,10 +24,10 @@ const namedEvents = new Map();
 function get(namespace = 'default') {
     // Validate namespace
     if (!namespace || typeof namespace !== 'string') {
-        throw new Error('Event namespace must be a non-empty string');
+        throw new Error('[@bloomneo/appkit/event] Event namespace must be a non-empty string');
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(namespace)) {
-        throw new Error('Event namespace must contain only letters, numbers, underscores, and hyphens');
+        throw new Error('[@bloomneo/appkit/event] Event namespace must contain only letters, numbers, underscores, and hyphens');
     }
     // Lazy initialization - parse environment once (like auth)
     if (!globalConfig) {
@@ -40,7 +41,7 @@ function get(namespace = 'default') {
     const eventInstance = new EventClass(globalConfig, namespace);
     // Auto-connect on first use
     eventInstance.connect().catch((error) => {
-        console.error(`[AppKit] Event auto-connect failed for namespace "${namespace}":`, error.message);
+        console.error(`[@bloomneo/appkit/event] Event auto-connect failed for namespace "${namespace}":`, error.message);
     });
     namedEvents.set(namespace, eventInstance);
     return eventInstance;
@@ -54,7 +55,7 @@ async function clear() {
     const disconnectPromises = [];
     for (const [namespace, event] of namedEvents) {
         disconnectPromises.push(event.disconnect().catch((error) => {
-            console.error(`[AppKit] Event disconnect failed for namespace "${namespace}":`, error.message);
+            console.error(`[@bloomneo/appkit/event] Event disconnect failed for namespace "${namespace}":`, error.message);
         }));
     }
     await Promise.all(disconnectPromises);
@@ -130,7 +131,7 @@ function hasRedis() {
 async function broadcast(event, data = {}) {
     const activeInstances = Array.from(namedEvents.values());
     if (activeInstances.length === 0) {
-        console.warn(`[AppKit] No active event namespaces for broadcast: ${event}`);
+        console.warn(`[@bloomneo/appkit/event] No active event namespaces for broadcast: ${event}`);
         return [];
     }
     const results = await Promise.allSettled(activeInstances.map(instance => instance.emit(event, data)));
@@ -170,13 +171,13 @@ function validateConfig() {
     try {
         const validation = validateStartupConfiguration();
         if (validation.errors.length > 0) {
-            console.error('[Bloomneo AppKit] Event configuration errors:', validation.errors);
+            console.error('[@bloomneo/appkit/event] Event configuration errors:', validation.errors);
         }
         if (validation.warnings.length > 0) {
-            console.warn('[Bloomneo AppKit] Event configuration warnings:', validation.warnings);
+            console.warn('[@bloomneo/appkit/event] Event configuration warnings:', validation.warnings);
         }
         if (validation.ready) {
-            console.log(`✅ [Bloomneo AppKit] Events configured with ${validation.strategy} strategy`);
+            console.log(`✅ [@bloomneo/appkit/event] Events configured with ${validation.strategy} strategy`);
         }
         return {
             valid: validation.errors.length === 0,
@@ -188,7 +189,7 @@ function validateConfig() {
     }
     catch (error) {
         const errorMessage = error.message;
-        console.error('[Bloomneo AppKit] Event configuration validation failed:', errorMessage);
+        console.error('[@bloomneo/appkit/event] Event configuration validation failed:', errorMessage);
         return {
             valid: false,
             strategy: 'unknown',
@@ -208,13 +209,13 @@ function validateProduction() {
     try {
         validateProductionRequirements();
         if (process.env.NODE_ENV === 'production' && !hasRedis()) {
-            console.warn('[Bloomneo AppKit] No Redis configured in production. ' +
-                'Set REDIS_URL for distributed events across servers.');
+            console.warn('[@bloomneo/appkit/event] No Redis configured in production. ' +
+                `Set REDIS_URL for distributed events across servers. See: ${DOCS_URL}#production-deployment`);
         }
-        console.log('✅ [Bloomneo AppKit] Production event requirements validated');
+        console.log('✅ [@bloomneo/appkit/event] Production event requirements validated');
     }
     catch (error) {
-        console.error('[Bloomneo AppKit] Production event validation failed:', error.message);
+        console.error('[@bloomneo/appkit/event] Production event validation failed:', error.message);
         throw error;
     }
 }
@@ -233,7 +234,7 @@ function getHealthStatus() {
  * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data loss
  */
 async function shutdown() {
-    console.log('🔄 [AppKit] Event graceful shutdown...');
+    console.log('🔄 [@bloomneo/appkit/event] Event graceful shutdown...');
     try {
         // Broadcast shutdown event before closing
         await broadcast('system.shutdown', {
@@ -244,10 +245,10 @@ async function shutdown() {
         await new Promise(resolve => setTimeout(resolve, 100));
         // Clear all instances
         await clear();
-        console.log('✅ [AppKit] Event shutdown complete');
+        console.log('✅ [@bloomneo/appkit/event] Event shutdown complete');
     }
     catch (error) {
-        console.error('❌ [AppKit] Event shutdown error:', error.message);
+        console.error('❌ [@bloomneo/appkit/event] Event shutdown error:', error.message);
     }
 }
 /**
@@ -287,13 +288,13 @@ if (typeof process !== 'undefined') {
     process.on('SIGINT', shutdownHandler);
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
-        console.error('[AppKit] Uncaught exception during event operation:', error);
+        console.error('[@bloomneo/appkit/event] Uncaught exception during event operation:', error);
         shutdown().finally(() => {
             process.exit(1);
         });
     });
     process.on('unhandledRejection', (reason) => {
-        console.error('[AppKit] Unhandled rejection during event operation:', reason);
+        console.error('[@bloomneo/appkit/event] Unhandled rejection during event operation:', reason);
         shutdown().finally(() => {
             process.exit(1);
         });

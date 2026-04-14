@@ -62,9 +62,11 @@ export declare class RedisStrategy implements CacheStrategy {
      */
     delete(key: string): Promise<boolean>;
     /**
-     * Clears all keys matching pattern (usually namespace-based)
-     * @llm-rule WHEN: Namespace-based cache invalidation
-     * @llm-rule AVOID: Using FLUSHDB - this only clears specific namespace keys
+     * No-op at the strategy level: namespace-scoped clearing is handled by
+     * CacheClass.clear() via keys() + deleteMany() to avoid a FLUSHDB footgun
+     * that would wipe keys outside this cache's namespace.
+     * @llm-rule WHEN: Called directly from a custom CacheStrategy consumer — use CacheClass.clear() instead
+     * @llm-rule AVOID: Expecting this to clear anything
      */
     clear(): Promise<boolean>;
     /**
@@ -89,6 +91,12 @@ export declare class RedisStrategy implements CacheStrategy {
      * Ensures Redis connection is established
      */
     private ensureConnected;
+    /**
+     * Enforces config.redis.commandTimeout on each Redis command. node-redis v4
+     * has no client-level command timeout, so we race the command against a
+     * setTimeout. If the command wins, its timer is unref'd/cleared.
+     */
+    private withTimeout;
     /**
      * Serializes value to JSON string for Redis storage
      */

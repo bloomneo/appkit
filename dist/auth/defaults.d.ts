@@ -32,12 +32,7 @@ export interface AuthConfig {
         coreScopes: string[];
         defaults: PermissionDefaults;
     };
-    user: {
-        defaultRole: string;
-        defaultLevel: string;
-    };
     middleware: {
-        tokenSources: string[];
         errorMessages: {
             noToken: string;
             invalidToken: string;
@@ -100,5 +95,11 @@ export declare function validateRoleLevel(roleLevel: string, roles: RoleHierarch
  * @llm-rule AVOID: Using with malformed permissions - will return false
  */
 export declare function validatePermission(permission: string): boolean;
+/**
+ * Validates a fully-merged AuthConfig (defaults + overrides).
+ * @llm-rule WHEN: After merging user overrides into smart defaults
+ * @llm-rule AVOID: Skipping this — overrides bypass env validation otherwise
+ */
+export declare function validateAuthConfig(config: AuthConfig): void;
 export { DEFAULT_ROLE_HIERARCHY, DEFAULT_PERMISSIONS, CORE_ACTIONS, CORE_SCOPES, };
 //# sourceMappingURL=defaults.d.ts.map

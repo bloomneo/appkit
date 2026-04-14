@@ -25,22 +25,17 @@ import { type ConfigValue } from './defaults.js';
  * Environment variables parsed once for performance
  * @llm-rule WHEN: Starting any operation that needs configuration - this is your main entry point
  * @llm-rule AVOID: Calling new ConfigClass() directly - always use this function
+ * @llm-rule AVOID: Passing overrides after first call - they are rejected; use reset(newConfig) to rebuild
  * @llm-rule NOTE: Typical flow - get() → config.get('path') → use value
  * @llm-rule NOTE: Only parses non-framework variables for your app config
  */
 declare function get(overrides?: ConfigValue): ConfigClass;
 /**
  * Reset global instance (useful for testing or config changes)
- * @llm-rule WHEN: Testing config logic with different environment variables
+ * @llm-rule WHEN: Testing config logic with different environment variables, or forcing an env re-read
  * @llm-rule AVOID: Using in production - only for tests and development
  */
 declare function reset(newConfig?: ConfigValue): ConfigClass;
-/**
- * Clear the cached configuration instance
- * @llm-rule WHEN: Testing or when you need to reload environment variables
- * @llm-rule AVOID: Using in production - only for tests and development
- */
-declare function clearCache(): void;
 /**
  * Get current environment (development, production, test)
  * @llm-rule WHEN: Need to conditionally enable features based on environment
@@ -91,7 +86,6 @@ declare function getModuleConfig<T extends Record<string, any>>(modulePrefix: st
 export declare const configClass: {
     readonly get: typeof get;
     readonly reset: typeof reset;
-    readonly clearCache: typeof clearCache;
     readonly getEnvironment: typeof getEnvironment;
     readonly isDevelopment: typeof isDevelopment;
     readonly isProduction: typeof isProduction;

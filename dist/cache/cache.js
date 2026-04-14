@@ -47,6 +47,7 @@ export class CacheClass {
     namespace;
     strategy;
     connected = false;
+    inFlight = new Map();
     constructor(config, namespace) {
         this.config = config;
         this.namespace = namespace;
@@ -64,7 +65,9 @@ export class CacheClass {
             case 'memory':
                 return new MemoryStrategy(this.config);
             default:
-                throw new Error(`Unknown cache strategy: ${this.config.strategy}`);
+                throw new CacheError(`Unknown cache strategy: ${this.config.strategy}`, {
+                    code: 'CACHE_INVALID_STRATEGY',
+                });
         }
     }
     /**
@@ -192,18 +195,51 @@ export class CacheClass {
         }
     }
     /**
-     * Gets a value from cache or sets it using a factory function
+     * Gets a value from cache or sets it using a factory function.
+     *
+     * Race safety: concurrent callers for the same key share a single factory
+     * run via an in-flight promise map — the factory is executed at most once
+     * per in-flight key.
+     *
+     * Null handling: if the factory previously cached `null`, subsequent calls
+     * return that cached `null` (via a membership check) instead of re-running
+     * the factory. A cache miss and a cached `null` are distinct outcomes.
+     *
      * @llm-rule WHEN: Cache-aside pattern - get cached value or compute and cache
-     * @llm-rule AVOID: Manual get/set logic - this handles race conditions properly
-     * @llm-rule NOTE: Factory function only called on cache miss
+     * @llm-rule AVOID: Manual get/set logic - this dedupes concurrent misses and preserves cached null
+     * @llm-rule NOTE: Factory errors propagate as-is (not wrapped in CacheError); in-flight entry is cleared on error
      */
     async getOrSet(key, factory, ttl) {
-        // Try to get existing value first
+        this.validateKey(key);
+        const pending = this.inFlight.get(key);
+        if (pending) {
+            return pending;
+        }
+        const promise = this.runGetOrSet(key, factory, ttl).finally(() => {
+            this.inFlight.delete(key);
+        });
+        this.inFlight.set(key, promise);
+        return promise;
+    }
+    async runGetOrSet(key, factory, ttl) {
         const existing = await this.get(key);
         if (existing !== null) {
             return existing;
         }
-        // Generate new value and cache it
+        // `existing === null` is ambiguous: could be a miss or a cached null.
+        // Disambiguate via a membership check so we don't re-run the factory on cached null.
+        const prefixedKey = this.buildKey(key);
+        let exists = false;
+        try {
+            exists = await this.strategy.has(prefixedKey);
+        }
+        catch {
+            // If the membership check fails, treat as miss and let the factory recompute.
+            exists = false;
+        }
+        if (exists) {
+            return null;
+        }
         const value = await factory(); // factory errors propagate as-is — not wrapped in CacheError
         await this.set(key, value, ttl);
         return value;
@@ -246,7 +282,11 @@ export class CacheClass {
         return `${this.config.keyPrefix}:${this.namespace}:${key}`;
     }
     /**
-     * Validates cache key format and length
+     * Validates cache key format and length.
+     *
+     * Colons ARE allowed — the canonical Redis idiom (`user:123`, `session:abc`)
+     * is supported. Internal namespacing uses `${keyPrefix}:${namespace}:${key}`
+     * so your key's colons are scoped to your namespace and cannot collide.
      */
     validateKey(key) {
         if (!key || typeof key !== 'string') {
@@ -257,9 +297,6 @@ export class CacheClass {
         }
         if (key.includes('\n') || key.includes('\r')) {
             throw new CacheError('Cache key cannot contain newline characters', { code: 'CACHE_INVALID_KEY' });
-        }
-        if (key.includes(':')) {
-            throw new CacheError('Cache key cannot contain colon characters (reserved for namespacing)', { code: 'CACHE_INVALID_KEY' });
         }
     }
     validateValue(value) {

@@ -8,6 +8,7 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  * @llm-rule NOTE: Auto-detects Resend → SMTP → Console based on environment variables
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 /**
  * Gets smart defaults using environment variables with auto-strategy detection
  * @llm-rule WHEN: App startup to get production-ready email configuration
@@ -84,9 +85,7 @@ function detectEmailStrategy() {
     }
     // Default to console for development/testing
     if (process.env.NODE_ENV === 'production') {
-        console.warn('[Bloomneo AppKit] No email provider configured in production. ' +
-            'Using console strategy which will only log emails. ' +
-            'Set RESEND_API_KEY or SMTP_HOST for production email sending.');
+        console.warn(`[@bloomneo/appkit/email] No email provider configured in production. Using console strategy which will only log emails. Set RESEND_API_KEY or SMTP_HOST for production email sending. See: ${DOCS_URL}#production-deployment`);
     }
     return 'console'; // Default to console for development
 }
@@ -141,12 +140,12 @@ function validateEnvironment() {
     // Validate email strategy if explicitly set
     const strategy = process.env.BLOOM_EMAIL_STRATEGY;
     if (strategy && !['resend', 'smtp', 'console'].includes(strategy.toLowerCase())) {
-        throw new Error(`Invalid BLOOM_EMAIL_STRATEGY: "${strategy}". Must be "resend", "smtp", or "console"`);
+        throw new Error(`[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_STRATEGY: "${strategy}". Must be "resend", "smtp", or "console". See: ${DOCS_URL}#environment-variables`);
     }
     // Validate Resend API key format if provided
     const resendApiKey = process.env.RESEND_API_KEY;
     if (resendApiKey && !resendApiKey.startsWith('re_')) {
-        throw new Error(`Invalid RESEND_API_KEY format: "${resendApiKey}". Must start with "re_"`);
+        throw new Error(`[@bloomneo/appkit/email] Invalid RESEND_API_KEY format: must start with "re_". See: ${DOCS_URL}#resend-recommended`);
     }
     // Validate SMTP configuration if provided
     const smtpHost = process.env.SMTP_HOST;
@@ -156,7 +155,7 @@ function validateEnvironment() {
     // Validate FROM email if provided
     const fromEmail = process.env.BLOOM_EMAIL_FROM_EMAIL;
     if (fromEmail && !isValidEmail(fromEmail)) {
-        throw new Error(`Invalid BLOOM_EMAIL_FROM_EMAIL: "${fromEmail}". Must be a valid email address`);
+        throw new Error(`[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_FROM_EMAIL: "${fromEmail}". Must be a valid email address. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate numeric values
     validateNumericEnv('SMTP_PORT', 1, 65535);
@@ -165,7 +164,7 @@ function validateEnvironment() {
     // Validate console format if provided
     const consoleFormat = process.env.BLOOM_EMAIL_CONSOLE_FORMAT;
     if (consoleFormat && !['simple', 'detailed'].includes(consoleFormat)) {
-        throw new Error(`Invalid BLOOM_EMAIL_CONSOLE_FORMAT: "${consoleFormat}". Must be "simple" or "detailed"`);
+        throw new Error(`[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_CONSOLE_FORMAT: "${consoleFormat}". Must be "simple" or "detailed". See: ${DOCS_URL}#console-development`);
     }
     // Production-specific validations
     const nodeEnv = process.env.NODE_ENV;
@@ -174,8 +173,7 @@ function validateEnvironment() {
     }
     // Validate NODE_ENV
     if (nodeEnv && !['development', 'production', 'test', 'staging'].includes(nodeEnv)) {
-        console.warn(`[Bloomneo AppKit] Unusual NODE_ENV: "${nodeEnv}". ` +
-            `Expected: development, production, test, or staging`);
+        console.warn(`[@bloomneo/appkit/email] Unusual NODE_ENV: "${nodeEnv}". Expected: development, production, test, or staging`);
     }
 }
 /**
@@ -188,18 +186,17 @@ function validateSmtpConfig() {
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
     if (!host) {
-        throw new Error('SMTP_HOST is required when using SMTP strategy');
+        throw new Error(`[@bloomneo/appkit/email] SMTP_HOST is required when using SMTP strategy. See: ${DOCS_URL}#smtp-universal`);
     }
     // Many SMTP servers require authentication
     if (!user && !pass) {
-        console.warn('[Bloomneo AppKit] SMTP configured without authentication. ' +
-            'Set SMTP_USER and SMTP_PASS if your server requires authentication.');
+        console.warn(`[@bloomneo/appkit/email] SMTP configured without authentication. Set SMTP_USER and SMTP_PASS if your server requires authentication.`);
     }
     if (user && !pass) {
-        throw new Error('SMTP_PASS is required when SMTP_USER is set');
+        throw new Error(`[@bloomneo/appkit/email] SMTP_PASS is required when SMTP_USER is set. See: ${DOCS_URL}#smtp-universal`);
     }
     if (!user && pass) {
-        throw new Error('SMTP_USER is required when SMTP_PASS is set');
+        throw new Error(`[@bloomneo/appkit/email] SMTP_USER is required when SMTP_PASS is set. See: ${DOCS_URL}#smtp-universal`);
     }
 }
 /**
@@ -210,15 +207,12 @@ function validateSmtpConfig() {
 function validateProductionConfig() {
     const strategy = detectEmailStrategy();
     if (strategy === 'console') {
-        console.warn('[Bloomneo AppKit] Using console email strategy in production. ' +
-            'Emails will only be logged, not sent. ' +
-            'Set RESEND_API_KEY or SMTP_HOST for production email sending.');
+        console.warn(`[@bloomneo/appkit/email] Using console email strategy in production. Emails will only be logged, not sent. Set RESEND_API_KEY or SMTP_HOST for production email sending. See: ${DOCS_URL}#production-deployment`);
     }
     // Validate FROM email is set in production
     const fromEmail = process.env.BLOOM_EMAIL_FROM_EMAIL;
     if (!fromEmail) {
-        console.warn('[Bloomneo AppKit] No FROM email configured in production. ' +
-            'Set BLOOM_EMAIL_FROM_EMAIL for professional email sending.');
+        console.warn(`[@bloomneo/appkit/email] No FROM email configured in production. Set BLOOM_EMAIL_FROM_EMAIL for professional email sending.`);
     }
 }
 /**
@@ -241,24 +235,8 @@ function validateNumericEnv(name, min, max) {
         return;
     const num = parseInt(value);
     if (isNaN(num) || num < min || num > max) {
-        throw new Error(`Invalid ${name}: "${value}". Must be a number between ${min} and ${max}`);
+        throw new Error(`[@bloomneo/appkit/email] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`);
     }
-}
-/**
- * Gets email configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging email configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive API keys or passwords - this only shows safe info
- */
-export function getConfigSummary() {
-    const config = getSmartDefaults();
-    return {
-        strategy: config.strategy,
-        fromName: config.from.name,
-        fromEmail: config.from.email,
-        resendConfigured: config.strategy === 'resend' && !!config.resend?.apiKey,
-        smtpConfigured: config.strategy === 'smtp' && !!config.smtp?.host,
-        environment: config.environment.nodeEnv,
-    };
 }
 /**
  * Validates that required email configuration is present for production
@@ -269,17 +247,13 @@ export function validateProductionRequirements() {
     const config = getSmartDefaults();
     if (config.environment.isProduction) {
         if (config.strategy === 'console') {
-            console.warn('[Bloomneo AppKit] Using console email strategy in production. ' +
-                'Emails will only be logged, not sent. ' +
-                'Set RESEND_API_KEY or SMTP_HOST for production email sending.');
+            console.warn(`[@bloomneo/appkit/email] Using console email strategy in production. Emails will only be logged, not sent. Set RESEND_API_KEY or SMTP_HOST for production email sending. See: ${DOCS_URL}#production-deployment`);
         }
         if (config.strategy === 'resend' && !config.resend?.apiKey) {
-            throw new Error('Resend strategy selected but RESEND_API_KEY not configured. ' +
-                'Set RESEND_API_KEY environment variable for Resend email sending.');
+            throw new Error(`[@bloomneo/appkit/email] Resend strategy selected but RESEND_API_KEY not configured. Set RESEND_API_KEY environment variable for Resend email sending. See: ${DOCS_URL}#resend-recommended`);
         }
         if (config.strategy === 'smtp' && !config.smtp?.host) {
-            throw new Error('SMTP strategy selected but SMTP_HOST not configured. ' +
-                'Set SMTP_HOST environment variable for SMTP email sending.');
+            throw new Error(`[@bloomneo/appkit/email] SMTP strategy selected but SMTP_HOST not configured. Set SMTP_HOST environment variable for SMTP email sending. See: ${DOCS_URL}#smtp-universal`);
         }
     }
 }

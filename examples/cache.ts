@@ -1,36 +1,57 @@
 /**
- * CANONICAL PATTERN — cache.getOrSet for "fetch once, cache the result".
+ * examples/cache.ts
  *
- * Copy this file when you need to cache anything. The getOrSet pattern is
- * the right answer 90% of the time — never write the cache-check-then-fetch
- * pattern manually.
+ * Runnable tour of the @bloomneo/appkit/cache module.
  *
- * Set REDIS_URL in .env to upgrade from in-process memory to distributed
- * Redis cache. Same code works for both — no changes needed.
+ * Strategy auto-selection:
+ *   • REDIS_URL set   → Redis transport
+ *   • unset           → in-process Memory
+ *
+ * Run: tsx examples/cache.ts
  */
 
-import { cacheClass, databaseClass, errorClass } from '@bloomneo/appkit';
+import { cacheClass } from '../src/cache/index.js';
 
-const error = errorClass.get();
-const database = await databaseClass.get();
+async function main() {
+  // 1. Get a namespaced cache. Namespaces are isolated keyspaces, so
+  //    users:user:42 and posts:user:42 never collide.
+  const users = cacheClass.get('users');
+  const posts = cacheClass.get('posts');
 
-// Custom namespace isolates this cache from others (default is 'app').
-const cache = cacheClass.get('users');
+  // 2. Basic get / set (ttl in seconds; optional).
+  await users.set('user:42', { id: 42, name: 'Ada' }, 60);
+  const ada = await users.get<{ id: number; name: string }>('user:42');
+  console.log('cache hit:', ada);
 
-// ── Cached database query ─────────────────────────────────────────────
-export const listProductsRoute = error.asyncRoute(async (req, res) => {
-  const products = await cache.getOrSet(
-    'products:list',
-    () => database.product.findMany({ where: { published: true } }),
-    300, // 5 minutes
+  // 3. getOrSet — the single most-used pattern (load-through cache).
+  const expensive = await posts.getOrSet(
+    'top-posts:home',
+    async () => {
+      // Simulated DB/API call. Only runs on cache miss.
+      return [{ id: 1, title: 'hello' }];
+    },
+    300,
   );
-  res.json({ products });
-});
+  console.log('getOrSet →', expensive);
 
-// ── Manual operations (use sparingly — getOrSet is preferred) ────────
-export async function manualCacheExample() {
-  await cache.set('foo', 'bar', 60);                       // 1 minute TTL
-  const v = await cache.get('foo');                        // → 'bar'
-  const exists = v !== null;                               // presence check: get() returns null on miss
-  await cache.delete('foo');                               // delete() — not del()
+  // 4. delete + clear (clear wipes this namespace only, not every cache).
+  await users.delete('user:42');
+  await posts.clear();
+
+  // 5. Debugging: which transport is active, and which namespaces exist?
+  console.log('strategy         =', cacheClass.getStrategy());
+  console.log('hasRedis         =', cacheClass.hasRedis());
+  console.log('active namespaces=', cacheClass.getActiveNamespaces());
+  console.log('config summary   =', cacheClass.getConfig());
+
+  // 6. Test teardown:
+  //    • flushAll()      — clear DATA in every namespace (between tests)
+  //    • disconnectAll() — close transports + reset state (end of suite)
+  await cacheClass.flushAll();
+  await cacheClass.disconnectAll();
 }
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

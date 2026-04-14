@@ -53,6 +53,7 @@ export declare class CacheClass {
     namespace: string;
     private strategy;
     private connected;
+    private inFlight;
     constructor(config: CacheConfig, namespace: string);
     /**
      * Creates appropriate strategy based on configuration
@@ -100,12 +101,22 @@ export declare class CacheClass {
      */
     clear(): Promise<boolean>;
     /**
-     * Gets a value from cache or sets it using a factory function
+     * Gets a value from cache or sets it using a factory function.
+     *
+     * Race safety: concurrent callers for the same key share a single factory
+     * run via an in-flight promise map — the factory is executed at most once
+     * per in-flight key.
+     *
+     * Null handling: if the factory previously cached `null`, subsequent calls
+     * return that cached `null` (via a membership check) instead of re-running
+     * the factory. A cache miss and a cached `null` are distinct outcomes.
+     *
      * @llm-rule WHEN: Cache-aside pattern - get cached value or compute and cache
-     * @llm-rule AVOID: Manual get/set logic - this handles race conditions properly
-     * @llm-rule NOTE: Factory function only called on cache miss
+     * @llm-rule AVOID: Manual get/set logic - this dedupes concurrent misses and preserves cached null
+     * @llm-rule NOTE: Factory errors propagate as-is (not wrapped in CacheError); in-flight entry is cleared on error
      */
     getOrSet<T = unknown>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T>;
+    private runGetOrSet;
     /**
      * Gets current cache strategy name for debugging
      * @llm-rule WHEN: Debugging or health checks to see which strategy is active
@@ -133,7 +144,11 @@ export declare class CacheClass {
      */
     private buildKey;
     /**
-     * Validates cache key format and length
+     * Validates cache key format and length.
+     *
+     * Colons ARE allowed — the canonical Redis idiom (`user:123`, `session:abc`)
+     * is supported. Internal namespacing uses `${keyPrefix}:${namespace}:${key}`
+     * so your key's colons are scoped to your namespace and cannot collide.
      */
     private validateKey;
     private validateValue;

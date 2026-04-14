@@ -1,46 +1,68 @@
 /**
- * CANONICAL PATTERN — rate limiting, CSRF, encryption, input sanitization.
+ * examples/security.ts
  *
- * Copy this file when you need security middleware. AppKit's security module
- * covers four common needs from one xxxClass.get() instance.
+ * Runnable tour of the @bloomneo/appkit/security module.
  *
- * Required env: BLOOM_SECURITY_CSRF_SECRET, BLOOM_SECURITY_ENCRYPTION_KEY
+ * Covers:
+ *   • forms()    — CSRF middleware for HTML form flows
+ *   • requests() — rate-limit middleware
+ *   • input()    — strip / sanitize untrusted text
+ *   • html()     — sanitize HTML fragments
+ *   • escape()   — HTML-escape for interpolation
+ *   • encrypt() / decrypt() — AES-256-GCM
+ *
+ * Prereqs:
+ *   BLOOM_SECURITY_CSRF_SECRET  (or falls back to BLOOM_AUTH_SECRET)
+ *   BLOOM_SECURITY_ENCRYPTION_KEY (64 hex chars)
+ *
+ * Run: tsx examples/security.ts
  */
 
-import { securityClass, errorClass } from '@bloomneo/appkit';
+import { securityClass } from '../src/security/index.js';
 
-const security = securityClass.get();
-const error = errorClass.get();
+function main() {
+  // 1. Fail-fast startup validation.
+  securityClass.validateRequired({ csrf: true, encryption: true });
 
-// ── Rate limiting middleware ────────────────────────────────────────
-// 100 requests per 15-minute window per IP
-export const apiRateLimit = security.requests(100, 15 * 60 * 1000);
+  const security = securityClass.get();
 
-// 5 requests per minute (e.g. for a login endpoint)
-export const loginRateLimit = security.requests(5, 60 * 1000);
+  // 2. Middleware builders — mount them on Express routers.
+  //
+  //    app.use(security.forms());                           // CSRF
+  //    app.use(security.requests(100, 60_000));             // 100 req / min
+  //
+  //    Prove the shapes here:
+  const csrfMw = security.forms();
+  const rateMw = security.requests(100, 60_000);
+  console.log('csrf mw:', typeof csrfMw, '| rate mw:', typeof rateMw);
 
-// ── CSRF protection ─────────────────────────────────────────────────
-// security.forms() is a single middleware that handles BOTH:
-//   - Injecting a CSRF token into the response (GET requests)
-//   - Validating the token on state-changing requests (POST/PUT/DELETE)
-// Mount it once globally — no separate "require" middleware needed.
-export const csrfMiddleware = security.forms();
+  // 3. Quick setup — both in one call (useful for most apps).
+  const middleware = securityClass.quickSetup({
+    csrf: true, rateLimit: true, maxRequests: 100, windowMs: 60_000,
+  });
+  console.log('quickSetup produced', middleware.length, 'middlewares');
 
-// ── Encryption (AES-256-GCM) ────────────────────────────────────────
-export function encryptApiKey(plaintext: string): string {
-  return security.encrypt(plaintext);  // → opaque ciphertext string
+  // 4. Input sanitization — strip scripts, trim, etc.
+  const clean = security.input('  <script>alert(1)</script>hello  ');
+  console.log('input(clean) =', JSON.stringify(clean));
+
+  // 5. HTML sanitization — keep a small allow-list of tags.
+  const safe = security.html('<p onclick="x">ok <b>bold</b></p><script>bad</script>');
+  console.log('html(clean)  =', safe);
+
+  // 6. Escape — for when you're interpolating into HTML yourself.
+  console.log('escape       =', security.escape('Tom & Jerry <script>'));
+
+  // 7. Symmetric encryption (AES-256-GCM). Returns a single opaque string.
+  const cipher = security.encrypt('account number 4242');
+  const plain  = security.decrypt(cipher);
+  console.log('round-trip ok =', plain === 'account number 4242');
+
+  // 8. Generate a fresh encryption key (64 hex chars). Persist in your secret store.
+  console.log('generated key =', securityClass.generateKey().slice(0, 16), '…');
+
+  // 9. Status for health endpoints (no secrets leaked).
+  console.log('status       =', securityClass.getStatus());
 }
 
-export function decryptApiKey(ciphertext: string): string {
-  return security.decrypt(ciphertext);
-}
-
-// ── Input sanitization ──────────────────────────────────────────────
-// security.input() strips XSS payloads and control characters from free-form text.
-// For email/URL validation, use a dedicated validation library (e.g. zod, validator.js).
-export const submitRoute = error.asyncRoute(async (req, res) => {
-  const safeMessage = security.input(req.body.message);  // strip XSS
-  const safeHtml = security.html(req.body.bio);          // allow safe HTML tags only
-
-  res.json({ ok: true, sanitized: { message: safeMessage, bio: safeHtml } });
-});
+main();

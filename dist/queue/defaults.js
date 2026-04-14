@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Calling multiple times - expensive validation, use lazy loading in get()
  * @llm-rule NOTE: Called once at startup, cached globally for performance like auth/logging modules
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 /**
  * Get smart defaults using direct BLOOM_QUEUE_* environment access
  * @llm-rule WHEN: App startup to get production-ready queue configuration
@@ -14,6 +15,7 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 export function getSmartDefaults() {
+    validateEnvironment();
     // Direct environment access with smart defaults (like auth module)
     const nodeEnv = process.env.NODE_ENV || 'development';
     const isProduction = nodeEnv === 'production';
@@ -118,37 +120,37 @@ export function validateEnvironment() {
     // Validate concurrency
     const concurrency = process.env.BLOOM_QUEUE_CONCURRENCY;
     if (concurrency && (isNaN(parseInt(concurrency)) || parseInt(concurrency) < 1 || parseInt(concurrency) > 100)) {
-        throw new Error(`Invalid BLOOM_QUEUE_CONCURRENCY: "${concurrency}". Must be number between 1 and 100`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_CONCURRENCY: "${concurrency}". Must be number between 1 and 100. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate max attempts
     const maxAttempts = process.env.BLOOM_QUEUE_MAX_ATTEMPTS;
     if (maxAttempts && (isNaN(parseInt(maxAttempts)) || parseInt(maxAttempts) < 1 || parseInt(maxAttempts) > 10)) {
-        throw new Error(`Invalid BLOOM_QUEUE_MAX_ATTEMPTS: "${maxAttempts}". Must be number between 1 and 10`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_MAX_ATTEMPTS: "${maxAttempts}". Must be number between 1 and 10. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate retry backoff
     const backoff = process.env.BLOOM_QUEUE_RETRY_BACKOFF;
     if (backoff && !['fixed', 'exponential'].includes(backoff)) {
-        throw new Error(`Invalid BLOOM_QUEUE_RETRY_BACKOFF: "${backoff}". Must be: fixed, exponential`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_RETRY_BACKOFF: "${backoff}". Must be: fixed, exponential. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate transport selection
     const transport = process.env.BLOOM_QUEUE_TRANSPORT;
     if (transport && !['memory', 'redis', 'database'].includes(transport)) {
-        throw new Error(`Invalid BLOOM_QUEUE_TRANSPORT: "${transport}". Must be: memory, redis, database`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_TRANSPORT: "${transport}". Must be: memory, redis, database. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate Redis URL if provided
     const redisUrl = process.env.REDIS_URL;
     if (redisUrl && !isValidRedisUrl(redisUrl)) {
-        throw new Error(`Invalid REDIS_URL: "${redisUrl}". Must be valid Redis connection string`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid REDIS_URL: "${redisUrl}". Must be valid Redis connection string. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate Database URL if provided
     const dbUrl = process.env.DATABASE_URL;
     if (dbUrl && !isValidDatabaseUrl(dbUrl)) {
-        throw new Error(`Invalid DATABASE_URL: "${dbUrl}". Must be valid database connection string`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid DATABASE_URL: "${dbUrl}". Must be valid database connection string. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate worker setting
     const worker = process.env.BLOOM_QUEUE_WORKER;
     if (worker && !['true', 'false'].includes(worker.toLowerCase())) {
-        throw new Error(`Invalid BLOOM_QUEUE_WORKER: "${worker}". Must be: true, false`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_WORKER: "${worker}". Must be: true, false. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate numeric values
     validateNumericEnv('BLOOM_QUEUE_RETRY_DELAY', 1000, 300000); // 1s to 5min
@@ -165,7 +167,7 @@ function validateNumericEnv(name, min, max) {
         return;
     const num = parseInt(value);
     if (isNaN(num) || num < min || num > max) {
-        throw new Error(`Invalid ${name}: "${value}". Must be number between ${min} and ${max}`);
+        throw new Error(`[@bloomneo/appkit/queue] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`);
     }
 }
 /**
@@ -192,14 +194,5 @@ function isValidDatabaseUrl(url) {
     catch {
         return false;
     }
-}
-/**
- * Gets smart defaults with validation
- * @llm-rule WHEN: App startup to get production-ready queue configuration
- * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
- */
-export function getValidatedDefaults() {
-    validateEnvironment();
-    return getSmartDefaults();
 }
 //# sourceMappingURL=defaults.js.map

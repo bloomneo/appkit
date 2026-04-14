@@ -10,6 +10,7 @@
  */
 import { StorageClass } from './storage.js';
 import { getSmartDefaults } from './defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 // Global storage instance for performance (like auth module)
 let globalStorage = null;
 /**
@@ -133,13 +134,13 @@ function getStats() {
  * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data corruption
  */
 async function shutdown() {
-    console.log('🔄 [AppKit] Storage graceful shutdown...');
+    console.log('🔄 [@bloomneo/appkit/storage] Storage graceful shutdown...');
     try {
         await clear();
-        console.log('✅ [AppKit] Storage shutdown complete');
+        console.log('✅ [@bloomneo/appkit/storage] Storage shutdown complete');
     }
     catch (error) {
-        console.error('❌ [AppKit] Storage shutdown error:', error.message);
+        console.error('❌ [@bloomneo/appkit/storage] Storage shutdown error:', error.message);
     }
 }
 /**
@@ -189,7 +190,7 @@ async function download(key) {
         };
     }
     catch (error) {
-        throw new Error(`Failed to download file: ${key}`);
+        throw new Error(`[@bloomneo/appkit/storage] Failed to download file: ${key}. See: ${DOCS_URL}#common-issues`);
     }
 }
 /**
@@ -227,13 +228,13 @@ if (typeof process !== 'undefined') {
     process.on('SIGINT', shutdownHandler);
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
-        console.error('[AppKit] Uncaught exception during storage operation:', error);
+        console.error('[@bloomneo/appkit/storage] Uncaught exception during storage operation:', error);
         shutdown().finally(() => {
             process.exit(1);
         });
     });
     process.on('unhandledRejection', (reason) => {
-        console.error('[AppKit] Unhandled rejection during storage operation:', reason);
+        console.error('[@bloomneo/appkit/storage] Unhandled rejection during storage operation:', reason);
         shutdown().finally(() => {
             process.exit(1);
         });

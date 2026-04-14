@@ -9,6 +9,7 @@
  */
 import { RedisStrategy } from './strategies/redis.js';
 import { MemoryStrategy } from './strategies/memory.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/event/README.md';
 /**
  * Event class with automatic strategy selection and ultra-simple API
  */
@@ -36,7 +37,7 @@ export class EventClass {
             case 'memory':
                 return new MemoryStrategy(this.config, this.namespace);
             default:
-                throw new Error(`Unknown event strategy: ${this.config.strategy}`);
+                throw new Error(`[@bloomneo/appkit/event] Unknown event strategy: ${this.config.strategy}. See: ${DOCS_URL}#environment-variables`);
         }
     }
     /**
@@ -54,11 +55,11 @@ export class EventClass {
             }
             this.connected = true;
             if (this.config.environment.isDevelopment) {
-                console.log(`✅ [AppKit] Event system connected using ${this.config.strategy} strategy (namespace: ${this.namespace})`);
+                console.log(`✅ [@bloomneo/appkit/event] Event system connected using ${this.config.strategy} strategy (namespace: ${this.namespace})`);
             }
         }
         catch (error) {
-            console.error(`❌ [AppKit] Event connection failed:`, error.message);
+            console.error(`❌ [@bloomneo/appkit/event] Event connection failed:`, error.message);
             throw error;
         }
     }
@@ -75,11 +76,11 @@ export class EventClass {
             this.connected = false;
             this.wildcardHandlers.clear();
             if (this.config.environment.isDevelopment) {
-                console.log(`👋 [AppKit] Event system disconnected (namespace: ${this.namespace})`);
+                console.log(`👋 [@bloomneo/appkit/event] Event system disconnected (namespace: ${this.namespace})`);
             }
         }
         catch (error) {
-            console.error(`⚠️ [AppKit] Event disconnect error:`, error.message);
+            console.error(`⚠️ [@bloomneo/appkit/event] Event disconnect error:`, error.message);
         }
     }
     /**
@@ -104,12 +105,12 @@ export class EventClass {
             this.handleWildcardEmit(event, data);
             // Log in development
             if (this.config.environment.isDevelopment) {
-                console.log(`📤 [AppKit] Event emitted: ${event}`, data);
+                console.log(`📤 [@bloomneo/appkit/event] Event emitted: ${event}`, data);
             }
             return result;
         }
         catch (error) {
-            console.error(`[AppKit] Event emit error for "${event}":`, error.message);
+            console.error(`[@bloomneo/appkit/event] Event emit error for "${event}":`, error.message);
             return false;
         }
     }
@@ -281,14 +282,14 @@ export class EventClass {
      */
     validateEventName(event) {
         if (!event || typeof event !== 'string') {
-            throw new Error('Event name must be a non-empty string');
+            throw new Error('[@bloomneo/appkit/event] Event name must be a non-empty string');
         }
         if (event.length > 255) {
-            throw new Error('Event name too long (max 255 characters)');
+            throw new Error('[@bloomneo/appkit/event] Event name too long (max 255 characters)');
         }
         // Allow alphanumeric, dots, dashes, underscores, and asterisks (for wildcards)
         if (!/^[a-zA-Z0-9._*-]+$/.test(event)) {
-            throw new Error('Event name contains invalid characters. Use only letters, numbers, dots, dashes, underscores, and asterisks.');
+            throw new Error('[@bloomneo/appkit/event] Event name contains invalid characters. Use only letters, numbers, dots, dashes, underscores, and asterisks.');
         }
     }
     /**
@@ -296,7 +297,7 @@ export class EventClass {
      */
     validateHandler(handler) {
         if (typeof handler !== 'function') {
-            throw new Error('Event handler must be a function');
+            throw new Error('[@bloomneo/appkit/event] Event handler must be a function');
         }
     }
     /**
@@ -340,12 +341,12 @@ export class EventClass {
                         const result = handler(event, data);
                         if (result && typeof result.then === 'function') {
                             result.catch((error) => {
-                                console.error(`Wildcard handler error for pattern "${pattern}":`, error.message);
+                                console.error(`[@bloomneo/appkit/event] Wildcard handler error for pattern "${pattern}":`, error.message);
                             });
                         }
                     }
                     catch (error) {
-                        console.error(`Wildcard handler error for pattern "${pattern}":`, error.message);
+                        console.error(`[@bloomneo/appkit/event] Wildcard handler error for pattern "${pattern}":`, error.message);
                     }
                 }
             }

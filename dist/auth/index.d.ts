@@ -7,7 +7,7 @@
  * @llm-rule AVOID: Complex auth setups with multiple libraries - this handles JWT + bcrypt + middleware in one API
  * @llm-rule NOTE: Uses role.level hierarchy (user.basic → admin.system) with automatic inheritance
  * @llm-rule NOTE: Common pattern - auth.requireLoginToken() → auth.requireUserRoles() → handler
- * @llm-rule NOTE: Safe user access - const user = auth.user(req); if (!user) return error;
+ * @llm-rule NOTE: Safe user access - const user = auth.getUser(req); if (!user) return error;
  */
 import { AuthenticationClass } from './auth.js';
 import { type AuthConfig, type RoleHierarchy } from './defaults.js';
@@ -16,7 +16,8 @@ import { type AuthConfig, type RoleHierarchy } from './defaults.js';
  * Environment variables parsed once for performance
  * @llm-rule WHEN: Starting any auth operation - this is your main entry point
  * @llm-rule AVOID: Calling new AuthenticationClass() directly - always use this function
- * @llm-rule NOTE: Typical flow - get() → generateLoginToken() → middleware → user()
+ * @llm-rule AVOID: Passing overrides after first call - they THROW; use reset(newConfig) to rebuild with new config
+ * @llm-rule NOTE: Typical flow - get() → generateLoginToken() → middleware → getUser(req)
  */
 declare function get(overrides?: Partial<AuthConfig>): AuthenticationClass;
 /**
@@ -34,7 +35,7 @@ declare function getRoles(): RoleHierarchy;
 /**
  * Get current permission configuration for inspection
  * @llm-rule WHEN: Need to see default permissions for debugging or documentation
- * @llm-rule AVOID: Using for permission checks - use can() method instead
+ * @llm-rule AVOID: Using for permission checks - use auth.hasPermission(user, permission) instead
  */
 declare function getPermissions(): {
     coreActions: string[];
@@ -66,5 +67,5 @@ export declare const authClass: {
 };
 export type { AuthConfig, RoleConfig, RoleHierarchy, PermissionDefaults, } from './defaults.js';
 export type { JwtPayload, LoginTokenPayload, ApiTokenPayload, ExpressRequest, ExpressResponse, MiddlewareOptions, ExpressMiddleware, } from './auth.js';
-export { AuthenticationClass } from './auth.js';
+export { AuthenticationClass, TokenError } from './auth.js';
 //# sourceMappingURL=index.d.ts.map

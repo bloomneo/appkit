@@ -53,27 +53,9 @@ export interface StorageConfig {
  */
 export declare function getSmartDefaults(): StorageConfig;
 /**
- * Gets storage configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging storage configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive connection details - this only shows safe info
- */
-export declare function getConfigSummary(): {
-    strategy: string;
-    local: boolean;
-    s3: boolean;
-    r2: boolean;
-    environment: string;
-};
-/**
  * Checks if cloud storage is available and properly configured
  * @llm-rule WHEN: Conditional logic based on storage capabilities
  * @llm-rule AVOID: Complex storage detection - just use storage normally, strategy handles it
  */
 export declare function hasCloudStorage(): boolean;
-/**
- * Gets recommended configuration for different deployment types
- * @llm-rule WHEN: Setting up storage for specific deployment scenarios
- * @llm-rule AVOID: Default config for specialized deployments - needs specific tuning
- */
-export declare function getDeploymentConfig(type: 'development' | 'staging' | 'production'): Partial<StorageConfig>;
 //# sourceMappingURL=defaults.d.ts.map

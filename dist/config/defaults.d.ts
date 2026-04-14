@@ -20,6 +20,19 @@ export interface AppConfig extends ConfigValue {
     [key: string]: any;
 }
 /**
+ * Check if environment variable is a framework variable that should be ignored
+ * @llm-rule WHEN: Filtering out framework variables from app config parsing
+ * @llm-rule AVOID: Parsing framework variables as app config - they serve different purposes
+ * @llm-rule NOTE: Bloomneo AppKit uses BLOOM_* and FLUX_* for internal configuration
+ */
+export declare function isFrameworkVariable(envKey: string): boolean;
+/**
+ * Check if environment variable is a system variable that should be ignored
+ * @llm-rule WHEN: Filtering out system variables from app config validation
+ * @llm-rule AVOID: Validating system variables - they don't follow our conventions
+ */
+export declare function isSystemVariable(envKey: string): boolean;
+/**
  * Builds the entire configuration object from process.env
  * @llm-rule WHEN: App startup to get production-ready configuration from environment
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation

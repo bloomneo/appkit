@@ -8,6 +8,7 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance like auth module
  * @llm-rule NOTE: Now includes visual error configuration for enhanced developer experience
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/logger/README.md';
 /**
  * Get smart defaults using direct BLOOM_LOGGER_* environment access
  * @llm-rule WHEN: App startup to get production-ready logging configuration
@@ -15,6 +16,7 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 export function getSmartDefaults() {
+    validateEnvironment();
     // Direct environment access with smart defaults (like auth module)
     const nodeEnv = process.env.NODE_ENV || 'development';
     const isProduction = nodeEnv === 'production';
@@ -138,35 +140,35 @@ export function validateEnvironment() {
     // Validate log level
     const level = process.env.BLOOM_LOGGER_LEVEL;
     if (level && !['debug', 'info', 'warn', 'error'].includes(level)) {
-        throw new Error(`Invalid BLOOM_LOGGER_LEVEL: "${level}". Must be: debug, info, warn, error`);
+        throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_LEVEL: "${level}". Must be: debug, info, warn, error. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate scope
     const scope = process.env.BLOOM_LOGGER_SCOPE;
     if (scope && !['minimal', 'full'].includes(scope.toLowerCase())) {
-        throw new Error(`Invalid BLOOM_LOGGER_SCOPE: "${scope}". Must be: minimal, full`);
+        throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_SCOPE: "${scope}". Must be: minimal, full. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate visual errors setting
     const visualErrors = process.env.BLOOM_VISUAL_ERRORS;
     if (visualErrors && !['true', 'false'].includes(visualErrors)) {
-        throw new Error(`Invalid BLOOM_VISUAL_ERRORS: "${visualErrors}". Must be: true, false`);
+        throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_VISUAL_ERRORS: "${visualErrors}". Must be: true, false. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate URLs if provided
     const httpUrl = process.env.BLOOM_LOGGER_HTTP_URL;
     if (httpUrl && !isValidUrl(httpUrl)) {
-        throw new Error(`Invalid BLOOM_LOGGER_HTTP_URL: "${httpUrl}"`);
+        throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_HTTP_URL: "${httpUrl}". See: ${DOCS_URL}#environment-variables`);
     }
     const webhookUrl = process.env.BLOOM_LOGGER_WEBHOOK_URL;
     if (webhookUrl && !isValidUrl(webhookUrl)) {
-        throw new Error(`Invalid BLOOM_LOGGER_WEBHOOK_URL: "${webhookUrl}"`);
+        throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_WEBHOOK_URL: "${webhookUrl}". See: ${DOCS_URL}#environment-variables`);
     }
     // Validate database URL if database logging enabled
     const dbEnabled = process.env.BLOOM_LOGGER_DATABASE === 'true';
     const dbUrl = process.env.DATABASE_URL;
     if (dbEnabled && !dbUrl) {
-        throw new Error('BLOOM_LOGGER_DATABASE=true but DATABASE_URL not provided');
+        throw new Error(`[@bloomneo/appkit/logger] BLOOM_LOGGER_DATABASE=true but DATABASE_URL not provided. See: ${DOCS_URL}#environment-variables`);
     }
     if (dbUrl && !isValidDatabaseUrl(dbUrl)) {
-        throw new Error(`Invalid DATABASE_URL: "${dbUrl}"`);
+        throw new Error(`[@bloomneo/appkit/logger] Invalid DATABASE_URL: "${dbUrl}". See: ${DOCS_URL}#environment-variables`);
     }
     // Validate numeric values
     validateNumericEnv('BLOOM_LOGGER_FILE_SIZE', 1000000, 100000000); // 1MB to 100MB
@@ -182,7 +184,7 @@ function validateNumericEnv(name, min, max) {
         return;
     const num = parseInt(value);
     if (isNaN(num) || num < min || num > max) {
-        throw new Error(`Invalid ${name}: "${value}". Must be number between ${min} and ${max}`);
+        throw new Error(`[@bloomneo/appkit/logger] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`);
     }
 }
 /**

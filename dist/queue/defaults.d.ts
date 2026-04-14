@@ -57,10 +57,4 @@ export declare function getSmartDefaults(): QueueConfig;
  * @llm-rule AVOID: Skipping validation - invalid config causes silent failures
  */
 export declare function validateEnvironment(): void;
-/**
- * Gets smart defaults with validation
- * @llm-rule WHEN: App startup to get production-ready queue configuration
- * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
- */
-export declare function getValidatedDefaults(): QueueConfig;
 //# sourceMappingURL=defaults.d.ts.map

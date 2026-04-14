@@ -1,6 +1,6 @@
 /**
  * Console transport with smart formatting, minimal mode support, and visual error enhancement
- * @module @bloomneo/appkit/loggier
+ * @module @bloomneo/appkit/logger
  * @file src/logger/transports/console.ts
  *
  * @llm-rule WHEN: Need console output for development or production monitoring
@@ -63,7 +63,7 @@ export class ConsoleTransport {
         }
         catch (error) {
             // Never let logging break the application
-            console.error('Console transport error:', error.message);
+            console.error('[@bloomneo/appkit/logger] Console transport error:', error.message);
         }
     }
     /**

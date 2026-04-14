@@ -143,9 +143,9 @@ export class ErrorClass {
         return (error, req, res, next) => {
             // Log errors if enabled
             if (logErrors) {
-                console.error('Error:', error.message);
+                console.error('[@bloomneo/appkit/error] Error:', error.message);
                 if (showStack && error.stack) {
-                    console.error('Stack:', error.stack);
+                    console.error('[@bloomneo/appkit/error] Stack:', error.stack);
                 }
             }
             // Determine status code

@@ -10,6 +10,7 @@
  */
 import { SecurityClass } from './security.js';
 import { getSmartDefaults } from './defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
 // Global security instance for performance
 let globalSecurity = null;
 /**
@@ -119,8 +120,8 @@ function validateRequired(checks = {}) {
         missing.push('BLOOM_SECURITY_ENCRYPTION_KEY');
     }
     if (missing.length > 0) {
-        throw new Error(`Missing required security configuration: ${missing.join(', ')}\n` +
-            `Set environment variables for production security.`);
+        throw new Error(`[@bloomneo/appkit/security] Missing required security configuration: ${missing.join(', ')}. ` +
+            `Set environment variables for production security. See: ${DOCS_URL}#environment-variables`);
     }
 }
 /**

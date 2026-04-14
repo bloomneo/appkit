@@ -8,7 +8,7 @@
  * @llm-rule NOTE: Uses cacheClass.get(namespace) pattern like auth - get() → cache.set() → done
  * @llm-rule NOTE: Common pattern - cacheClass.get('users') → cache.set('user:123', data) → cache.get('user:123')
  */
-import { CacheClass } from './cache.js';
+import { CacheClass, CacheError } from './cache.js';
 import { getSmartDefaults } from './defaults.js';
 // Global cache instances for performance (like auth module)
 let globalConfig = null;
@@ -20,29 +20,33 @@ const namedCaches = new Map();
  * @llm-rule AVOID: Creating CacheClass directly - always use this function
  * @llm-rule NOTE: Typical flow - get(namespace) → cache.set() → cache.get() → cached data
  */
-function get(namespace = 'app') {
-    // Validate namespace
-    if (!namespace || typeof namespace !== 'string') {
-        throw new Error('Cache namespace must be a non-empty string');
-    }
-    if (!/^[a-zA-Z0-9_-]+$/.test(namespace)) {
-        throw new Error('Cache namespace must contain only letters, numbers, underscores, and hyphens');
-    }
+function get(namespace) {
     // Lazy initialization - parse environment once (like auth)
     if (!globalConfig) {
         globalConfig = getSmartDefaults();
     }
+    // If no namespace is passed, fall back to BLOOM_CACHE_NAMESPACE, then 'app'.
+    const resolvedNamespace = namespace ?? globalConfig.namespace ?? 'app';
+    // Validate namespace
+    if (!resolvedNamespace || typeof resolvedNamespace !== 'string') {
+        throw new CacheError('Cache namespace must be a non-empty string', {
+            code: 'CACHE_INVALID_NAMESPACE',
+        });
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(resolvedNamespace)) {
+        throw new CacheError(`Cache namespace "${resolvedNamespace}" must contain only letters, numbers, underscores, and hyphens`, { code: 'CACHE_INVALID_NAMESPACE' });
+    }
     // Return cached instance if exists
-    if (namedCaches.has(namespace)) {
-        return namedCaches.get(namespace);
+    if (namedCaches.has(resolvedNamespace)) {
+        return namedCaches.get(resolvedNamespace);
     }
     // Create new cache instance for namespace
-    const cacheInstance = new CacheClass(globalConfig, namespace);
+    const cacheInstance = new CacheClass(globalConfig, resolvedNamespace);
     // Auto-connect on first use
     cacheInstance.connect().catch((error) => {
-        console.error(`[@bloomneo/appkit/cache] Auto-connect failed for namespace "${namespace}":`, error.message);
+        console.error(`[@bloomneo/appkit/cache] Auto-connect failed for namespace "${resolvedNamespace}":`, error.message);
     });
-    namedCaches.set(namespace, cacheInstance);
+    namedCaches.set(resolvedNamespace, cacheInstance);
     return cacheInstance;
 }
 /**
@@ -179,28 +183,8 @@ export const cacheClass = {
 export { CacheClass, CacheError } from './cache.js';
 // Default export
 export default cacheClass;
-// Auto-setup graceful shutdown handlers
-if (typeof process !== 'undefined') {
-    // Handle graceful shutdown
-    const shutdownHandler = () => {
-        shutdown().finally(() => {
-            process.exit(0);
-        });
-    };
-    process.on('SIGTERM', shutdownHandler);
-    process.on('SIGINT', shutdownHandler);
-    // Handle uncaught errors
-    process.on('uncaughtException', (error) => {
-        console.error('[@bloomneo/appkit/cache] Uncaught exception:', error);
-        shutdown().finally(() => {
-            process.exit(1);
-        });
-    });
-    process.on('unhandledRejection', (reason) => {
-        console.error('[@bloomneo/appkit/cache] Unhandled rejection:', reason);
-        shutdown().finally(() => {
-            process.exit(1);
-        });
-    });
-}
+// NOTE: This module does NOT register process-level signal handlers.
+// Wire cacheClass.shutdown() into your app's lifecycle explicitly:
+//   process.on('SIGTERM', () => cacheClass.shutdown().finally(() => process.exit(0)));
+// A library should not commandeer the host app's shutdown or error handling.
 //# sourceMappingURL=index.js.map

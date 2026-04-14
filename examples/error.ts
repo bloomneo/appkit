@@ -1,50 +1,56 @@
 /**
- * CANONICAL PATTERN — semantic HTTP errors + centralized middleware.
+ * examples/error.ts
  *
- * Copy this file when you need error handling in routes. The pattern:
- *   1. Wrap async route handlers in error.asyncRoute(...)
- *   2. Throw semantic errors (badRequest, unauthorized, notFound, etc.)
- *      — never `throw new Error(...)` in route handlers
- *   3. Mount error.handleErrors() as the LAST middleware in the Express stack
+ * Runnable tour of the @bloomneo/appkit/error module.
  *
- * The asyncRoute wrapper catches the throw, and handleErrors() converts
- * the semantic error into the right HTTP status + JSON response.
+ * Two usage styles, pick whichever reads better:
+ *   • Shortcut:   errorClass.badRequest('...')
+ *   • Instance:   errorClass.get().badRequest('...')
+ *
+ * Run: tsx examples/error.ts
  */
 
-import express from 'express';
-import { errorClass, databaseClass } from '@bloomneo/appkit';
+import { errorClass } from '../src/error/index.js';
 
-const error = errorClass.get();
-const database = await databaseClass.get();
-const app = express();
+function main() {
+  // 1. Create typed HTTP errors with one call. They're thrown like any Error.
+  const errs = [
+    errorClass.badRequest('Email required'),
+    errorClass.unauthorized('Login required'),
+    errorClass.forbidden('Admin only'),
+    errorClass.notFound('User not found'),
+    errorClass.conflict('Email already exists'),
+    errorClass.tooMany('Slow down'),
+    errorClass.serverError('Database unavailable'),
+    errorClass.createError(503, 'Maintenance mode', 'MAINTENANCE'),
+  ];
+  for (const e of errs) {
+    console.log(e.statusCode, e.message);
+  }
 
-// ── Routes use asyncRoute + semantic error throws ───────────────────
-app.get('/api/users/:id', error.asyncRoute(async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isFinite(id)) throw error.badRequest('id must be a number');
+  // 2. Classifying errors (useful for logging/metrics).
+  const e = errorClass.notFound('gone');
+  console.log('isClientError =', errorClass.isClientError(e));
+  console.log('isServerError =', errorClass.isServerError(e));
 
-  const user = await database.user.findUnique({ where: { id } });
-  if (!user) throw error.notFound('User not found');
+  // 3. Express wiring — two pieces:
+  //
+  //    (a) Wrap async handlers so thrown errors reach the middleware.
+  //    app.get('/users/:id', errorClass.asyncRoute(async (req, res) => {
+  //      const user = await db.user.findUnique({ where: { id: req.params.id } });
+  //      if (!user) throw errorClass.notFound('User not found');
+  //      res.json(user);
+  //    }));
+  //
+  //    (b) Install the global handler LAST. It serializes AppError
+  //    responses, hides stacks in production, and logs as appropriate.
+  //    app.use(errorClass.handleErrors());
+  //
+  //    Build them here to prove the shapes are correct:
+  const wrapped = errorClass.asyncRoute(async (_req, res) => res.json({ ok: true }));
+  const handler = errorClass.handleErrors({ showStack: false, logErrors: true });
+  console.log('asyncRoute()   →', typeof wrapped);
+  console.log('handleErrors() →', typeof handler);
+}
 
-  res.json({ user });
-}));
-
-app.post('/api/admin', error.asyncRoute(async (req, res) => {
-  if (req.body.role !== 'admin') throw error.forbidden('Admin role required');
-  // ...
-}));
-
-// ── Available semantic error throwers ───────────────────────────────
-//
-//   throw error.badRequest('message')        → 400
-//   throw error.unauthorized('message')      → 401
-//   throw error.forbidden('message')         → 403
-//   throw error.notFound('message')          → 404
-//   throw error.conflict('message')          → 409
-//   throw error.tooMany('message')           → 429  (rate limiting)
-//   throw error.serverError('message')       → 500
-//   throw error.internal('message')          → 500  (alias for serverError)
-//   throw error.createError(503, 'message')  → any code
-
-// ── MOUNT error.handleErrors() LAST in the middleware stack ─────────
-app.use(error.handleErrors());
+main();

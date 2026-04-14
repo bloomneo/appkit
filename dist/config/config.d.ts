@@ -20,13 +20,13 @@ export declare class ConfigClass {
      * Gets a specific configuration value using dot notation
      * @llm-rule WHEN: Accessing any config value from environment variables
      * @llm-rule AVOID: Accessing process.env directly - use this for type safety and defaults
-     * @llm-rule NOTE: Returns typed values (strings, numbers, booleans) automatically
+     * @llm-rule NOTE: parseValue() coerces env strings — "true"/"false" → boolean, numeric strings → number
      */
-    get<T = any>(path: string, defaultValue?: T): T | undefined;
+    get<T>(path: string, defaultValue: T): T;
+    get<T = any>(path: string): T | undefined;
     /**
      * Checks if a configuration path exists
      * @llm-rule WHEN: Need to conditionally enable features based on config presence
-     * @llm-rule AVOID: Using get() !== undefined - this is more explicit and readable
      */
     has(path: string): boolean;
     /**

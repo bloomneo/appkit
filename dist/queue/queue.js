@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { MemoryTransport } from './transports/memory.js';
 import { RedisTransport } from './transports/redis.js';
 import { DatabaseTransport } from './transports/database.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 /**
  * Core queuing class with automatic transport management
  */
@@ -36,13 +37,13 @@ export class QueueClass {
             switch (this.config.transport) {
                 case 'redis':
                     if (!this.config.redis.url) {
-                        console.warn('Redis transport selected but REDIS_URL not available, falling back to memory');
+                        console.warn('[@bloomneo/appkit/queue] Redis transport selected but REDIS_URL not available, falling back to memory');
                         return new MemoryTransport(this.config);
                     }
                     return new RedisTransport(this.config);
                 case 'database':
                     if (!this.config.database.url) {
-                        console.warn('Database transport selected but DATABASE_URL not available, falling back to memory');
+                        console.warn('[@bloomneo/appkit/queue] Database transport selected but DATABASE_URL not available, falling back to memory');
                         return new MemoryTransport(this.config);
                     }
                     return new DatabaseTransport(this.config);
@@ -52,8 +53,8 @@ export class QueueClass {
             }
         }
         catch (error) {
-            console.error(`Failed to initialize ${this.config.transport} transport:`, error.message);
-            console.log('Falling back to memory transport');
+            console.error(`[@bloomneo/appkit/queue] Failed to initialize ${this.config.transport} transport:`, error.message);
+            console.warn('[@bloomneo/appkit/queue] Falling back to memory transport');
             this.transportType = 'memory';
             return new MemoryTransport(this.config);
         }
@@ -85,7 +86,7 @@ export class QueueClass {
             return jobId;
         }
         catch (error) {
-            throw new Error(`Failed to add job: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to add job: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -102,7 +103,7 @@ export class QueueClass {
             this.transport.process(jobType, wrappedHandler);
         }
         catch (error) {
-            throw new Error(`Failed to register processor for ${jobType}: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to register processor for ${jobType}: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -120,7 +121,7 @@ export class QueueClass {
             return jobId;
         }
         catch (error) {
-            throw new Error(`Failed to schedule job: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to schedule job: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -133,7 +134,7 @@ export class QueueClass {
             await this.transport.pause(jobType);
         }
         catch (error) {
-            throw new Error(`Failed to pause queue: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to pause queue: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -146,7 +147,7 @@ export class QueueClass {
             await this.transport.resume(jobType);
         }
         catch (error) {
-            throw new Error(`Failed to resume queue: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to resume queue: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -159,7 +160,7 @@ export class QueueClass {
             return await this.transport.getStats(jobType);
         }
         catch (error) {
-            throw new Error(`Failed to get stats: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to get stats: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -172,7 +173,7 @@ export class QueueClass {
             return await this.transport.getJobs(status, jobType);
         }
         catch (error) {
-            throw new Error(`Failed to get jobs: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to get jobs: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -186,7 +187,7 @@ export class QueueClass {
             await this.transport.retry(jobId);
         }
         catch (error) {
-            throw new Error(`Failed to retry job ${jobId}: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to retry job ${jobId}: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -200,7 +201,7 @@ export class QueueClass {
             await this.transport.remove(jobId);
         }
         catch (error) {
-            throw new Error(`Failed to remove job ${jobId}: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to remove job ${jobId}: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -213,7 +214,7 @@ export class QueueClass {
             await this.transport.clean(status, grace);
         }
         catch (error) {
-            throw new Error(`Failed to clean ${status} jobs: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to clean ${status} jobs: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -235,7 +236,7 @@ export class QueueClass {
             await this.transport.close();
         }
         catch (error) {
-            console.error('Error during graceful shutdown:', error.message);
+            console.error('[@bloomneo/appkit/queue] Error during graceful shutdown:', error.message);
         }
     }
     /**
@@ -321,14 +322,14 @@ export class QueueClass {
                 break;
             }
         }
-        console.warn(`Graceful shutdown timeout (${timeout}ms) exceeded, forcing close`);
+        console.warn(`[@bloomneo/appkit/queue] Graceful shutdown timeout (${timeout}ms) exceeded, forcing close`);
     }
     /**
      * Setup graceful shutdown handlers
      */
     setupGracefulShutdown() {
         const handleShutdown = async (signal) => {
-            console.log(`Received ${signal}, starting graceful shutdown...`);
+            console.log(`[@bloomneo/appkit/queue] Received ${signal}, starting graceful shutdown...`);
             await this.close();
             process.exit(0);
         };
@@ -340,47 +341,47 @@ export class QueueClass {
     // ============================================================================
     validateJobType(jobType) {
         if (!jobType || typeof jobType !== 'string') {
-            throw new Error('Job type must be a non-empty string');
+            throw new Error(`[@bloomneo/appkit/queue] Job type must be a non-empty string. See: ${DOCS_URL}#adding-jobs`);
         }
         if (jobType.length > 100) {
-            throw new Error('Job type must be 100 characters or less');
+            throw new Error(`[@bloomneo/appkit/queue] Job type must be 100 characters or less. See: ${DOCS_URL}#adding-jobs`);
         }
         if (!/^[a-zA-Z0-9_-]+$/.test(jobType)) {
-            throw new Error('Job type can only contain letters, numbers, underscores, and hyphens');
+            throw new Error(`[@bloomneo/appkit/queue] Job type can only contain letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#adding-jobs`);
         }
     }
     validateJobData(data) {
         if (data === null || data === undefined) {
-            throw new Error('Job data cannot be null or undefined');
+            throw new Error(`[@bloomneo/appkit/queue] Job data cannot be null or undefined. See: ${DOCS_URL}#adding-jobs`);
         }
         try {
             JSON.stringify(data);
         }
         catch (error) {
-            throw new Error('Job data must be JSON serializable');
+            throw new Error(`[@bloomneo/appkit/queue] Job data must be JSON serializable. See: ${DOCS_URL}#adding-jobs`);
         }
     }
     validateHandler(handler) {
         if (typeof handler !== 'function') {
-            throw new Error('Job handler must be a function');
+            throw new Error(`[@bloomneo/appkit/queue] Job handler must be a function. See: ${DOCS_URL}#processing-jobs`);
         }
     }
     validateDelay(delay) {
         if (typeof delay !== 'number' || delay < 0) {
-            throw new Error('Delay must be a positive number (milliseconds)');
+            throw new Error(`[@bloomneo/appkit/queue] Delay must be a positive number (milliseconds). See: ${DOCS_URL}#scheduling-jobs`);
         }
         if (delay > 365 * 24 * 60 * 60 * 1000) {
-            throw new Error('Delay cannot exceed 1 year');
+            throw new Error(`[@bloomneo/appkit/queue] Delay cannot exceed 1 year. See: ${DOCS_URL}#scheduling-jobs`);
         }
     }
     validateJobId(jobId) {
         if (!jobId || typeof jobId !== 'string') {
-            throw new Error('Job ID must be a non-empty string');
+            throw new Error(`[@bloomneo/appkit/queue] Job ID must be a non-empty string. See: ${DOCS_URL}#managing-jobs`);
         }
         // Validate UUID format
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(jobId)) {
-            throw new Error('Job ID must be a valid UUID');
+            throw new Error(`[@bloomneo/appkit/queue] Job ID must be a valid UUID. See: ${DOCS_URL}#managing-jobs`);
         }
     }
 }

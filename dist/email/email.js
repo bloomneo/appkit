@@ -10,6 +10,7 @@
 import { ResendStrategy } from './strategies/resend.js';
 import { SmtpStrategy } from './strategies/smtp.js';
 import { ConsoleStrategy } from './strategies/console.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 /**
  * Email class with automatic strategy selection and ultra-simple API
  */
@@ -35,7 +36,7 @@ export class EmailClass {
             case 'console':
                 return new ConsoleStrategy(this.config);
             default:
-                throw new Error(`Unknown email strategy: ${this.config.strategy}`);
+                throw new Error(`[@bloomneo/appkit/email] Unknown email strategy: "${this.config.strategy}". Must be "resend", "smtp", or "console". See: ${DOCS_URL}#environment-variables`);
         }
     }
     /**
@@ -54,13 +55,13 @@ export class EmailClass {
             const result = await this.strategy.send(emailData);
             // Log success in development
             if (this.config.environment.isDevelopment && result.success) {
-                console.log(`✅ [AppKit] Email sent successfully${result.messageId ? ` (ID: ${result.messageId})` : ''}`);
+                console.log(`✅ [@bloomneo/appkit/email] Email sent successfully${result.messageId ? ` (ID: ${result.messageId})` : ''}`);
             }
             return result;
         }
         catch (error) {
             const errorMessage = error.message;
-            console.error(`❌ [AppKit] Email send failed:`, errorMessage);
+            console.error(`❌ [@bloomneo/appkit/email] Email send failed:`, errorMessage);
             return {
                 success: false,
                 error: errorMessage,
@@ -155,11 +156,11 @@ export class EmailClass {
             await this.strategy.disconnect();
             this.connected = false;
             if (this.config.environment.isDevelopment) {
-                console.log(`👋 [AppKit] Email disconnected`);
+                console.log(`👋 [@bloomneo/appkit/email] Email disconnected`);
             }
         }
         catch (error) {
-            console.error(`⚠️ [AppKit] Email disconnect error:`, error.message);
+            console.error(`⚠️ [@bloomneo/appkit/email] Email disconnect error:`, error.message);
         }
     }
     /**
@@ -189,27 +190,27 @@ export class EmailClass {
      */
     validateEmailData(data) {
         if (!data.to) {
-            throw new Error('Email "to" field is required');
+            throw new Error(`[@bloomneo/appkit/email] Email "to" field is required. See: ${DOCS_URL}#complete-api`);
         }
         if (!data.subject) {
-            throw new Error('Email "subject" field is required');
+            throw new Error(`[@bloomneo/appkit/email] Email "subject" field is required. See: ${DOCS_URL}#complete-api`);
         }
         if (!data.text && !data.html) {
-            throw new Error('Email must have either "text" or "html" content');
+            throw new Error(`[@bloomneo/appkit/email] Email must have either "text" or "html" content. See: ${DOCS_URL}#complete-api`);
         }
         // Validate email addresses
         const recipients = Array.isArray(data.to) ? data.to : [data.to];
         for (const recipient of recipients) {
             const email = typeof recipient === 'string' ? recipient : recipient.email;
             if (!this.isValidEmail(email)) {
-                throw new Error(`Invalid email address: ${email}`);
+                throw new Error(`[@bloomneo/appkit/email] Invalid "to" email address: "${email}". See: ${DOCS_URL}#common-mistakes`);
             }
         }
         // Validate FROM address if provided
         if (data.from) {
             const fromEmail = typeof data.from === 'string' ? data.from : data.from.email;
             if (!this.isValidEmail(fromEmail)) {
-                throw new Error(`Invalid FROM email address: ${fromEmail}`);
+                throw new Error(`[@bloomneo/appkit/email] Invalid "from" email address: "${fromEmail}". See: ${DOCS_URL}#common-mistakes`);
             }
         }
     }
@@ -290,7 +291,7 @@ export class EmailClass {
         };
         const template = templates[templateName];
         if (!template) {
-            throw new Error(`Template not found: ${templateName}`);
+            throw new Error(`[@bloomneo/appkit/email] Template not found: "${templateName}". Built-in templates: "welcome", "reset". See: ${DOCS_URL}#built-in-templates`);
         }
         return template;
     }

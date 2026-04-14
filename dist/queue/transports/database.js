@@ -8,6 +8,7 @@
  * @llm-rule NOTE: Uses existing Prisma client from AppKit, perfect for simple persistent queuing
  */
 import database from '../../database/index.js'; // Leverage existing Prisma client
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 /**
  * Database transport using AppKit Prisma for persistent storage
  */
@@ -47,7 +48,7 @@ export class DatabaseTransport {
             }
         }
         catch (error) {
-            console.error('Database transport initialization failed:', error.message);
+            console.error('[@bloomneo/appkit/queue] Database transport initialization failed:', error.message);
         }
     }
     /**
@@ -72,7 +73,7 @@ export class DatabaseTransport {
             });
         }
         catch (error) {
-            throw new Error(`Failed to add job to database: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to add job to database: ${error.message}. See: ${DOCS_URL}#database-transport`);
         }
     }
     /**
@@ -106,7 +107,7 @@ export class DatabaseTransport {
             });
         }
         catch (error) {
-            throw new Error(`Failed to schedule job in database: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to schedule job in database: ${error.message}. See: ${DOCS_URL}#database-transport`);
         }
     }
     /**
@@ -163,7 +164,7 @@ export class DatabaseTransport {
             };
         }
         catch (error) {
-            throw new Error(`Failed to get database stats: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to get database stats: ${error.message}. See: ${DOCS_URL}#database-transport`);
         }
     }
     /**
@@ -187,7 +188,7 @@ export class DatabaseTransport {
             return jobs.map((job) => this.dbJobToInfo(job));
         }
         catch (error) {
-            throw new Error(`Failed to get database jobs: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to get database jobs: ${error.message}. See: ${DOCS_URL}#database-transport`);
         }
     }
     /**
@@ -201,10 +202,10 @@ export class DatabaseTransport {
                 where: { id: jobId },
             });
             if (!job) {
-                throw new Error(`Job ${jobId} not found`);
+                throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
             }
             if (job.status !== 'failed') {
-                throw new Error(`Job ${jobId} is not in failed state`);
+                throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} is not in failed state. See: ${DOCS_URL}#managing-jobs`);
             }
             // Reset job for retry
             await this.db.queueJob.update({
@@ -219,7 +220,7 @@ export class DatabaseTransport {
             });
         }
         catch (error) {
-            throw new Error(`Failed to retry database job: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to retry database job: ${error.message}. See: ${DOCS_URL}#database-transport`);
         }
     }
     /**
@@ -233,17 +234,17 @@ export class DatabaseTransport {
                 where: { id: jobId },
             });
             if (!job) {
-                throw new Error(`Job ${jobId} not found`);
+                throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
             }
             if (job.status === 'processing') {
-                throw new Error(`Cannot remove active job ${jobId}`);
+                throw new Error(`[@bloomneo/appkit/queue] Cannot remove active job ${jobId}. See: ${DOCS_URL}#managing-jobs`);
             }
             await this.db.queueJob.delete({
                 where: { id: jobId },
             });
         }
         catch (error) {
-            throw new Error(`Failed to remove database job: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to remove database job: ${error.message}. See: ${DOCS_URL}#database-transport`);
         }
     }
     /**
@@ -277,7 +278,7 @@ export class DatabaseTransport {
             });
         }
         catch (error) {
-            throw new Error(`Failed to clean database jobs: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to clean database jobs: ${error.message}. See: ${DOCS_URL}#database-transport`);
         }
     }
     /**
@@ -342,7 +343,7 @@ export class DatabaseTransport {
             await this.processWaitingJobs();
         }
         catch (error) {
-            console.error('Database processing error:', error.message);
+            console.error('[@bloomneo/appkit/queue] Database processing error:', error.message);
         }
         // Schedule next processing cycle
         this.processingLoop = setTimeout(() => this.processJobs(), this.config.database.pollInterval);
@@ -376,13 +377,13 @@ export class DatabaseTransport {
                 const handler = this.handlers.get(job.queue);
                 if (handler) {
                     this.processJob(job, handler).catch(error => {
-                        console.error(`Error processing database job ${job.id}:`, error);
+                        console.error(`[@bloomneo/appkit/queue] Error processing database job ${job.id}:`, error);
                     });
                 }
             }
         }
         catch (error) {
-            console.error('Error fetching waiting jobs:', error.message);
+            console.error('[@bloomneo/appkit/queue] Error fetching waiting jobs:', error.message);
         }
     }
     /**
@@ -429,7 +430,7 @@ export class DatabaseTransport {
             return result.count > 0;
         }
         catch (error) {
-            console.error(`Error claiming job ${job.id}:`, error.message);
+            console.error(`[@bloomneo/appkit/queue] Error claiming job ${job.id}:`, error.message);
             return false;
         }
     }
@@ -448,7 +449,7 @@ export class DatabaseTransport {
             });
         }
         catch (error) {
-            console.error(`Error completing job ${job.id}:`, error.message);
+            console.error(`[@bloomneo/appkit/queue] Error completing job ${job.id}:`, error.message);
         }
     }
     /**
@@ -486,7 +487,7 @@ export class DatabaseTransport {
             }
         }
         catch (dbError) {
-            console.error(`Error failing job ${job.id}:`, dbError.message);
+            console.error(`[@bloomneo/appkit/queue] Error failing job ${job.id}:`, dbError.message);
         }
     }
     /**
@@ -515,7 +516,7 @@ export class DatabaseTransport {
                 await this.clean('failed', 24 * 60 * 60 * 1000);
             }
             catch (error) {
-                console.error('Database cleanup error:', error.message);
+                console.error('[@bloomneo/appkit/queue] Database cleanup error:', error.message);
             }
         }, 60 * 60 * 1000); // Every hour
     }
@@ -529,7 +530,7 @@ export class DatabaseTransport {
                 await this.db.queueJob.count({ where: { status: 'pending' } });
             }
             catch (error) {
-                console.error('Database health check failed:', error.message);
+                console.error('[@bloomneo/appkit/queue] Database health check failed:', error.message);
             }
         }, 30000); // Every 30 seconds
     }
@@ -544,8 +545,8 @@ export class DatabaseTransport {
             await this.db.queueJob.count();
         }
         catch (error) {
-            throw new Error('QueueJob table not found. Please ensure the queue_jobs table exists in your database schema. ' +
-                'Add the QueueJob model to your Prisma schema and run migrations.');
+            throw new Error(`[@bloomneo/appkit/queue] QueueJob table not found. Please ensure the queue_jobs table exists in your database schema. ` +
+                `Add the QueueJob model to your Prisma schema and run migrations. See: ${DOCS_URL}#database-transport`);
         }
     }
     // ============================================================================

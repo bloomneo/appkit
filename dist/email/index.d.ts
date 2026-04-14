@@ -79,7 +79,7 @@ declare function getConfig(): {
     strategy: string;
     fromName: string;
     fromEmail: string;
-    environment: string;
+    connected: boolean;
 };
 /**
  * Check if Resend is available and configured

@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Manual S3 setup - this handles AWS, Wasabi, MinIO, DigitalOcean Spaces automatically
  * @llm-rule NOTE: Production-ready with retry logic, signed URLs, CDN support, automatic MIME detection
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 /**
  * S3-compatible storage strategy with multi-provider support and reliability features
  */
@@ -26,7 +27,7 @@ export class S3Strategy {
     constructor(config) {
         this.config = config;
         if (!config.s3) {
-            throw new Error('S3 storage configuration missing');
+            throw new Error(`[@bloomneo/appkit/storage] S3 storage configuration missing. See: ${DOCS_URL}#environment-variables`);
         }
         this.bucket = config.s3.bucket;
         this.region = config.s3.region;
@@ -66,13 +67,13 @@ export class S3Strategy {
             this.connected = true;
             if (this.config.environment.isDevelopment) {
                 const provider = this.detectProvider();
-                console.log(`✅ [AppKit] S3 storage connected (provider: ${provider}, bucket: ${this.bucket})`);
+                console.log(`✅ [@bloomneo/appkit/storage] S3 storage connected (provider: ${provider}, bucket: ${this.bucket})`);
             }
         }
         catch (error) {
             this.connected = false;
             this.s3Client = null;
-            throw new Error(`S3 storage connection failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] S3 storage connection failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -85,10 +86,10 @@ export class S3Strategy {
         }
         catch (error) {
             if (error.name === 'NotFound') {
-                throw new Error(`S3 bucket not found: ${this.bucket}`);
+                throw new Error(`[@bloomneo/appkit/storage] S3 bucket not found: ${this.bucket}. See: ${DOCS_URL}#common-issues`);
             }
             if (error.name === 'Forbidden') {
-                throw new Error(`S3 bucket access denied: ${this.bucket}`);
+                throw new Error(`[@bloomneo/appkit/storage] S3 bucket access denied: ${this.bucket}. See: ${DOCS_URL}#common-issues`);
             }
             throw error;
         }
@@ -117,7 +118,7 @@ export class S3Strategy {
      */
     async put(key, data, options) {
         if (!this.connected || !this.s3Client) {
-            throw new Error('S3 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { PutObjectCommand } = await import('@aws-sdk/client-s3');
@@ -141,12 +142,12 @@ export class S3Strategy {
             // Execute upload
             await this.s3Client.send(new PutObjectCommand(params));
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] S3 file uploaded: ${key} (${data.length} bytes)`);
+                console.log(`☁️ [@bloomneo/appkit/storage] S3 file uploaded: ${key} (${data.length} bytes)`);
             }
             return key;
         }
         catch (error) {
-            throw new Error(`S3 upload failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] S3 upload failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -156,7 +157,7 @@ export class S3Strategy {
      */
     async get(key) {
         if (!this.connected || !this.s3Client) {
-            throw new Error('S3 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { GetObjectCommand } = await import('@aws-sdk/client-s3');
@@ -166,20 +167,20 @@ export class S3Strategy {
             };
             const result = await this.s3Client.send(new GetObjectCommand(params));
             if (!result.Body) {
-                throw new Error(`S3 object has no body: ${key}`);
+                throw new Error(`[@bloomneo/appkit/storage] S3 object has no body: ${key}. See: ${DOCS_URL}#common-issues`);
             }
             // Convert stream to buffer
             const buffer = await this.streamToBuffer(result.Body);
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] S3 file downloaded: ${key} (${buffer.length} bytes)`);
+                console.log(`☁️ [@bloomneo/appkit/storage] S3 file downloaded: ${key} (${buffer.length} bytes)`);
             }
             return buffer;
         }
         catch (error) {
             if (error.name === 'NoSuchKey') {
-                throw new Error(`File not found: ${key}`);
+                throw new Error(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`);
             }
-            throw new Error(`S3 download failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] S3 download failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -189,7 +190,7 @@ export class S3Strategy {
      */
     async delete(key) {
         if (!this.connected || !this.s3Client) {
-            console.error('S3 storage not connected');
+            console.error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
             return false;
         }
         try {
@@ -200,12 +201,12 @@ export class S3Strategy {
             };
             await this.s3Client.send(new DeleteObjectCommand(params));
             if (this.config.environment.isDevelopment) {
-                console.log(`🗑️ [AppKit] S3 file deleted: ${key}`);
+                console.log(`🗑️ [@bloomneo/appkit/storage] S3 file deleted: ${key}`);
             }
             return true;
         }
         catch (error) {
-            console.error(`[AppKit] S3 delete error for "${key}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] S3 delete error for "${key}":`, error.message);
             return false;
         }
     }
@@ -216,7 +217,7 @@ export class S3Strategy {
      */
     async list(prefix = '') {
         if (!this.connected || !this.s3Client) {
-            throw new Error('S3 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
@@ -243,12 +244,12 @@ export class S3Strategy {
                 }
             }
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] S3 files listed: ${prefix}* (${files.length} files)`);
+                console.log(`☁️ [@bloomneo/appkit/storage] S3 files listed: ${prefix}* (${files.length} files)`);
             }
             return files;
         }
         catch (error) {
-            console.error(`[AppKit] S3 list error for prefix "${prefix}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] S3 list error for prefix "${prefix}":`, error.message);
             return [];
         }
     }
@@ -280,7 +281,7 @@ export class S3Strategy {
      */
     async signedUrl(key, expiresIn = 3600) {
         if (!this.connected || !this.s3Client) {
-            throw new Error('S3 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { GetObjectCommand } = await import('@aws-sdk/client-s3');
@@ -293,12 +294,12 @@ export class S3Strategy {
                 expiresIn,
             });
             if (this.config.environment.isDevelopment) {
-                console.log(`🔐 [AppKit] S3 signed URL generated: ${key} (expires in ${expiresIn}s)`);
+                console.log(`🔐 [@bloomneo/appkit/storage] S3 signed URL generated: ${key} (expires in ${expiresIn}s)`);
             }
             return signedUrl;
         }
         catch (error) {
-            throw new Error(`S3 signed URL generation failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] S3 signed URL generation failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -323,7 +324,7 @@ export class S3Strategy {
             if (error.name === 'NotFound' || error.name === 'NoSuchKey') {
                 return false;
             }
-            console.error(`[AppKit] S3 exists check error for "${key}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] S3 exists check error for "${key}":`, error.message);
             return false;
         }
     }
@@ -334,7 +335,7 @@ export class S3Strategy {
      */
     async copy(sourceKey, destKey) {
         if (!this.connected || !this.s3Client) {
-            throw new Error('S3 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { CopyObjectCommand } = await import('@aws-sdk/client-s3');
@@ -345,12 +346,12 @@ export class S3Strategy {
             };
             await this.s3Client.send(new CopyObjectCommand(params));
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] S3 file copied: ${sourceKey} → ${destKey}`);
+                console.log(`☁️ [@bloomneo/appkit/storage] S3 file copied: ${sourceKey} → ${destKey}`);
             }
             return destKey;
         }
         catch (error) {
-            throw new Error(`S3 copy failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] S3 copy failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -367,11 +368,11 @@ export class S3Strategy {
             this.connected = false;
             this.s3Client = null;
             if (this.config.environment.isDevelopment) {
-                console.log(`👋 [AppKit] S3 storage strategy disconnected`);
+                console.log(`👋 [@bloomneo/appkit/storage] S3 storage strategy disconnected`);
             }
         }
         catch (error) {
-            console.error(`[AppKit] S3 disconnect error:`, error.message);
+            console.error(`[@bloomneo/appkit/storage] S3 disconnect error:`, error.message);
         }
     }
     // Private helper methods

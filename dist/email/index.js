@@ -9,7 +9,8 @@
  * @llm-rule NOTE: Common pattern - emailClass.get() → email.send({ to, subject, text }) → sent
  */
 import { EmailClass } from './email.js';
-import { getSmartDefaults, validateProductionRequirements, validateStartupConfiguration, performHealthCheck } from './defaults.js';
+import { getSmartDefaults, validateProductionRequirements, validateStartupConfiguration, performHealthCheck, } from './defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 // Global email instance for performance (like auth module)
 let globalEmail = null;
 /**
@@ -126,13 +127,13 @@ function validateConfig() {
     try {
         const validation = validateStartupConfiguration();
         if (validation.errors.length > 0) {
-            console.error('[Bloomneo AppKit] Email configuration errors:', validation.errors);
+            console.error('[@bloomneo/appkit/email] Email configuration errors:', validation.errors);
         }
         if (validation.warnings.length > 0) {
-            console.warn('[Bloomneo AppKit] Email configuration warnings:', validation.warnings);
+            console.warn('[@bloomneo/appkit/email] Email configuration warnings:', validation.warnings);
         }
         if (validation.ready) {
-            console.log(`✅ [Bloomneo AppKit] Email configured with ${validation.strategy} strategy`);
+            console.log(`✅ [@bloomneo/appkit/email] Email configured with ${validation.strategy} strategy`);
         }
         return {
             valid: validation.errors.length === 0,
@@ -144,7 +145,7 @@ function validateConfig() {
     }
     catch (error) {
         const errorMessage = error.message;
-        console.error('[Bloomneo AppKit] Email configuration validation failed:', errorMessage);
+        console.error('[@bloomneo/appkit/email] Email configuration validation failed:', errorMessage);
         return {
             valid: false,
             strategy: 'unknown',
@@ -164,13 +165,12 @@ function validateProduction() {
     try {
         validateProductionRequirements();
         if (process.env.NODE_ENV === 'production' && !hasProvider()) {
-            console.warn('[Bloomneo AppKit] No email provider configured in production. ' +
-                'Set RESEND_API_KEY or SMTP_HOST to send real emails.');
+            console.warn(`[@bloomneo/appkit/email] No email provider configured in production. Set RESEND_API_KEY or SMTP_HOST to send real emails. See: ${DOCS_URL}#production-deployment`);
         }
-        console.log('✅ [Bloomneo AppKit] Production email requirements validated');
+        console.log('✅ [@bloomneo/appkit/email] Production email requirements validated');
     }
     catch (error) {
-        console.error('[Bloomneo AppKit] Production email validation failed:', error.message);
+        console.error('[@bloomneo/appkit/email] Production email validation failed:', error.message);
         throw error;
     }
 }
@@ -189,13 +189,13 @@ function getHealthStatus() {
  * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents connection issues
  */
 async function shutdown() {
-    console.log('🔄 [AppKit] Email graceful shutdown...');
+    console.log('🔄 [@bloomneo/appkit/email] Email graceful shutdown...');
     try {
         await clear();
-        console.log('✅ [AppKit] Email shutdown complete');
+        console.log('✅ [@bloomneo/appkit/email] Email shutdown complete');
     }
     catch (error) {
-        console.error('❌ [AppKit] Email shutdown error:', error.message);
+        console.error('❌ [@bloomneo/appkit/email] Email shutdown error:', error.message);
     }
 }
 /**
@@ -236,13 +236,13 @@ if (typeof process !== 'undefined') {
     process.on('SIGINT', shutdownHandler);
     // Handle uncaught errors
     process.on('uncaughtException', (error) => {
-        console.error('[AppKit] Uncaught exception during email operation:', error);
+        console.error('[@bloomneo/appkit/email] Uncaught exception during email operation:', error);
         shutdown().finally(() => {
             process.exit(1);
         });
     });
     process.on('unhandledRejection', (reason) => {
-        console.error('[AppKit] Unhandled rejection during email operation:', reason);
+        console.error('[@bloomneo/appkit/email] Unhandled rejection during email operation:', reason);
         shutdown().finally(() => {
             process.exit(1);
         });

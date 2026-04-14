@@ -13,6 +13,7 @@
 import fs from 'fs';
 import { PrismaAdapter } from './adapters/prisma.js';
 import { MongooseAdapter } from './adapters/mongoose.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
 // Global instances cache for performance
 const connections = new Map();
 let envWatcher = null;
@@ -31,7 +32,7 @@ function setupEnvWatcher() {
                 // Clear connection cache to use new URLs
                 connections.clear();
                 if (process.env.NODE_ENV === 'development') {
-                    console.log('🔄 [AppKit] .env file reloaded, connections reset');
+                    console.log('[@bloomneo/appkit/database] .env file reloaded, connections reset');
                 }
             }
         });
@@ -150,7 +151,7 @@ async function createClient(url, tenantId = null, orgId = null) {
         return client;
     }
     catch (error) {
-        throw new Error(`Failed to create database connection: ${error.message}`);
+        throw new Error(`[@bloomneo/appkit/database] Failed to create database connection: ${error.message}. See: ${DOCS_URL}#troubleshooting`);
     }
 }
 /**
@@ -168,7 +169,7 @@ class OrgDatabase {
         const tenantId = detectTenant(req);
         const url = getOrgUrl(this.orgId);
         if (!url) {
-            throw new Error(`No database URL found for organization '${this.orgId}'`);
+            throw new Error(`[@bloomneo/appkit/database] No database URL found for organization '${this.orgId}'. See: ${DOCS_URL}#environment-variables`);
         }
         return await createClient(url, tenantId, this.orgId);
     }
@@ -178,7 +179,7 @@ class OrgDatabase {
     async getTenants(req = null) {
         const url = getOrgUrl(this.orgId);
         if (!url) {
-            throw new Error(`No database URL found for organization '${this.orgId}'`);
+            throw new Error(`[@bloomneo/appkit/database] No database URL found for organization '${this.orgId}'. See: ${DOCS_URL}#environment-variables`);
         }
         // No tenant filtering - admin sees all data
         return await createClient(url, null, this.orgId);
@@ -202,7 +203,7 @@ export const databaseClass = {
         // Get appropriate URL
         const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
         if (!url) {
-            throw new Error('Database URL required. Set DATABASE_URL environment variable');
+            throw new Error(`[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`);
         }
         return await createClient(url, tenantId, orgId);
     },
@@ -216,7 +217,7 @@ export const databaseClass = {
         const orgId = detectOrg(req);
         const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
         if (!url) {
-            throw new Error('Database URL required. Set DATABASE_URL environment variable');
+            throw new Error(`[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`);
         }
         // No tenant filtering - admin sees all data
         return await createClient(url, null, orgId);
@@ -228,7 +229,7 @@ export const databaseClass = {
      */
     org(orgId) {
         if (!orgId || typeof orgId !== 'string') {
-            throw new Error('Organization ID is required and must be a string');
+            throw new Error(`[@bloomneo/appkit/database] Organization ID is required and must be a string. See: ${DOCS_URL}#organization-support`);
         }
         return new OrgDatabase(orgId);
     },
@@ -274,7 +275,7 @@ export const databaseClass = {
             return await this._getDistinctTenantIds(db);
         }
         catch (error) {
-            throw new Error(`Failed to list tenants: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/database] Failed to list tenants: ${error.message}. See: ${DOCS_URL}#troubleshooting`);
         }
     },
     /**
@@ -302,10 +303,10 @@ export const databaseClass = {
      */
     async create(tenantId, req = null) {
         if (!tenantId || typeof tenantId !== 'string') {
-            throw new Error('Tenant ID is required and must be a string');
+            throw new Error(`[@bloomneo/appkit/database] Tenant ID is required and must be a string. See: ${DOCS_URL}#tenant-mode`);
         }
         if (!/^[a-zA-Z0-9_-]+$/.test(tenantId)) {
-            throw new Error('Invalid tenant ID format. Use alphanumeric characters, underscores, and hyphens only');
+            throw new Error(`[@bloomneo/appkit/database] Invalid tenant ID format. Use alphanumeric characters, underscores, and hyphens only. See: ${DOCS_URL}#tenant-mode`);
         }
         // For row-level strategy, tenant creation is implicit
         // The tenant exists when first record with tenant_id is created
@@ -321,10 +322,10 @@ export const databaseClass = {
      */
     async delete(tenantId, options, req = null) {
         if (!tenantId) {
-            throw new Error('Tenant ID is required');
+            throw new Error(`[@bloomneo/appkit/database] Tenant ID is required. See: ${DOCS_URL}#tenant-mode`);
         }
         if (!options?.confirm) {
-            throw new Error('Tenant deletion requires explicit confirmation. Pass { confirm: true }');
+            throw new Error(`[@bloomneo/appkit/database] Tenant deletion requires explicit confirmation. Pass { confirm: true }. See: ${DOCS_URL}#tenant-mode`);
         }
         const db = await this.getTenants(req);
         await this._deleteAllTenantData(db, tenantId);
@@ -382,7 +383,7 @@ export const databaseClass = {
             return Array.from(tenantIds).sort();
         }
         catch (error) {
-            throw new Error(`Failed to get tenant IDs: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/database] Failed to get tenant IDs: ${error.message}. See: ${DOCS_URL}#troubleshooting`);
         }
     },
     /**
@@ -445,7 +446,7 @@ export const databaseClass = {
             }
         }
         catch (error) {
-            throw new Error(`Failed to delete tenant data: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/database] Failed to delete tenant data: ${error.message}. See: ${DOCS_URL}#troubleshooting`);
         }
     },
     /**

@@ -10,6 +10,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 /**
  * Local filesystem storage strategy with intelligent file management
  */
@@ -27,7 +28,7 @@ export class LocalStrategy {
     constructor(config) {
         this.config = config;
         if (!config.local) {
-            throw new Error('Local storage configuration missing');
+            throw new Error(`[@bloomneo/appkit/storage] Local storage configuration missing. See: ${DOCS_URL}#environment-variables`);
         }
         this.baseDir = path.resolve(config.local.dir);
         this.baseUrl = config.local.baseUrl;
@@ -36,7 +37,7 @@ export class LocalStrategy {
         // Ensure base directory exists on initialization
         this.ensureDirectoryExists(this.baseDir);
         if (this.config.environment.isDevelopment) {
-            console.log(`✅ [AppKit] Local storage initialized (dir: ${this.baseDir}, maxSize: ${Math.round(this.maxFileSize / 1048576)}MB)`);
+            console.log(`✅ [@bloomneo/appkit/storage] Local storage initialized (dir: ${this.baseDir}, maxSize: ${Math.round(this.maxFileSize / 1048576)}MB)`);
         }
     }
     /**
@@ -60,17 +61,17 @@ export class LocalStrategy {
                 catch (error) {
                     // Metadata setting is optional, don't fail the operation
                     if (this.config.environment.isDevelopment) {
-                        console.warn(`[AppKit] Could not set metadata for ${key}:`, error.message);
+                        console.warn(`[@bloomneo/appkit/storage] Could not set metadata for ${key}:`, error.message);
                     }
                 }
             }
             if (this.config.environment.isDevelopment) {
-                console.log(`📁 [AppKit] Local file stored: ${key} (${data.length} bytes)`);
+                console.log(`📁 [@bloomneo/appkit/storage] Local file stored: ${key} (${data.length} bytes)`);
             }
             return key;
         }
         catch (error) {
-            throw new Error(`Failed to store file locally: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] Failed to store file locally: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -83,17 +84,17 @@ export class LocalStrategy {
             const filePath = this.getFilePath(key);
             // Check if file exists before reading
             if (!existsSync(filePath)) {
-                throw new Error(`File not found: ${key}`);
+                throw new Error(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`);
             }
             // Read file from disk
             const data = await fs.readFile(filePath);
             if (this.config.environment.isDevelopment) {
-                console.log(`📁 [AppKit] Local file retrieved: ${key} (${data.length} bytes)`);
+                console.log(`📁 [@bloomneo/appkit/storage] Local file retrieved: ${key} (${data.length} bytes)`);
             }
             return data;
         }
         catch (error) {
-            throw new Error(`Failed to retrieve file locally: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] Failed to retrieve file locally: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -113,12 +114,12 @@ export class LocalStrategy {
             // Clean up empty directories
             await this.cleanupEmptyDirectories(path.dirname(filePath));
             if (this.config.environment.isDevelopment) {
-                console.log(`🗑️ [AppKit] Local file deleted: ${key}`);
+                console.log(`🗑️ [@bloomneo/appkit/storage] Local file deleted: ${key}`);
             }
             return true;
         }
         catch (error) {
-            console.error(`[AppKit] Local delete error for "${key}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] Local delete error for "${key}":`, error.message);
             return false;
         }
     }
@@ -139,12 +140,12 @@ export class LocalStrategy {
             // Sort by key for consistent ordering
             files.sort((a, b) => a.key.localeCompare(b.key));
             if (this.config.environment.isDevelopment) {
-                console.log(`📋 [AppKit] Local files listed: ${prefix}* (${files.length} files)`);
+                console.log(`📋 [@bloomneo/appkit/storage] Local files listed: ${prefix}* (${files.length} files)`);
             }
             return files;
         }
         catch (error) {
-            console.error(`[AppKit] Local list error for prefix "${prefix}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] Local list error for prefix "${prefix}":`, error.message);
             return [];
         }
     }
@@ -182,7 +183,7 @@ export class LocalStrategy {
      */
     async signedUrl(key, expiresIn = 3600) {
         // Local storage doesn't support signed URLs, return regular URL
-        console.warn('[AppKit] Signed URLs not supported with local storage, returning public URL');
+        console.warn('[@bloomneo/appkit/storage] Signed URLs not supported with local storage, returning public URL');
         return this.url(key);
     }
     /**
@@ -196,7 +197,7 @@ export class LocalStrategy {
             const destPath = this.getFilePath(destKey);
             // Check source exists
             if (!existsSync(sourcePath)) {
-                throw new Error(`Source file not found: ${sourceKey}`);
+                throw new Error(`[@bloomneo/appkit/storage] Source file not found: ${sourceKey}. See: ${DOCS_URL}#common-issues`);
             }
             // Ensure destination directory exists
             const destDir = path.dirname(destPath);
@@ -204,12 +205,12 @@ export class LocalStrategy {
             // Copy file
             await fs.copyFile(sourcePath, destPath);
             if (this.config.environment.isDevelopment) {
-                console.log(`📁 [AppKit] Local file copied: ${sourceKey} → ${destKey}`);
+                console.log(`📁 [@bloomneo/appkit/storage] Local file copied: ${sourceKey} → ${destKey}`);
             }
             return destKey;
         }
         catch (error) {
-            throw new Error(`Failed to copy file locally: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] Failed to copy file locally: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -221,7 +222,7 @@ export class LocalStrategy {
         // Local storage doesn't need explicit disconnection
         // Could implement cleanup of temp files here if needed
         if (this.config.environment.isDevelopment) {
-            console.log(`👋 [AppKit] Local storage strategy disconnected`);
+            console.log(`👋 [@bloomneo/appkit/storage] Local storage strategy disconnected`);
         }
     }
     // Private helper methods
@@ -243,7 +244,7 @@ export class LocalStrategy {
             }
         }
         catch (error) {
-            throw new Error(`Failed to create directory: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] Failed to create directory: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -278,7 +279,7 @@ export class LocalStrategy {
         catch (error) {
             // Directory access error, skip silently
             if (this.config.environment.isDevelopment) {
-                console.warn(`[AppKit] Error scanning directory ${dirPath}:`, error.message);
+                console.warn(`[@bloomneo/appkit/storage] Error scanning directory ${dirPath}:`, error.message);
             }
         }
     }
@@ -305,7 +306,7 @@ export class LocalStrategy {
         catch (error) {
             // Cleanup is optional, don't fail if it doesn't work
             if (this.config.environment.isDevelopment) {
-                console.warn(`[AppKit] Could not cleanup directory ${dirPath}:`, error.message);
+                console.warn(`[@bloomneo/appkit/storage] Could not cleanup directory ${dirPath}:`, error.message);
             }
         }
     }
@@ -324,7 +325,7 @@ export class LocalStrategy {
         }
         catch (error) {
             // Metadata is optional
-            throw new Error(`Failed to write metadata: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] Failed to write metadata: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**

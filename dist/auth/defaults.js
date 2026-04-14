@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Calling multiple times - expensive validation, use lazy loading in get()
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/auth/README.md';
 /**
  * Default role hierarchy with semantic level names and clear inheritance
  */
@@ -96,12 +97,7 @@ export function getSmartDefaults() {
             coreScopes: CORE_SCOPES,
             defaults: parseDefaultPermissions(),
         },
-        user: {
-            defaultRole: process.env.BLOOM_AUTH_DEFAULT_ROLE || 'user',
-            defaultLevel: process.env.BLOOM_AUTH_DEFAULT_LEVEL || 'basic',
-        },
         middleware: {
-            tokenSources: ['header', 'cookie', 'query'],
             errorMessages: {
                 noToken: 'Authentication required',
                 invalidToken: 'Invalid authentication. Please sign in again.',
@@ -133,14 +129,14 @@ function parseRoleHierarchy() {
     for (const rolePair of rolePairs) {
         const [roleLevel, levelStr] = rolePair.trim().split(':');
         if (!roleLevel || !levelStr) {
-            throw new Error(`Invalid BLOOM_AUTH_ROLES format: "${rolePair}". Expected format: "role.level:number"`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid BLOOM_AUTH_ROLES entry: "${rolePair}". Expected "role.level:number". See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         if (!validateRoleLevelFormat(roleLevel)) {
-            throw new Error(`Invalid role.level format: "${roleLevel}". Must be "role.level" (e.g., "admin.tenant")`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid role.level format: "${roleLevel}". Must be "role.level" (e.g., "admin.tenant"). See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         const level = parseInt(levelStr);
         if (isNaN(level) || level < 1) {
-            throw new Error(`Invalid level number: "${levelStr}". Must be a positive integer`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid level number: "${levelStr}". Must be a positive integer. See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         parsedRoles[roleLevel] = {
             level,
@@ -171,15 +167,15 @@ function parseDefaultPermissions() {
     for (const permissionPair of permissionPairs) {
         const parts = permissionPair.trim().split(':');
         if (parts.length !== 3) {
-            throw new Error(`Invalid BLOOM_AUTH_PERMISSIONS format: "${permissionPair}". Expected format: "role.level:action:scope"`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid BLOOM_AUTH_PERMISSIONS entry: "${permissionPair}". Expected "role.level:action:scope". See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         const [roleLevel, action, scope] = parts;
         const permission = `${action}:${scope}`;
         if (!validateRoleLevelFormat(roleLevel)) {
-            throw new Error(`Invalid role.level format: "${roleLevel}". Must be "role.level" (e.g., "admin.tenant")`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid role.level format: "${roleLevel}". Must be "role.level" (e.g., "admin.tenant"). See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         if (!validatePermissionFormat(permission)) {
-            throw new Error(`Invalid permission format: "${permission}". Must be "action:scope" (e.g., "manage:tenant")`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid permission format: "${permission}". Must be "action:scope" (e.g., "manage:tenant"). See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         if (!parsedPermissions[roleLevel]) {
             parsedPermissions[roleLevel] = [];
@@ -197,33 +193,13 @@ function parseDefaultPermissions() {
  */
 export function validateSecret(secret) {
     if (!secret || typeof secret !== 'string') {
-        console.error('\n🚨 ============================================');
-        console.error('❌ CRITICAL AUTH CONFIGURATION ERROR');
-        console.error('🚨 ============================================');
-        console.error('🔑 MISSING REQUIRED ENVIRONMENT VARIABLE: BLOOM_AUTH_SECRET');
-        console.error('🚨 ============================================\n');
-        throw new Error('BLOOM_AUTH_SECRET is required. Set environment variable: BLOOM_AUTH_SECRET=your-jwt-secret-key');
+        throw new Error(`[@bloomneo/appkit/auth] BLOOM_AUTH_SECRET is required. Set a 32+ character random string. See: ${DOCS_URL}#configuration`);
     }
     if (secret.length < 32) {
-        console.error('\n🚨 ============================================');
-        console.error('❌ AUTH SECRET TOO SHORT');
-        console.error('🚨 ============================================');
-        console.error(`🔑 Current length: ${secret.length} characters (minimum: 32)`);
-        console.error('🚨 ============================================\n');
-        throw new Error(`BLOOM_AUTH_SECRET must be at least 32 characters for security. Current length: ${secret.length}`);
+        throw new Error(`[@bloomneo/appkit/auth] BLOOM_AUTH_SECRET must be at least 32 characters (got ${secret.length}). See: ${DOCS_URL}#configuration`);
     }
     if (secret === 'your-jwt-secret-key' || secret === 'secret' || secret === 'supersecret') {
-        console.error('\n🚨 ============================================');
-        console.error('❌ INSECURE AUTH SECRET DETECTED');
-        console.error('🚨 ============================================');
-        console.error('🔑 BLOOM_AUTH_SECRET appears to be a default/example value');
-        console.error('⚠️  This is a security risk in production!');
-        console.error('');
-        console.error('💡 SOLUTION:');
-        console.error('   Generate a strong, random secret:');
-        console.error('   BLOOM_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
-        console.error('🚨 ============================================\n');
-        throw new Error('BLOOM_AUTH_SECRET appears to be a default/example value. Use a strong, random secret');
+        throw new Error(`[@bloomneo/appkit/auth] BLOOM_AUTH_SECRET looks like a default/example value. Use a strong random string. See: ${DOCS_URL}#configuration`);
     }
 }
 /**
@@ -233,10 +209,10 @@ export function validateSecret(secret) {
  */
 export function validateRounds(rounds) {
     if (rounds < 8) {
-        throw new Error('Bcrypt rounds must be at least 8 for security');
+        throw new Error(`[@bloomneo/appkit/auth] bcrypt rounds must be at least 8 for security. See: ${DOCS_URL}#configuration`);
     }
     if (rounds > 15) {
-        throw new Error('Bcrypt rounds should not exceed 15 for performance');
+        throw new Error(`[@bloomneo/appkit/auth] bcrypt rounds should not exceed 15 (too slow). See: ${DOCS_URL}#configuration`);
     }
 }
 /**
@@ -288,74 +264,45 @@ function validatePermissionFormat(permission) {
     return action.length > 0 && scope.length > 0;
 }
 /**
- * Enhanced environment validation with better error messages
+ * Validates env-only fields (format of BLOOM_AUTH_BCRYPT_ROUNDS / EXPIRES_IN /
+ * NODE_ENV). The JWT secret is validated later by validateAuthConfig() against
+ * the fully-merged config — this lets overrides supply jwt.secret when the env
+ * var is absent (tests, embedded usage).
  */
 function validateEnvironment() {
-    const secret = process.env.BLOOM_AUTH_SECRET;
-    // Enhanced validation with clear console logging and better error messages
-    if (!secret) {
-        console.error('\n🚨 ============================================');
-        console.error('❌ CRITICAL AUTH CONFIGURATION ERROR');
-        console.error('🚨 ============================================');
-        console.error('🔑 MISSING REQUIRED ENVIRONMENT VARIABLE: BLOOM_AUTH_SECRET');
-        console.error('');
-        console.error('💡 SOLUTION:');
-        console.error('   Add the following to your .env file:');
-        console.error('   BLOOM_AUTH_SECRET=your-secure-32-character-secret-key-here');
-        console.error('');
-        console.error('📋 REQUIREMENTS:');
-        console.error('   - Must be at least 32 characters long');
-        console.error('   - Should be a strong, random string');
-        console.error('   - Do not use default values like "secret" or "supersecret"');
-        console.error('');
-        console.error('🔧 EXAMPLE:');
-        console.error('   BLOOM_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
-        console.error('');
-        console.error('⚠️  Without this variable, authentication features will not work');
-        console.error('🚨 ============================================\n');
-        throw new Error('BLOOM_AUTH_SECRET is required. Set environment variable: BLOOM_AUTH_SECRET=your-jwt-secret-key');
-    }
-    if (secret.length < 32) {
-        console.error('\n🚨 ============================================');
-        console.error('❌ AUTH SECRET TOO SHORT');
-        console.error('🚨 ============================================');
-        console.error(`🔑 Current BLOOM_AUTH_SECRET length: ${secret.length} characters`);
-        console.error('⚠️  Minimum required: 32 characters');
-        console.error('');
-        console.error('💡 SOLUTION:');
-        console.error('   Generate a stronger secret with at least 32 characters');
-        console.error('');
-        console.error('🔧 EXAMPLE:');
-        console.error('   BLOOM_AUTH_SECRET=k8s9m2n4p7q1w3e5r8t0y2u4i6o9a1s5d7f9g2h4j6l8');
-        console.error('🚨 ============================================\n');
-        throw new Error(`BLOOM_AUTH_SECRET must be at least 32 characters for security. Current length: ${secret.length}`);
-    }
-    validateSecret(secret);
     const rounds = process.env.BLOOM_AUTH_BCRYPT_ROUNDS;
     if (rounds) {
         const roundsNum = parseInt(rounds);
         if (isNaN(roundsNum)) {
-            throw new Error(`Invalid BLOOM_AUTH_BCRYPT_ROUNDS: "${rounds}". Must be a number between 8 and 15`);
+            throw new Error(`[@bloomneo/appkit/auth] Invalid BLOOM_AUTH_BCRYPT_ROUNDS: "${rounds}". Must be a number between 8 and 15. See: ${DOCS_URL}#configuration`);
         }
         validateRounds(roundsNum);
     }
     const expiresIn = process.env.BLOOM_AUTH_EXPIRES_IN;
     if (expiresIn && !isValidTimespan(expiresIn)) {
-        throw new Error(`Invalid BLOOM_AUTH_EXPIRES_IN: "${expiresIn}". Must be a valid time span (e.g., '7d', '1h', '30m')`);
-    }
-    const defaultRole = process.env.BLOOM_AUTH_DEFAULT_ROLE;
-    const defaultLevel = process.env.BLOOM_AUTH_DEFAULT_LEVEL;
-    if (defaultRole && defaultLevel) {
-        const roleLevel = `${defaultRole}.${defaultLevel}`;
-        const roles = parseRoleHierarchy();
-        if (!validateRoleLevel(roleLevel, roles)) {
-            const validRoles = Object.keys(roles).join(', ');
-            throw new Error(`Invalid BLOOM_AUTH_DEFAULT_ROLE.LEVEL: "${roleLevel}". Must be one of: ${validRoles}`);
-        }
+        throw new Error(`[@bloomneo/appkit/auth] Invalid BLOOM_AUTH_EXPIRES_IN: "${expiresIn}". Must be a valid time span (e.g. '7d', '1h', '30m'). See: ${DOCS_URL}#configuration`);
     }
     const nodeEnv = process.env.NODE_ENV;
     if (nodeEnv && !['development', 'production', 'test'].includes(nodeEnv)) {
-        console.warn(`Unusual NODE_ENV: "${nodeEnv}". Expected: development, production, or test`);
+        console.warn(`[@bloomneo/appkit/auth] Unusual NODE_ENV: "${nodeEnv}". Expected: development, production, or test.`);
+    }
+}
+/**
+ * Validates a fully-merged AuthConfig (defaults + overrides).
+ * @llm-rule WHEN: After merging user overrides into smart defaults
+ * @llm-rule AVOID: Skipping this — overrides bypass env validation otherwise
+ */
+export function validateAuthConfig(config) {
+    if (!config?.jwt?.secret) {
+        throw new Error(`[@bloomneo/appkit/auth] JWT secret required. Set BLOOM_AUTH_SECRET or pass jwt.secret in overrides. See: ${DOCS_URL}#configuration`);
+    }
+    validateSecret(config.jwt.secret);
+    if (typeof config.password?.saltRounds !== 'number' || isNaN(config.password.saltRounds)) {
+        throw new Error(`[@bloomneo/appkit/auth] password.saltRounds must be a number between 8 and 15. See: ${DOCS_URL}#configuration`);
+    }
+    validateRounds(config.password.saltRounds);
+    if (config.jwt.expiresIn && !isValidTimespan(config.jwt.expiresIn)) {
+        throw new Error(`[@bloomneo/appkit/auth] Invalid jwt.expiresIn: "${config.jwt.expiresIn}". Must be a valid time span (e.g. '7d', '1h', '30m'). See: ${DOCS_URL}#configuration`);
     }
 }
 /**

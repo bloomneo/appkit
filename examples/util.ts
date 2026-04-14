@@ -1,47 +1,68 @@
 /**
- * CANONICAL PATTERN — small zero-dependency utility helpers.
+ * examples/util.ts
  *
- * Copy this file when you need any of the util methods. These are the
- * common Node.js helpers that get reinvented in every project — appkit
- * ships them once with consistent semantics.
+ * Runnable tour of the @bloomneo/appkit/util module.
  *
- * Public methods: get, isEmpty, slugify, chunk, debounce, pick,
- *                 unique, clamp, formatBytes, truncate, sleep, uuid
+ * 12 small, well-tested utilities:
+ *   get, isEmpty, slugify, chunk, debounce, pick,
+ *   unique, clamp, formatBytes, truncate, sleep, uuid
+ *
+ * Run: tsx examples/util.ts
  */
 
-import { utilClass } from '@bloomneo/appkit';
+import { utilClass } from '../src/util/index.js';
 
-const util = utilClass.get();
+async function main() {
+  const util = utilClass.get();
 
-// ── Safe deep property access (read-only) ───────────────────────────
-const obj = { a: { b: { c: 42 } } };
-const value = util.get(obj, 'a.b.c', 0);              // → 42
-const missing = util.get(obj, 'a.b.x.y', 'default');  // → 'default' (safe)
-// Note: there is no util.set() — use plain assignment for mutation.
+  // 1. Safe nested reads.
+  const user = { profile: { name: { first: 'Ada' } } };
+  console.log(util.get(user, 'profile.name.first'));            // 'Ada'
+  console.log(util.get(user, 'profile.name.middle', '—'));      // '—'
 
-// ── Subset ──────────────────────────────────────────────────────────
-const user = { id: 1, email: 'a@b', password: 'secret', role: 'admin' };
-const minimal = util.pick(user, ['id', 'email']);     // → { id, email }
-// Note: there is no util.omit() — use util.pick() with the keys you want to keep.
+  // 2. Empty check — handles null, '', [], {}, Map, Set.
+  console.log('isEmpty("")   =', util.isEmpty(''));
+  console.log('isEmpty({x:1})=', util.isEmpty({ x: 1 }));
 
-// ── Array helpers ───────────────────────────────────────────────────
-const items = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-const batches = util.chunk(items, 3);                 // → [[1,2,3], [4,5,6], [7,8,9]]
-const deduped = util.unique([1, 2, 2, 3, 3]);         // → [1, 2, 3]
+  // 3. URL-safe slugs.
+  console.log(util.slugify('Hello, World! — 2026'));             // 'hello-world-2026'
 
-// ── Function helpers ────────────────────────────────────────────────
-const debouncedSearch = util.debounce((q: string) => {
-  // ...api call
-}, 300);
-// Note: there is no util.throttle() — use util.debounce() for rate-limiting calls.
+  // 4. Chunk an array.
+  console.log(util.chunk([1, 2, 3, 4, 5], 2));                   // [[1,2],[3,4],[5]]
 
-// ── Misc ────────────────────────────────────────────────────────────
-const id = util.uuid();                               // → 'a1b2c3d4-...'
-const slug = util.slugify('My Awesome Post!');        // → 'my-awesome-post'
-const size = util.formatBytes(1_572_864);             // → '1.5 MB'
-const clamped = util.clamp(150, 0, 100);              // → 100
-const short = util.truncate('A very long string', { length: 10 }); // → 'A very lon...'
+  // 5. Debounce — classic input-handler smoothing.
+  const save = util.debounce((v: string) => console.log('saved:', v), 100);
+  save('a'); save('ab'); save('abc');                            // only 'abc' fires
+  await util.sleep(150);
 
-await util.sleep(100);                                // → wait 100ms
+  // 6. Pick a subset of keys.
+  console.log(util.pick({ id: 1, name: 'x', secret: 's' }, ['id', 'name']));
 
-export { value, missing, minimal, batches, deduped, id, slug, size, clamped, short };
+  // 7. Unique (deep for primitives, reference for objects).
+  console.log(util.unique([1, 1, 2, 3, 3]));                     // [1,2,3]
+
+  // 8. Clamp.
+  console.log(util.clamp(42, 0, 10));                            // 10
+
+  // 9. formatBytes — human-readable sizes.
+  console.log(util.formatBytes(1536));                           // '1.5 KB'
+
+  // 10. truncate — the options object is required.
+  console.log(util.truncate('A long sentence that needs trimming.', { length: 20 }));
+
+  // 11. sleep — simple async delay.
+  const t0 = Date.now();
+  await util.sleep(25);
+  console.log('slept ms ≈', Date.now() - t0);
+
+  // 12. uuid.
+  console.log('uuid =', util.uuid());
+
+  // Debug.
+  console.log('status =', utilClass.getStatus());
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

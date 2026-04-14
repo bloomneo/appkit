@@ -51,7 +51,7 @@ export class LoggerClass {
                 this.transports.set('file', new FileTransport(this.config));
             }
             catch (error) {
-                console.error('File transport initialization failed:', error.message);
+                console.error('[@bloomneo/appkit/logger] File transport initialization failed:', error.message);
             }
         }
         if (transports.database && this.config.database.url) {
@@ -59,7 +59,7 @@ export class LoggerClass {
                 this.transports.set('database', new DatabaseTransport(this.config));
             }
             catch (error) {
-                console.error('Database transport initialization failed:', error.message);
+                console.error('[@bloomneo/appkit/logger] Database transport initialization failed:', error.message);
             }
         }
         if (transports.http && this.config.http.url) {
@@ -67,7 +67,7 @@ export class LoggerClass {
                 this.transports.set('http', new HttpTransport(this.config));
             }
             catch (error) {
-                console.error('HTTP transport initialization failed:', error.message);
+                console.error('[@bloomneo/appkit/logger] HTTP transport initialization failed:', error.message);
             }
         }
         if (transports.webhook && this.config.webhook.url) {
@@ -75,11 +75,11 @@ export class LoggerClass {
                 this.transports.set('webhook', new WebhookTransport(this.config));
             }
             catch (error) {
-                console.error('Webhook transport initialization failed:', error.message);
+                console.error('[@bloomneo/appkit/logger] Webhook transport initialization failed:', error.message);
             }
         }
         if (this.transports.size === 0) {
-            console.warn('No transports initialized, falling back to console');
+            console.warn('[@bloomneo/appkit/logger] No transports initialized, falling back to console');
             this.transports.set('console', new ConsoleTransport(this.config));
         }
     }
@@ -712,12 +712,12 @@ export class LoggerClass {
                 const result = transport.write(entry);
                 if (result && typeof result.then === 'function') {
                     writePromises.push(result.catch((error) => {
-                        console.error(`Transport ${name} write failed:`, error.message);
+                        console.error(`[@bloomneo/appkit/logger] Transport ${name} write failed:`, error.message);
                     }));
                 }
             }
             catch (error) {
-                console.error(`Transport ${name} write error:`, error.message);
+                console.error(`[@bloomneo/appkit/logger] Transport ${name} write error:`, error.message);
             }
         }
         this.pendingWrites = writePromises;
@@ -747,12 +747,12 @@ export class LoggerClass {
                     const result = transport.flush();
                     if (result) {
                         flushPromises.push(result.catch((error) => {
-                            console.error(`Transport ${name} flush failed:`, error.message);
+                            console.error(`[@bloomneo/appkit/logger] Transport ${name} flush failed:`, error.message);
                         }));
                     }
                 }
                 catch (error) {
-                    console.error(`Transport ${name} flush error:`, error.message);
+                    console.error(`[@bloomneo/appkit/logger] Transport ${name} flush error:`, error.message);
                 }
             }
         }
@@ -774,12 +774,12 @@ export class LoggerClass {
                     const result = transport.close();
                     if (result) {
                         closePromises.push(result.catch((error) => {
-                            console.error(`Transport ${name} close failed:`, error.message);
+                            console.error(`[@bloomneo/appkit/logger] Transport ${name} close failed:`, error.message);
                         }));
                     }
                 }
                 catch (error) {
-                    console.error(`Transport ${name} close error:`, error.message);
+                    console.error(`[@bloomneo/appkit/logger] Transport ${name} close error:`, error.message);
                 }
             }
         }

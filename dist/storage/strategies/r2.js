@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Manual R2 setup - this handles connection, CDN integration, and S3-compatible API
  * @llm-rule NOTE: Production-ready with zero egress fees, automatic CDN, S3-compatible operations
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 /**
  * Cloudflare R2 storage strategy with cost optimization and CDN integration
  */
@@ -26,7 +27,7 @@ export class R2Strategy {
     constructor(config) {
         this.config = config;
         if (!config.r2) {
-            throw new Error('R2 storage configuration missing');
+            throw new Error(`[@bloomneo/appkit/storage] R2 storage configuration missing. See: ${DOCS_URL}#environment-variables`);
         }
         this.bucket = config.r2.bucket;
         this.accountId = config.r2.accountId;
@@ -63,16 +64,16 @@ export class R2Strategy {
             await this.testConnection();
             this.connected = true;
             if (this.config.environment.isDevelopment) {
-                console.log(`✅ [AppKit] R2 storage connected (account: ${this.accountId}, bucket: ${this.bucket})`);
+                console.log(`✅ [@bloomneo/appkit/storage] R2 storage connected (account: ${this.accountId}, bucket: ${this.bucket})`);
                 if (this.cdnUrl) {
-                    console.log(`🚀 [AppKit] R2 CDN enabled: ${this.cdnUrl}`);
+                    console.log(`🚀 [@bloomneo/appkit/storage] R2 CDN enabled: ${this.cdnUrl}`);
                 }
             }
         }
         catch (error) {
             this.connected = false;
             this.r2Client = null;
-            throw new Error(`R2 storage connection failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] R2 storage connection failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -85,10 +86,10 @@ export class R2Strategy {
         }
         catch (error) {
             if (error.name === 'NotFound') {
-                throw new Error(`R2 bucket not found: ${this.bucket}`);
+                throw new Error(`[@bloomneo/appkit/storage] R2 bucket not found: ${this.bucket}. See: ${DOCS_URL}#common-issues`);
             }
             if (error.name === 'Forbidden') {
-                throw new Error(`R2 bucket access denied: ${this.bucket}. Check API token permissions.`);
+                throw new Error(`[@bloomneo/appkit/storage] R2 bucket access denied: ${this.bucket}. Check API token permissions. See: ${DOCS_URL}#common-issues`);
             }
             throw error;
         }
@@ -100,7 +101,7 @@ export class R2Strategy {
      */
     async put(key, data, options) {
         if (!this.connected || !this.r2Client) {
-            throw new Error('R2 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] R2 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { PutObjectCommand } = await import('@aws-sdk/client-s3');
@@ -128,12 +129,12 @@ export class R2Strategy {
             // Execute upload to R2
             await this.r2Client.send(new PutObjectCommand(params));
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] R2 file uploaded: ${key} (${data.length} bytes, zero egress cost)`);
+                console.log(`☁️ [@bloomneo/appkit/storage] R2 file uploaded: ${key} (${data.length} bytes, zero egress cost)`);
             }
             return key;
         }
         catch (error) {
-            throw new Error(`R2 upload failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] R2 upload failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -143,7 +144,7 @@ export class R2Strategy {
      */
     async get(key) {
         if (!this.connected || !this.r2Client) {
-            throw new Error('R2 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] R2 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { GetObjectCommand } = await import('@aws-sdk/client-s3');
@@ -153,20 +154,20 @@ export class R2Strategy {
             };
             const result = await this.r2Client.send(new GetObjectCommand(params));
             if (!result.Body) {
-                throw new Error(`R2 object has no body: ${key}`);
+                throw new Error(`[@bloomneo/appkit/storage] R2 object has no body: ${key}. See: ${DOCS_URL}#common-issues`);
             }
             // Convert stream to buffer
             const buffer = await this.streamToBuffer(result.Body);
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] R2 file downloaded: ${key} (${buffer.length} bytes, zero egress cost)`);
+                console.log(`☁️ [@bloomneo/appkit/storage] R2 file downloaded: ${key} (${buffer.length} bytes, zero egress cost)`);
             }
             return buffer;
         }
         catch (error) {
             if (error.name === 'NoSuchKey') {
-                throw new Error(`File not found: ${key}`);
+                throw new Error(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`);
             }
-            throw new Error(`R2 download failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] R2 download failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -176,7 +177,7 @@ export class R2Strategy {
      */
     async delete(key) {
         if (!this.connected || !this.r2Client) {
-            console.error('R2 storage not connected');
+            console.error(`[@bloomneo/appkit/storage] R2 storage not connected. See: ${DOCS_URL}#common-issues`);
             return false;
         }
         try {
@@ -187,12 +188,12 @@ export class R2Strategy {
             };
             await this.r2Client.send(new DeleteObjectCommand(params));
             if (this.config.environment.isDevelopment) {
-                console.log(`🗑️ [AppKit] R2 file deleted: ${key}`);
+                console.log(`🗑️ [@bloomneo/appkit/storage] R2 file deleted: ${key}`);
             }
             return true;
         }
         catch (error) {
-            console.error(`[AppKit] R2 delete error for "${key}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] R2 delete error for "${key}":`, error.message);
             return false;
         }
     }
@@ -203,7 +204,7 @@ export class R2Strategy {
      */
     async list(prefix = '') {
         if (!this.connected || !this.r2Client) {
-            throw new Error('R2 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] R2 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { ListObjectsV2Command } = await import('@aws-sdk/client-s3');
@@ -230,12 +231,12 @@ export class R2Strategy {
                 }
             }
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] R2 files listed: ${prefix}* (${files.length} files)`);
+                console.log(`☁️ [@bloomneo/appkit/storage] R2 files listed: ${prefix}* (${files.length} files)`);
             }
             return files;
         }
         catch (error) {
-            console.error(`[AppKit] R2 list error for prefix "${prefix}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] R2 list error for prefix "${prefix}":`, error.message);
             return [];
         }
     }
@@ -269,7 +270,7 @@ export class R2Strategy {
      */
     async signedUrl(key, expiresIn = 3600) {
         if (!this.connected || !this.r2Client) {
-            throw new Error('R2 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] R2 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { GetObjectCommand } = await import('@aws-sdk/client-s3');
@@ -282,12 +283,12 @@ export class R2Strategy {
                 expiresIn,
             });
             if (this.config.environment.isDevelopment) {
-                console.log(`🔐 [AppKit] R2 signed URL generated: ${key} (expires in ${expiresIn}s)`);
+                console.log(`🔐 [@bloomneo/appkit/storage] R2 signed URL generated: ${key} (expires in ${expiresIn}s)`);
             }
             return signedUrl;
         }
         catch (error) {
-            throw new Error(`R2 signed URL generation failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] R2 signed URL generation failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -312,7 +313,7 @@ export class R2Strategy {
             if (error.name === 'NotFound' || error.name === 'NoSuchKey') {
                 return false;
             }
-            console.error(`[AppKit] R2 exists check error for "${key}":`, error.message);
+            console.error(`[@bloomneo/appkit/storage] R2 exists check error for "${key}":`, error.message);
             return false;
         }
     }
@@ -323,7 +324,7 @@ export class R2Strategy {
      */
     async copy(sourceKey, destKey) {
         if (!this.connected || !this.r2Client) {
-            throw new Error('R2 storage not connected');
+            throw new Error(`[@bloomneo/appkit/storage] R2 storage not connected. See: ${DOCS_URL}#common-issues`);
         }
         try {
             const { CopyObjectCommand } = await import('@aws-sdk/client-s3');
@@ -334,12 +335,12 @@ export class R2Strategy {
             };
             await this.r2Client.send(new CopyObjectCommand(params));
             if (this.config.environment.isDevelopment) {
-                console.log(`☁️ [AppKit] R2 file copied: ${sourceKey} → ${destKey} (zero egress cost)`);
+                console.log(`☁️ [@bloomneo/appkit/storage] R2 file copied: ${sourceKey} → ${destKey} (zero egress cost)`);
             }
             return destKey;
         }
         catch (error) {
-            throw new Error(`R2 copy failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/storage] R2 copy failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
     }
     /**
@@ -355,11 +356,11 @@ export class R2Strategy {
             this.connected = false;
             this.r2Client = null;
             if (this.config.environment.isDevelopment) {
-                console.log(`👋 [AppKit] R2 storage strategy disconnected`);
+                console.log(`👋 [@bloomneo/appkit/storage] R2 storage strategy disconnected`);
             }
         }
         catch (error) {
-            console.error(`[AppKit] R2 disconnect error:`, error.message);
+            console.error(`[@bloomneo/appkit/storage] R2 disconnect error:`, error.message);
         }
     }
     // Private helper methods

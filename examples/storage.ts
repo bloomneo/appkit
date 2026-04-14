@@ -1,44 +1,70 @@
 /**
- * CANONICAL PATTERN — file upload + retrieval with auto-scaling backend.
+ * examples/storage.ts
  *
- * Copy this file when you need to store files. The same code works against
- * local disk (default), AWS S3 (set AWS_S3_BUCKET), or Cloudflare R2
- * (set R2_BUCKET). No code changes needed — just .env.
+ * Runnable tour of the @bloomneo/appkit/storage module.
+ *
+ * Strategy auto-selection:
+ *   • AWS_S3_BUCKET set    → S3
+ *   • R2_BUCKET set        → Cloudflare R2 (S3-compatible)
+ *   • neither              → Local disk
+ *
+ * Run: tsx examples/storage.ts
  */
 
-import { storageClass, errorClass, securityClass } from '@bloomneo/appkit';
-import type { Request, Response } from 'express';
+import { storageClass } from '../src/storage/index.js';
 
-const storage = storageClass.get();
-const error = errorClass.get();
-const security = securityClass.get();
+async function main() {
+  // 1. Optional startup validation (warns about local-in-production, etc.).
+  storageClass.validateConfig();
 
-// ── Upload (with rate limit + filename sanitization) ────────────────
-export const uploadRoute = [
-  security.requests(10, 60_000),  // max 10 uploads per minute per IP
-  error.asyncRoute(async (req: Request & { file: any }, res: Response) => {
-    if (!req.file) throw error.badRequest('File required (use multer middleware)');
+  const storage = storageClass.get();
 
-    // Sanitize the filename so a malicious user can't write to ../../../etc/...
-    const safeName = security.input(req.file.originalname);
-    const key = `uploads/${Date.now()}-${safeName}`;
+  // 2. put / get / url.
+  const key = await storage.put('uploads/hello.txt', 'hello world', {
+    contentType: 'text/plain',
+    cacheControl: 'public, max-age=60',
+    metadata: { uploadedBy: 'examples/storage.ts' },
+  });
+  const bytes = await storage.get(key);
+  console.log('round-trip bytes =', bytes.length);
+  console.log('public url        =', storage.url(key));
 
-    await storage.put(key, req.file.buffer, {
-      contentType: req.file.mimetype,
-    });
+  // 3. Signed URL for private content (expires in 5 minutes).
+  const signed = await storage.signedUrl(key, 300);
+  console.log('signed url        =', signed.slice(0, 64), '…');
 
-    res.json({
-      key,
-      url: storage.url(key),  // public URL (or signed URL for private buckets)
-    });
-  }),
-];
+  // 4. exists, copy, list, delete.
+  console.log('exists =', await storage.exists(key));
+  const copyKey = await storage.copy(key, 'uploads/hello-copy.txt');
+  const listed = await storage.list('uploads/', 50);
+  console.log('listed =', listed.map(f => f.key));
+  await storage.delete(key);
+  await storage.delete(copyKey);
 
-// ── Download (signed URL — works with private S3 buckets) ───────────
-export const downloadRoute = error.asyncRoute(async (req, res) => {
-  const key = req.params.key;
-  if (!(await storage.exists(key))) throw error.notFound('File not found');
+  // 5. Convenience upload — auto-generates a key under `folder`.
+  const uploaded = await storageClass.upload(Buffer.from('PDF DATA'), {
+    folder: 'invoices/2026',
+    filename: 'invoice-1001.pdf',
+    contentType: 'application/pdf',
+  });
+  console.log('upload result =', uploaded);
 
-  const signedUrl = await storage.signedUrl(key, 3600);  // valid for 1 hour
-  res.json({ url: signedUrl });
+  // 6. Convenience download — infers contentType from extension.
+  const dl = await storageClass.download(uploaded.key);
+  console.log('download contentType =', dl.contentType, 'bytes:', dl.data.length);
+  await storage.delete(uploaded.key);
+
+  // 7. Debug.
+  console.log('strategy       =', storageClass.getStrategy());
+  console.log('hasCloudStorage=', storageClass.hasCloudStorage());
+  console.log('isLocal        =', storageClass.isLocal());
+  console.log('stats          =', storageClass.getStats());
+
+  // 8. Teardown.
+  await storageClass.clear();
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });

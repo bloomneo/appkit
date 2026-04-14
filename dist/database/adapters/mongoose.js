@@ -10,6 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createDatabaseError } from '../defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
 /**
  * Simplified Mongoose adapter with Bloomneo app discovery
  */
@@ -26,7 +27,7 @@ export class MongooseAdapter {
         this.mongoose = null;
         this.isDevelopment = process.env.NODE_ENV === 'development';
         if (this.isDevelopment) {
-            console.log('⚡ [AppKit] Mongoose adapter initialized with app discovery');
+            console.log('⚡ [@bloomneo/appkit/database] Mongoose adapter initialized with app discovery');
         }
     }
     /**
@@ -38,7 +39,7 @@ export class MongooseAdapter {
                 this.mongoose = (await import('mongoose')).default;
             }
             catch (error) {
-                throw createDatabaseError('Mongoose not found. Install with: npm install mongoose', 500);
+                throw createDatabaseError('Mongoose not found. Install with: npm install mongoose', 500, null, 'installation');
             }
         }
         const { url, maxPoolSize = 10, timeout = 10000, connectionOptions = {} } = config;
@@ -65,11 +66,11 @@ export class MongooseAdapter {
                 connection._url = url;
                 this.connections.set(clientKey, connection);
                 if (this.isDevelopment) {
-                    console.log(`✅ [AppKit] Created Mongoose connection for app: ${appName}`);
+                    console.log(`✅ [@bloomneo/appkit/database] Created Mongoose connection for app: ${appName}`);
                 }
             }
             catch (error) {
-                throw createDatabaseError(`Failed to create Mongoose connection for app '${appName}': ${error.message}`, 500);
+                throw createDatabaseError(`Failed to create Mongoose connection for app '${appName}': ${error.message}`, 500, null, 'troubleshooting');
             }
         }
         return this.connections.get(clientKey);
@@ -191,7 +192,7 @@ export class MongooseAdapter {
         const appsDir = this._findAppsDirectory();
         if (!appsDir) {
             if (this.isDevelopment) {
-                console.warn('⚠️  [AppKit] No /apps directory found, using single app mode');
+                console.warn('⚠️  [@bloomneo/appkit/database] No /apps directory found, using single app mode');
             }
             this.discoveredApps = [];
             return [];
@@ -222,23 +223,23 @@ export class MongooseAdapter {
                         modelsPath: path.resolve(modelsPath),
                     });
                     if (this.isDevelopment) {
-                        console.log(`✅ [AppKit] Found Mongoose models for app: ${appName}`);
+                        console.log(`✅ [@bloomneo/appkit/database] Found Mongoose models for app: ${appName}`);
                     }
                 }
                 else if (this.isDevelopment) {
-                    console.log(`⚠️  [AppKit] No Mongoose models found for app: ${appName}`);
+                    console.log(`⚠️  [@bloomneo/appkit/database] No Mongoose models found for app: ${appName}`);
                     console.log(`   Expected: ${possibleModelPaths.join(' or ')}`);
                 }
             }
             this.discoveredApps = apps;
         }
         catch (error) {
-            console.error('❌ [AppKit] Error discovering apps:', error.message);
+            console.error(`[@bloomneo/appkit/database] Error discovering apps: ${error.message}. See: ${DOCS_URL}#troubleshooting`);
             this.discoveredApps = [];
             return [];
         }
         if (this.isDevelopment) {
-            console.log(`🔍 [AppKit] Discovered ${apps.length} apps with Mongoose models`);
+            console.log(`🔍 [@bloomneo/appkit/database] Discovered ${apps.length} apps with Mongoose models`);
         }
         return apps;
     }
@@ -274,7 +275,7 @@ export class MongooseAdapter {
         }
         catch (error) {
             if (this.isDevelopment) {
-                console.debug('Failed to create tenant registry entry:', error.message);
+                console.debug(`[@bloomneo/appkit/database] Failed to create tenant registry entry: ${error.message}`);
             }
         }
     }
@@ -288,7 +289,7 @@ export class MongooseAdapter {
         }
         catch (error) {
             if (this.isDevelopment) {
-                console.debug('Failed to delete tenant registry entry:', error.message);
+                console.debug(`[@bloomneo/appkit/database] Failed to delete tenant registry entry: ${error.message}`);
             }
         }
     }
@@ -331,12 +332,12 @@ export class MongooseAdapter {
         for (const [key, connection] of this.connections) {
             disconnectPromises.push(connection
                 .close()
-                .catch((error) => console.warn(`Error disconnecting Mongoose connection ${key}:`, error.message)));
+                .catch((error) => console.warn(`[@bloomneo/appkit/database] Error disconnecting Mongoose connection "${key}": ${error.message}`)));
         }
         await Promise.all(disconnectPromises);
         this.connections.clear();
         if (this.isDevelopment) {
-            console.log('👋 [AppKit] Mongoose adapter disconnected');
+            console.log('👋 [@bloomneo/appkit/database] Mongoose adapter disconnected');
         }
     }
     // Private helper methods
@@ -370,7 +371,7 @@ export class MongooseAdapter {
         }
         catch (error) {
             if (this.isDevelopment) {
-                console.warn('Failed to detect current app:', error.message);
+                console.warn(`[@bloomneo/appkit/database] Failed to detect current app: ${error.message}`);
             }
             return 'main';
         }
@@ -425,17 +426,17 @@ export class MongooseAdapter {
                     }
                     catch (error) {
                         if (this.isDevelopment) {
-                            console.warn(`Failed to load model ${modelFile} for app ${appName}:`, error.message);
+                            console.warn(`[@bloomneo/appkit/database] Failed to load model ${modelFile} for app ${appName}: ${error.message}`);
                         }
                     }
                 }
                 if (this.isDevelopment) {
-                    console.log(`✅ [AppKit] Loaded ${modelFiles.length} models for app: ${appName}`);
+                    console.log(`✅ [@bloomneo/appkit/database] Loaded ${modelFiles.length} models for app: ${appName}`);
                 }
             }
             catch (error) {
                 if (this.isDevelopment) {
-                    console.warn(`Failed to load models for app ${appName}:`, error.message);
+                    console.warn(`[@bloomneo/appkit/database] Failed to load models for app ${appName}: ${error.message}`);
                 }
             }
         }
@@ -446,20 +447,20 @@ export class MongooseAdapter {
     _setupConnectionEvents(connection, url) {
         connection.on('connected', () => {
             if (this.isDevelopment) {
-                console.debug(`MongoDB connected: ${this._maskUrl(url)}`);
+                console.debug(`[@bloomneo/appkit/database] MongoDB connected: ${this._maskUrl(url)}`);
             }
         });
         connection.on('error', (error) => {
-            console.error(`MongoDB connection error: ${error.message}`);
+            console.error(`[@bloomneo/appkit/database] MongoDB connection error: ${error.message}`);
         });
         connection.on('disconnected', () => {
             if (this.isDevelopment) {
-                console.debug(`MongoDB disconnected: ${this._maskUrl(url)}`);
+                console.debug(`[@bloomneo/appkit/database] MongoDB disconnected: ${this._maskUrl(url)}`);
             }
         });
         connection.on('reconnected', () => {
             if (this.isDevelopment) {
-                console.debug(`MongoDB reconnected: ${this._maskUrl(url)}`);
+                console.debug(`[@bloomneo/appkit/database] MongoDB reconnected: ${this._maskUrl(url)}`);
             }
         });
     }

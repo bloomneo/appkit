@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Manual SMTP setup - this handles connection pooling, authentication, and reliability
  * @llm-rule NOTE: Universal email strategy that works with any SMTP server (Gmail, Outlook, etc.)
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 /**
  * SMTP email strategy with connection pooling and reliability features
  */
@@ -44,7 +45,7 @@ export class SmtpStrategy {
         catch (error) {
             const errorMessage = this.parseSmtpError(error);
             if (this.config.environment.isDevelopment) {
-                console.error(`[AppKit] SMTP error:`, errorMessage);
+                console.error(`[@bloomneo/appkit/email] SMTP error:`, errorMessage);
             }
             return {
                 success: false,
@@ -65,11 +66,11 @@ export class SmtpStrategy {
             this.connected = false;
             this.transporter = null;
             if (this.config.environment.isDevelopment) {
-                console.log(`👋 [AppKit] SMTP disconnected`);
+                console.log(`👋 [@bloomneo/appkit/email] SMTP disconnected`);
             }
         }
         catch (error) {
-            console.error(`⚠️ [AppKit] SMTP disconnect error:`, error.message);
+            console.error(`⚠️ [@bloomneo/appkit/email] SMTP disconnect error:`, error.message);
         }
     }
     // Private helper methods
@@ -108,13 +109,13 @@ export class SmtpStrategy {
             await this.transporter.verify();
             this.connected = true;
             if (this.config.environment.isDevelopment) {
-                console.log(`✅ [AppKit] SMTP connected to ${smtpConfig.host}:${smtpConfig.port}`);
+                console.log(`✅ [@bloomneo/appkit/email] SMTP connected to ${smtpConfig.host}:${smtpConfig.port}`);
             }
         }
         catch (error) {
             this.connected = false;
             this.transporter = null;
-            throw new Error(`SMTP connection failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/email] SMTP connection failed: ${error.message}. See: ${DOCS_URL}#smtp-universal`);
         }
     }
     /**

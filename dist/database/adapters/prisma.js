@@ -10,6 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createDatabaseError } from '../defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
 /**
  * Simplified Prisma adapter with Bloomneo app discovery
  */
@@ -24,7 +25,7 @@ export class PrismaAdapter {
         this.discoveredApps = null;
         this.isDevelopment = process.env.NODE_ENV === 'development';
         if (this.isDevelopment) {
-            console.log('⚡ [AppKit] Prisma adapter initialized with app discovery');
+            console.log('⚡ [@bloomneo/appkit/database] Prisma adapter initialized with app discovery');
         }
     }
     /**
@@ -40,9 +41,8 @@ export class PrismaAdapter {
                 const PrismaClient = await this._loadPrismaClientForApp(appName);
                 // Use original URL directly (don't resolve) to match working direct Prisma client
                 if (this.isDevelopment) {
-                    console.log('🔍 [AppKit DB Debug] Using original URL:', url);
+                    console.log(`[@bloomneo/appkit/database] Using URL: ${this._maskUrl(url)}`);
                 }
-                console.log('🔍 [AppKit DB Debug] Masked URL:', url);
                 // Use the exact same config as the working direct Prisma client
                 const client = new PrismaClient({
                     datasources: {
@@ -58,11 +58,11 @@ export class PrismaAdapter {
                 client._url = url;
                 this.clients.set(clientKey, client);
                 if (this.isDevelopment) {
-                    console.log(`✅ [AppKit] Created Prisma client for app: ${appName}`);
+                    console.log(`✅ [@bloomneo/appkit/database] Created Prisma client for app: ${appName}`);
                 }
             }
             catch (error) {
-                throw createDatabaseError(`Failed to create Prisma client for app '${appName}': ${error.message}`, 500);
+                throw createDatabaseError(`Failed to create Prisma client for app '${appName}': ${error.message}`, 500, null, 'troubleshooting');
             }
         }
         return this.clients.get(clientKey);
@@ -158,7 +158,7 @@ export class PrismaAdapter {
         const appsDir = this._findAppsDirectory();
         if (!appsDir) {
             if (this.isDevelopment) {
-                console.warn('⚠️  [AppKit] No /apps directory found, using single app mode');
+                console.warn('⚠️  [@bloomneo/appkit/database] No /apps directory found, using single app mode');
             }
             this.discoveredApps = [];
             return [];
@@ -178,11 +178,11 @@ export class PrismaAdapter {
                         clientPath: path.resolve(clientPath),
                     });
                     if (this.isDevelopment) {
-                        console.log(`✅ [AppKit] Found Prisma client for app: ${appName}`);
+                        console.log(`✅ [@bloomneo/appkit/database] Found Prisma client for app: ${appName}`);
                     }
                 }
                 else if (this.isDevelopment) {
-                    console.log(`⚠️  [AppKit] No Prisma client found for app: ${appName}`);
+                    console.log(`⚠️  [@bloomneo/appkit/database] No Prisma client found for app: ${appName}`);
                     console.log(`   Expected: ${clientPath}`);
                     console.log(`   Run: cd apps/${appName} && npx prisma generate`);
                 }
@@ -190,12 +190,12 @@ export class PrismaAdapter {
             this.discoveredApps = apps;
         }
         catch (error) {
-            console.error('❌ [AppKit] Error discovering apps:', error.message);
+            console.error(`[@bloomneo/appkit/database] Error discovering apps: ${error.message}. See: ${DOCS_URL}#troubleshooting`);
             this.discoveredApps = [];
             return [];
         }
         if (this.isDevelopment) {
-            console.log(`🔍 [AppKit] Discovered ${apps.length} apps with Prisma clients`);
+            console.log(`🔍 [@bloomneo/appkit/database] Discovered ${apps.length} apps with Prisma clients`);
         }
         return apps;
     }
@@ -238,7 +238,7 @@ export class PrismaAdapter {
         }
         catch (error) {
             if (this.isDevelopment) {
-                console.debug('Failed to create tenant registry entry:', error.message);
+                console.debug(`[@bloomneo/appkit/database] Failed to create tenant registry entry: ${error.message}`);
             }
         }
     }
@@ -256,7 +256,7 @@ export class PrismaAdapter {
         }
         catch (error) {
             if (this.isDevelopment) {
-                console.debug('Failed to delete tenant registry entry:', error.message);
+                console.debug(`[@bloomneo/appkit/database] Failed to delete tenant registry entry: ${error.message}`);
             }
         }
     }
@@ -305,12 +305,12 @@ export class PrismaAdapter {
         for (const [key, client] of this.clients) {
             disconnectPromises.push(client
                 .$disconnect()
-                .catch((error) => console.warn(`Error disconnecting Prisma client ${key}:`, error.message)));
+                .catch((error) => console.warn(`[@bloomneo/appkit/database] Error disconnecting Prisma client "${key}": ${error.message}`)));
         }
         await Promise.all(disconnectPromises);
         this.clients.clear();
         if (this.isDevelopment) {
-            console.log('👋 [AppKit] Prisma adapter disconnected');
+            console.log('👋 [@bloomneo/appkit/database] Prisma adapter disconnected');
         }
     }
     // Private helper methods
@@ -344,7 +344,7 @@ export class PrismaAdapter {
         }
         catch (error) {
             if (this.isDevelopment) {
-                console.warn('Failed to detect current app:', error.message);
+                console.warn(`[@bloomneo/appkit/database] Failed to detect current app: ${error.message}`);
             }
             return 'main';
         }
@@ -390,7 +390,7 @@ export class PrismaAdapter {
             }
             catch (error) {
                 if (this.isDevelopment) {
-                    console.warn(`Failed to load client for ${appName}:`, error.message);
+                    console.warn(`[@bloomneo/appkit/database] Failed to load client for ${appName}: ${error.message}`);
                 }
             }
         }
@@ -407,7 +407,7 @@ export class PrismaAdapter {
                 const module = await import(clientPath);
                 if (module.PrismaClient) {
                     if (this.isDevelopment) {
-                        console.log(`✅ [AppKit] Found Prisma client at - ${clientPath}`);
+                        console.log(`✅ [@bloomneo/appkit/database] Found Prisma client at - ${clientPath}`);
                     }
                     return module.PrismaClient;
                 }
@@ -416,12 +416,12 @@ export class PrismaAdapter {
                 }
             }
             catch (error) {
-                console.log(`❌ [AppKit] Failed to load Prisma client at: ${clientPath}`);
+                console.log(`❌ [@bloomneo/appkit/database] Failed to load Prisma client at: ${clientPath}`);
                 continue;
             }
         }
         throw createDatabaseError(`Prisma client not found for app '${appName}'. ` +
-            `Run: cd apps/${appName} && npx prisma generate`, 500);
+            `Run: cd apps/${appName} && npx prisma generate`, 500, null, 'troubleshooting');
     }
     /**
      * Get tenant registry model (handles different naming conventions)
@@ -466,14 +466,14 @@ export class PrismaAdapter {
             if (fs.existsSync(fullPath)) {
                 const resolvedUrl = `file:${testPath}`;
                 if (this.isDevelopment) {
-                    console.log(`📂 [AppKit] Database found at: ${testPath}`);
+                    console.log(`📂 [@bloomneo/appkit/database] Database found at: ${testPath}`);
                 }
                 return resolvedUrl;
             }
         }
         // If no file found, return original URL (Prisma will create it)
         if (this.isDevelopment) {
-            console.log(`📂 [AppKit] Database will be created at: ${filePath}`);
+            console.log(`📂 [@bloomneo/appkit/database] Database will be created at: ${filePath}`);
         }
         return url;
     }

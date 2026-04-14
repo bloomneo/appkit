@@ -41,23 +41,4 @@ export interface CacheConfig {
  * @llm-rule NOTE: Auto-detects Redis vs Memory based on REDIS_URL environment variable
  */
 export declare function getSmartDefaults(): CacheConfig;
-/**
- * Gets cache configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging cache configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive connection details - this only shows safe info
- */
-export declare function getConfigSummary(): {
-    strategy: string;
-    keyPrefix: string;
-    namespace: string;
-    defaultTTL: number;
-    redisConnected: boolean;
-    environment: string;
-};
-/**
- * Validates that required cache configuration is present for production
- * @llm-rule WHEN: App startup validation for production deployments
- * @llm-rule AVOID: Skipping validation - missing cache config causes runtime issues
- */
-export declare function validateProductionRequirements(): void;
 //# sourceMappingURL=defaults.d.ts.map

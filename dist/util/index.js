@@ -10,6 +10,7 @@
  */
 import { UtilClass } from './util.js';
 import { getSmartDefaults } from './defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/util/README.md';
 // Global utility instance for performance
 let globalUtility = null;
 /**
@@ -131,15 +132,15 @@ function validateConfig() {
         const config = getConfig();
         // Basic validation
         if (!config.version) {
-            throw new Error('Utility version is required');
+            throw new Error(`[@bloomneo/appkit/util] Utility version is required. See: ${DOCS_URL}#environment-variables`);
         }
         if (!config.environment.nodeEnv) {
-            throw new Error('NODE_ENV is required');
+            throw new Error(`[@bloomneo/appkit/util] NODE_ENV is required. See: ${DOCS_URL}#environment-variables`);
         }
-        console.log('✅ Utility configuration validation passed');
+        console.log('[@bloomneo/appkit/util] Utility configuration validation passed');
     }
     catch (error) {
-        console.error('❌ Utility configuration validation failed:', error.message);
+        console.error(`[@bloomneo/appkit/util] Utility configuration validation failed:`, error.message);
         throw error;
     }
 }

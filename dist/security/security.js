@@ -202,7 +202,7 @@ export class SecurityClass {
                 result = result.replace(tagPattern, '');
             }
             catch (error) {
-                console.warn('HTML sanitization: Invalid allowed tags, stripping all tags');
+                console.warn('[@bloomneo/appkit/security] HTML sanitization: Invalid allowed tags, stripping all tags');
                 result = result.replace(/<[^>]*>/g, '');
             }
         }

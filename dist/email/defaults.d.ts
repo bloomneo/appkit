@@ -53,19 +53,6 @@ export interface EmailConfig {
  */
 export declare function getSmartDefaults(): EmailConfig;
 /**
- * Gets email configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging email configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive API keys or passwords - this only shows safe info
- */
-export declare function getConfigSummary(): {
-    strategy: string;
-    fromName: string;
-    fromEmail: string;
-    resendConfigured: boolean;
-    smtpConfigured: boolean;
-    environment: string;
-};
-/**
  * Validates that required email configuration is present for production
  * @llm-rule WHEN: App startup validation for production deployments
  * @llm-rule AVOID: Skipping validation - missing email config causes runtime issues

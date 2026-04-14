@@ -74,7 +74,7 @@ export class FileTransport {
             this.currentSize += size;
         }
         catch (error) {
-            console.error('File transport write error:', error.message);
+            console.error('[@bloomneo/appkit/logger] File transport write error:', error.message);
         }
     }
     /**
@@ -195,13 +195,13 @@ export class FileTransport {
                 return;
             }
             const timeout = setTimeout(() => {
-                console.warn('File write timed out after 5000ms');
+                console.warn('[@bloomneo/appkit/logger] File write timed out after 5000ms');
                 resolve();
             }, 5000);
             this.stream.write(line, (error) => {
                 clearTimeout(timeout);
                 if (error) {
-                    console.error('Error writing to log file:', error.message);
+                    console.error('[@bloomneo/appkit/logger] Error writing to log file:', error.message);
                     this.stream = null;
                 }
                 resolve();
@@ -259,7 +259,7 @@ export class FileTransport {
             await fs.promises.rename(currentFilepath, `${currentFilepath}.${rotation}`);
         }
         catch (error) {
-            console.error('Error during file rotation:', error.message);
+            console.error('[@bloomneo/appkit/logger] Error during file rotation:', error.message);
         }
         this.currentSize = 0;
         this.createStream();
@@ -287,12 +287,12 @@ export class FileTransport {
             // Create new write stream
             this.stream = fs.createWriteStream(filepath, { flags: 'a' });
             this.stream.on('error', (error) => {
-                console.error('Log file write error:', error.message);
+                console.error('[@bloomneo/appkit/logger] Log file write error:', error.message);
                 this.stream = null;
             });
         }
         catch (error) {
-            console.error('Error creating write stream:', error.message);
+            console.error('[@bloomneo/appkit/logger] Error creating write stream:', error.message);
             this.stream = null;
         }
     }
@@ -308,12 +308,12 @@ export class FileTransport {
                 return;
             }
             const timeout = setTimeout(() => {
-                console.warn('Stream close timed out after 5000ms');
+                console.warn('[@bloomneo/appkit/logger] Stream close timed out after 5000ms');
                 this.stream = null;
                 resolve();
             }, 5000);
             this.stream.on('error', (error) => {
-                console.error('Stream error during close:', error.message);
+                console.error('[@bloomneo/appkit/logger] Stream error during close:', error.message);
                 clearTimeout(timeout);
                 this.stream = null;
                 resolve();
@@ -357,7 +357,7 @@ export class FileTransport {
             }
         }
         catch (error) {
-            console.error('Error creating log directory:', error.message);
+            console.error('[@bloomneo/appkit/logger] Error creating log directory:', error.message);
         }
     }
     /**
@@ -396,16 +396,16 @@ export class FileTransport {
                     const stats = await fs.promises.stat(filepath);
                     if (now - stats.mtimeMs > maxAge) {
                         await fs.promises.unlink(filepath);
-                        console.log(`Deleted old log file: ${file}`);
+                        console.log(`[@bloomneo/appkit/logger] Deleted old log file: ${file}`);
                     }
                 }
                 catch (error) {
-                    console.error(`Error processing log file ${file}:`, error.message);
+                    console.error(`[@bloomneo/appkit/logger] Error processing log file ${file}:`, error.message);
                 }
             }
         }
         catch (error) {
-            console.error('Error cleaning old logs:', error.message);
+            console.error('[@bloomneo/appkit/logger] Error cleaning old logs:', error.message);
         }
     }
     /**
@@ -435,7 +435,7 @@ export class FileTransport {
                 return;
             }
             const timeout = setTimeout(() => {
-                console.warn('File flush timed out after 5000ms');
+                console.warn('[@bloomneo/appkit/logger] File flush timed out after 5000ms');
                 resolve();
             }, 5000);
             this.stream.once('drain', () => {

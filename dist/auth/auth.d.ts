@@ -1,14 +1,28 @@
 /**
  * Core authentication class with role-level-permission system
  * @module @bloomneo/appkit/auth
- * @file src/auth/authentication.ts
+ * @file src/auth/auth.ts
  *
  * @llm-rule WHEN: Building apps that need JWT operations, password hashing, and role-based middleware
- * @llm-rule AVOID: Using directly - always get instance via auth.get()
+ * @llm-rule AVOID: Constructing AuthenticationClass directly — always get the instance via authClass.get()
  * @llm-rule NOTE: Use requireUserRoles() for hierarchy-based access, requireUserPermissions() for action-specific access
  * @llm-rule NOTE: Uses role.level format (user.basic, admin.tenant) with automatic inheritance
  */
 import { type AuthConfig } from './defaults.js';
+/**
+ * Typed error thrown by verifyToken() for all JWT failure modes.
+ *
+ * Middleware checks `error.code` to decide which user-facing message to
+ * render. Using a typed error (instead of matching `error.message`) means
+ * we can safely prefix / reword messages without breaking middleware.
+ *
+ * @llm-rule WHEN: Catching verifyToken() failures to branch on failure type
+ * @llm-rule AVOID: Comparing error.message strings — use error.code instead
+ */
+export declare class TokenError extends Error {
+    readonly code: 'expired' | 'not_before' | 'invalid' | 'malformed';
+    constructor(code: TokenError['code'], message: string);
+}
 export interface JwtPayload {
     userId?: string | number;
     keyId?: string;
@@ -114,8 +128,10 @@ export declare class AuthenticationClass {
      * @llm-rule AVOID: Accessing req.user directly - may be undefined and cause crashes
      * @llm-rule NOTE: Always returns null for unauthenticated requests - safe to use
      * @llm-rule NOTE: Works with both login authentication (req.user) and API tokens (req.token)
+     * @llm-rule NOTE: Previously named user(). Renamed to getUser() pre-v1 per NAMING.md
+     *                 (no bare-noun methods). There is no user() alias.
      */
-    user(request: ExpressRequest): JwtPayload | null;
+    getUser(request: ExpressRequest): JwtPayload | null;
     /**
      * Checks if user has specified role with automatic inheritance
      * @llm-rule WHEN: Checking if user can access role-protected resources
@@ -151,12 +167,14 @@ export declare class AuthenticationClass {
      * @llm-rule AVOID: Hardcoding permission checks - this handles inheritance
      * @llm-rule NOTE: 'manage:scope' includes ALL other actions for that scope
      * @llm-rule NOTE: Explicit user.permissions REPLACES role defaults (not additive)
-     * @llm-rule NOTE: If user has 'manage:tenant' → can('edit:tenant') returns TRUE
-     * @llm-rule NOTE: If user has 'edit:tenant' → can('manage:tenant') returns FALSE
+     * @llm-rule NOTE: If user has 'manage:tenant' → hasPermission('edit:tenant') returns TRUE
+     * @llm-rule NOTE: If user has 'edit:tenant' → hasPermission('manage:tenant') returns FALSE
      * @llm-rule NOTE: To downgrade a user, pass permissions: [] (empty array)
      * @llm-rule NOTE: Actions hierarchy: manage > delete > edit > create > view
+     * @llm-rule NOTE: Previously named can(). Renamed to hasPermission() pre-v1 per
+     *                 NAMING.md (has/is/can are boolean prefixes, not bare verbs).
      */
-    can(user: JwtPayload, permission: string): boolean;
+    hasPermission(user: JwtPayload, permission: string): boolean;
     /**
      * Creates Express authentication middleware for login tokens
      * @llm-rule WHEN: Protecting routes that need authenticated users

@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Manual env parsing or complex config files - this handles it automatically
  * @llm-rule NOTE: Uses UPPER_SNAKE_CASE convention (DATABASE_HOST → config.get('database.host'))
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/config/README.md';
 export class ConfigClass {
     _config;
     /**
@@ -19,12 +20,6 @@ export class ConfigClass {
         // Make the config object deeply immutable for safety
         this._config = Object.freeze(this.deepFreeze(structuredClone(initialConfig)));
     }
-    /**
-     * Gets a specific configuration value using dot notation
-     * @llm-rule WHEN: Accessing any config value from environment variables
-     * @llm-rule AVOID: Accessing process.env directly - use this for type safety and defaults
-     * @llm-rule NOTE: Returns typed values (strings, numbers, booleans) automatically
-     */
     get(path, defaultValue) {
         if (typeof path !== 'string' || !path) {
             return defaultValue;
@@ -44,7 +39,6 @@ export class ConfigClass {
     /**
      * Checks if a configuration path exists
      * @llm-rule WHEN: Need to conditionally enable features based on config presence
-     * @llm-rule AVOID: Using get() !== undefined - this is more explicit and readable
      */
     has(path) {
         return this.get(path) !== undefined;
@@ -66,8 +60,7 @@ export class ConfigClass {
     getRequired(path) {
         const value = this.get(path);
         if (value === undefined) {
-            throw new Error(`Missing required configuration: "${path}". ` +
-                `Set environment variable: ${this.pathToEnvVar(path)}`);
+            throw new Error(`[@bloomneo/appkit/config] Missing required configuration: "${path}". Set environment variable: ${this.pathToEnvVar(path)}. See: ${DOCS_URL}#startup-validation`);
         }
         return value;
     }

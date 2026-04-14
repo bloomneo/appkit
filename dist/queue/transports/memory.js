@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Production use - jobs lost on restart, no persistence
  * @llm-rule NOTE: Perfect for development and testing - fast, simple, no external dependencies
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 /**
  * In-memory transport for development and testing
  */
@@ -41,7 +42,7 @@ export class MemoryTransport {
     async add(id, jobType, data, options) {
         // Check memory limits
         if (this.jobs.size >= this.config.memory.maxJobs) {
-            throw new Error(`Memory queue full (${this.config.memory.maxJobs} jobs)`);
+            throw new Error(`[@bloomneo/appkit/queue] Memory queue full (${this.config.memory.maxJobs} jobs). See: ${DOCS_URL}#memory-transport`);
         }
         const job = {
             id,
@@ -72,7 +73,7 @@ export class MemoryTransport {
     async schedule(id, jobType, data, delay) {
         // Check memory limits
         if (this.jobs.size >= this.config.memory.maxJobs) {
-            throw new Error(`Memory queue full (${this.config.memory.maxJobs} jobs)`);
+            throw new Error(`[@bloomneo/appkit/queue] Memory queue full (${this.config.memory.maxJobs} jobs). See: ${DOCS_URL}#memory-transport`);
         }
         const job = {
             id,
@@ -156,10 +157,10 @@ export class MemoryTransport {
     async retry(jobId) {
         const job = this.jobs.get(jobId);
         if (!job) {
-            throw new Error(`Job ${jobId} not found`);
+            throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
         }
         if (job.status !== 'failed') {
-            throw new Error(`Job ${jobId} is not in failed state`);
+            throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} is not in failed state. See: ${DOCS_URL}#managing-jobs`);
         }
         // Reset for retry
         job.status = 'waiting';
@@ -176,10 +177,10 @@ export class MemoryTransport {
     async remove(jobId) {
         const job = this.jobs.get(jobId);
         if (!job) {
-            throw new Error(`Job ${jobId} not found`);
+            throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
         }
         if (job.status === 'active') {
-            throw new Error(`Cannot remove active job ${jobId}`);
+            throw new Error(`[@bloomneo/appkit/queue] Cannot remove active job ${jobId}. See: ${DOCS_URL}#managing-jobs`);
         }
         this.jobs.delete(jobId);
     }
@@ -270,7 +271,7 @@ export class MemoryTransport {
             await this.processWaitingJobs();
         }
         catch (error) {
-            console.error('Memory transport processing error:', error.message);
+            console.error('[@bloomneo/appkit/queue] Memory transport processing error:', error.message);
         }
         // Schedule next processing cycle
         this.processingLoop = setTimeout(() => this.processJobs(), 1000);
@@ -308,7 +309,7 @@ export class MemoryTransport {
         const toProcess = waitingJobs.slice(0, concurrency - currentActive);
         for (const job of toProcess) {
             this.processJob(job).catch(error => {
-                console.error(`Error processing job ${job.id}:`, error);
+                console.error(`[@bloomneo/appkit/queue] Error processing job ${job.id}:`, error);
             });
         }
     }
@@ -379,7 +380,7 @@ export class MemoryTransport {
     setupCleanup() {
         this.cleanupTimer = setInterval(() => {
             this.performCleanup().catch(error => {
-                console.error('Memory transport cleanup error:', error);
+                console.error('[@bloomneo/appkit/queue] Memory transport cleanup error:', error);
             });
         }, this.config.memory.cleanupInterval);
     }

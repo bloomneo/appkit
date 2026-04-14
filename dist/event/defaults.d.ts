@@ -47,18 +47,6 @@ export interface EventConfig {
  */
 export declare function getSmartDefaults(): EventConfig;
 /**
- * Gets event configuration summary for debugging and health checks
- * @llm-rule WHEN: Debugging event configuration or building health check endpoints
- * @llm-rule AVOID: Exposing sensitive connection details - this only shows safe info
- */
-export declare function getConfigSummary(): {
-    strategy: string;
-    namespace: string;
-    historyEnabled: boolean;
-    redisConnected: boolean;
-    environment: string;
-};
-/**
  * Validates that required event configuration is present for production
  * @llm-rule WHEN: App startup validation for production deployments
  * @llm-rule AVOID: Skipping validation - missing event config causes runtime issues
@@ -90,22 +78,4 @@ export declare function performHealthCheck(): {
     ready: boolean;
     timestamp: string;
 };
-/**
- * Gets optimal event configuration for different environments
- * @llm-rule WHEN: Setting up environment-specific event behavior
- * @llm-rule AVOID: Manual environment handling - this provides optimal defaults
- */
-export declare function getEnvironmentOptimizedConfig(): EventConfig;
-/**
- * Checks if Redis is available and properly configured
- * @llm-rule WHEN: Conditional logic based on event capabilities
- * @llm-rule AVOID: Complex event detection - just use events normally, strategy handles it
- */
-export declare function hasRedis(): boolean;
-/**
- * Gets recommended configuration for microservices
- * @llm-rule WHEN: Setting up events for microservices architecture
- * @llm-rule AVOID: Default config for microservices - needs specific tuning
- */
-export declare function getMicroservicesConfig(): Partial<EventConfig>;
 //# sourceMappingURL=defaults.d.ts.map

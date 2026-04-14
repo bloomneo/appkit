@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Development without Redis server - use memory transport instead
  * @llm-rule NOTE: Persistent, distributed, high-performance with Redis data structures
  */
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 /**
  * Redis transport for production distributed queuing
  */
@@ -47,7 +48,7 @@ export class RedisTransport {
             }
         }
         catch (error) {
-            console.error('Redis transport initialization failed:', error.message);
+            console.error('[@bloomneo/appkit/queue] Redis transport initialization failed:', error.message);
         }
     }
     /**
@@ -57,7 +58,7 @@ export class RedisTransport {
      */
     async add(id, jobType, data, options) {
         if (!this.connected) {
-            throw new Error('Redis not connected');
+            throw new Error(`[@bloomneo/appkit/queue] Redis not connected. See: ${DOCS_URL}#redis-transport`);
         }
         const job = {
             id,
@@ -88,7 +89,7 @@ export class RedisTransport {
             await this.client.publish(this.getNotificationKey(jobType), id);
         }
         catch (error) {
-            throw new Error(`Failed to add job to Redis: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to add job to Redis: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -110,7 +111,7 @@ export class RedisTransport {
      */
     async schedule(id, jobType, data, delay) {
         if (!this.connected) {
-            throw new Error('Redis not connected');
+            throw new Error(`[@bloomneo/appkit/queue] Redis not connected. See: ${DOCS_URL}#redis-transport`);
         }
         const runAt = new Date(Date.now() + delay);
         const job = {
@@ -137,7 +138,7 @@ export class RedisTransport {
             await multi.exec();
         }
         catch (error) {
-            throw new Error(`Failed to schedule job in Redis: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to schedule job in Redis: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -179,7 +180,7 @@ export class RedisTransport {
      */
     async getStats(jobType) {
         if (!this.connected) {
-            throw new Error('Redis not connected');
+            throw new Error(`[@bloomneo/appkit/queue] Redis not connected. See: ${DOCS_URL}#redis-transport`);
         }
         try {
             const multi = this.client.multi();
@@ -210,7 +211,7 @@ export class RedisTransport {
             };
         }
         catch (error) {
-            throw new Error(`Failed to get Redis stats: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to get Redis stats: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -220,7 +221,7 @@ export class RedisTransport {
      */
     async getJobs(status, jobType, limit = 100) {
         if (!this.connected) {
-            throw new Error('Redis not connected');
+            throw new Error(`[@bloomneo/appkit/queue] Redis not connected. See: ${DOCS_URL}#redis-transport`);
         }
         try {
             const queueKey = jobType
@@ -242,7 +243,7 @@ export class RedisTransport {
             return jobs;
         }
         catch (error) {
-            throw new Error(`Failed to get Redis jobs: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to get Redis jobs: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -252,15 +253,15 @@ export class RedisTransport {
      */
     async retry(jobId) {
         if (!this.connected) {
-            throw new Error('Redis not connected');
+            throw new Error(`[@bloomneo/appkit/queue] Redis not connected. See: ${DOCS_URL}#redis-transport`);
         }
         try {
             const job = await this.getJobData(jobId);
             if (!job) {
-                throw new Error(`Job ${jobId} not found`);
+                throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
             }
             if (job.status !== 'failed') {
-                throw new Error(`Job ${jobId} is not in failed state`);
+                throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} is not in failed state. See: ${DOCS_URL}#managing-jobs`);
             }
             // Reset job for retry
             job.status = 'waiting';
@@ -279,7 +280,7 @@ export class RedisTransport {
             await this.client.publish(this.getNotificationKey(job.type), jobId);
         }
         catch (error) {
-            throw new Error(`Failed to retry Redis job: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to retry Redis job: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -289,15 +290,15 @@ export class RedisTransport {
      */
     async remove(jobId) {
         if (!this.connected) {
-            throw new Error('Redis not connected');
+            throw new Error(`[@bloomneo/appkit/queue] Redis not connected. See: ${DOCS_URL}#redis-transport`);
         }
         try {
             const job = await this.getJobData(jobId);
             if (!job) {
-                throw new Error(`Job ${jobId} not found`);
+                throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
             }
             if (job.status === 'active') {
-                throw new Error(`Cannot remove active job ${jobId}`);
+                throw new Error(`[@bloomneo/appkit/queue] Cannot remove active job ${jobId}. See: ${DOCS_URL}#managing-jobs`);
             }
             const multi = this.client.multi();
             // Remove job data
@@ -309,7 +310,7 @@ export class RedisTransport {
             await multi.exec();
         }
         catch (error) {
-            throw new Error(`Failed to remove Redis job: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to remove Redis job: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -319,7 +320,7 @@ export class RedisTransport {
      */
     async clean(status, grace = 24 * 60 * 60 * 1000) {
         if (!this.connected) {
-            throw new Error('Redis not connected');
+            throw new Error(`[@bloomneo/appkit/queue] Redis not connected. See: ${DOCS_URL}#redis-transport`);
         }
         try {
             const cutoff = Date.now() - grace;
@@ -339,7 +340,7 @@ export class RedisTransport {
             await multi.exec();
         }
         catch (error) {
-            throw new Error(`Failed to clean Redis jobs: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Failed to clean Redis jobs: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -395,7 +396,7 @@ export class RedisTransport {
             }
         }
         catch (error) {
-            console.error('Error closing Redis connections:', error.message);
+            console.error('[@bloomneo/appkit/queue] Error closing Redis connections:', error.message);
         }
         this.connected = false;
         this.handlers.clear();
@@ -426,11 +427,11 @@ export class RedisTransport {
             await this.client.ping();
             await this.subscriber.ping();
             this.connected = true;
-            console.log('Redis transport connected successfully');
+            console.log('[@bloomneo/appkit/queue] Redis transport connected successfully');
         }
         catch (error) {
             this.connected = false;
-            throw new Error(`Redis connection failed: ${error.message}`);
+            throw new Error(`[@bloomneo/appkit/queue] Redis connection failed: ${error.message}. See: ${DOCS_URL}#redis-transport`);
         }
     }
     /**
@@ -460,7 +461,7 @@ export class RedisTransport {
             await this.processWaitingJobs();
         }
         catch (error) {
-            console.error('Redis processing error:', error.message);
+            console.error('[@bloomneo/appkit/queue] Redis processing error:', error.message);
         }
         // Schedule next processing cycle
         this.processingLoop = setTimeout(() => this.processJobs(), 2000);
@@ -484,7 +485,7 @@ export class RedisTransport {
             }
         }
         catch (error) {
-            console.error('Error promoting delayed jobs:', error.message);
+            console.error('[@bloomneo/appkit/queue] Error promoting delayed jobs:', error.message);
         }
     }
     /**
@@ -535,13 +536,13 @@ export class RedisTransport {
                 const job = await this.getJobData(jobId);
                 if (job && job.status === 'waiting') {
                     this.processJob(job, handler).catch(error => {
-                        console.error(`Error processing Redis job ${jobId}:`, error);
+                        console.error(`[@bloomneo/appkit/queue] Error processing Redis job ${jobId}:`, error);
                     });
                 }
             }
         }
         catch (error) {
-            console.error(`Error processing job type ${jobType}:`, error.message);
+            console.error(`[@bloomneo/appkit/queue] Error processing job type ${jobType}:`, error.message);
         }
     }
     /**
@@ -660,7 +661,7 @@ export class RedisTransport {
                 await this.client.ping();
             }
             catch (error) {
-                console.error('Redis health check failed:', error.message);
+                console.error('[@bloomneo/appkit/queue] Redis health check failed:', error.message);
                 this.connected = false;
             }
         }, 30000);
@@ -677,7 +678,7 @@ export class RedisTransport {
                 await this.clean('failed', 24 * 60 * 60 * 1000);
             }
             catch (error) {
-                console.error('Redis cleanup error:', error.message);
+                console.error('[@bloomneo/appkit/queue] Redis cleanup error:', error.message);
             }
         }, 60 * 60 * 1000); // Every hour
     }
@@ -717,7 +718,7 @@ export class RedisTransport {
             return data ? JSON.parse(data) : null;
         }
         catch (error) {
-            console.error(`Error getting job data for ${jobId}:`, error.message);
+            console.error(`[@bloomneo/appkit/queue] Error getting job data for ${jobId}:`, error.message);
             return null;
         }
     }

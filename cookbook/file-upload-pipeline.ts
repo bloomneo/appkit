@@ -1,113 +1,97 @@
 /**
- * COOKBOOK RECIPE — File upload → background processing pipeline.
+ * COOKBOOK — Authenticated file upload → background processing pipeline.
  *
- * Demonstrates the producer-consumer pattern: upload route stores the file
- * and enqueues a job, a worker process picks up the job and processes the
- * file in the background. Same code works against local disk + memory queue
- * (dev) or S3 + Redis queue (production).
+ * Modules:    auth + security + storage + queue + event + error + logger
+ * Required:   BLOOM_AUTH_SECRET
+ * Optional:   AWS_S3_BUCKET | R2_BUCKET (else local disk),
+ *             REDIS_URL (else in-process queue + events)
  *
- * Modules used: storage, queue, logger, security, error, auth
- * Required env: BLOOM_AUTH_SECRET
- * Optional env: AWS_S3_BUCKET (cloud storage), REDIS_URL (distributed queue)
- *
- * Note: this example uses multer-style req.file which means you need
- * `import multer from 'multer'` and `app.use(multer().single('file'))`
- * — multer is a peerDependency of @bloomneo/appkit.
+ * Flow:
+ *   1. POST /upload → rate-limit (security.requests) → auth required
+ *   2. storage.upload() persists the file and returns { key, url }.
+ *   3. queue.add('process-upload', …) enqueues a worker job.
+ *   4. Worker downloads, processes, and emits 'upload.processed'.
+ *   5. Consumers of events.on('upload.processed') react (notify, index, …).
  */
 
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import {
+  authClass,
+  securityClass,
   storageClass,
   queueClass,
-  loggerClass,
-  securityClass,
+  eventClass,
   errorClass,
-  authClass,
+  loggerClass,
 } from '@bloomneo/appkit';
 
-const storage = storageClass.get();
-const queue = queueClass.get();
-const logger = loggerClass.get('uploads');
+const auth     = authClass.get();
 const security = securityClass.get();
-const error = errorClass.get();
-const auth = authClass.get();
+const logger   = loggerClass.get('uploads');
+const events   = eventClass.get('uploads');
 
+// ── HTTP endpoint ───────────────────────────────────────────────────
 const router = Router();
 
-// ── PRODUCER: upload route ──────────────────────────────────────────
 router.post(
   '/upload',
+  security.requests(30, 60_000),                 // 30 req / min per client
   auth.requireLoginToken(),
-  security.requests(10, 60 * 1000),  // 10 uploads / minute / IP
-  error.asyncRoute(async (req: Request & { file?: any }, res: Response) => {
-    if (!req.file) throw error.badRequest('File required');
+  errorClass.asyncRoute(async (req, res) => {
+    const user = auth.getUser(req as any);
+    // Upstream middleware (e.g. multer) puts the file on req.file.
+    const file = (req as any).file;
+    if (!file?.buffer) throw errorClass.badRequest('file required');
+    if (file.size > 10 * 1024 * 1024) throw errorClass.badRequest('file too large (10MB max)');
 
-    // Sanitize filename
-    const safeName = security.input(req.file.originalname);
-    const key = `uploads/${Date.now()}-${safeName}`;
-
-    // Store the file (auto-detects local vs S3 from env)
-    await storage.put(key, req.file.buffer, {
-      contentType: req.file.mimetype,
+    const { key, url } = await storageClass.upload(file.buffer, {
+      folder: `uploads/${user?.userId ?? 'anon'}`,
+      filename: file.originalname,
+      contentType: file.mimetype,
     });
 
-    // Enqueue background processing
-    await queue.add('process-upload', {
-      key,
-      userId: auth.user(req)?.userId,
-      originalName: req.file.originalname,
-      mimeType: req.file.mimetype,
-      size: req.file.size,
-    }, {
-      attempts: 3,
-    });
+    const jobId = await queueClass.get().add(
+      'process-upload',
+      { key, userId: user?.userId, contentType: file.mimetype },
+      { attempts: 3, backoff: 'exponential', removeOnComplete: 100 },
+    );
 
-    logger.info('File uploaded, queued for processing', {
-      key,
-      userId: auth.user(req)?.userId,
-      size: req.file.size,
-    });
-
-    res.status(202).json({
-      key,
-      url: storage.url(key),
-      status: 'processing',
-    });
+    logger.info('upload accepted', { key, jobId, userId: user?.userId });
+    res.status(202).json({ key, url, jobId });
   }),
 );
 
-// ── CONSUMER: background worker (run in same process or separate worker) ──
-queue.process('process-upload', async (data) => {
-  const { key, userId, originalName } = data;
-  const workerLogger = loggerClass.get('upload-worker');
+export default router;
 
-  try {
-    workerLogger.info('Processing upload', { key, userId });
+// ── Worker ───────────────────────────────────────────────────────────
+// Run from your worker bootstrap (or the same process for dev):
+//   import './cookbook/file-upload-pipeline.js';  (side-effect registers handler)
 
-    // Fetch the file
-    const buffer = await storage.get(key);
+type UploadJob = { key: string; userId?: string; contentType?: string };
 
-    // ...do something with it (resize, OCR, virus scan, transcode, etc.)
-    // const processed = await processImage(buffer);
+queueClass.get().process<UploadJob>('process-upload', async ({ key, userId, contentType }) => {
+  const storage = storageClass.get();
 
-    // Store the processed result
-    const processedKey = key.replace(/(\.[^.]+)$/, '-processed$1');
-    await storage.put(processedKey, buffer);
+  // 1. Download the raw upload.
+  const bytes = await storage.get(key);
 
-    workerLogger.info('Upload processed', {
-      original: key,
-      processed: processedKey,
-      userId,
-    });
+  // 2. Do real work here (thumbnails, AV scan, OCR, …). Placeholder:
+  const processedKey = key.replace(/^uploads\//, 'processed/');
+  await storage.put(processedKey, bytes, { contentType, cacheControl: 'public, max-age=31536000' });
 
-    return { processedKey, originalName };
-  } catch (err) {
-    workerLogger.error('Upload processing failed', {
-      key,
-      error: (err as Error).message,
-    });
-    throw err;  // queue will retry per the attempts: 3 setting above
-  }
+  // 3. Notify everyone listening — in-process or across Redis.
+  await events.emit('upload.processed', {
+    originalKey: key,
+    processedKey,
+    userId,
+    url: storage.url(processedKey),
+  });
+
+  logger.info('upload processed', { originalKey: key, processedKey });
 });
 
-export default router;
+// ── Downstream consumer (example) ───────────────────────────────────
+events.on('upload.processed', async (payload: any) => {
+  logger.info('downstream consumer saw upload.processed', payload);
+  // e.g. send email via emailClass, invalidate cache, write an audit record…
+});

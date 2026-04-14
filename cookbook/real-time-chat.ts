@@ -1,121 +1,113 @@
 /**
- * COOKBOOK RECIPE — Real-time chat with pub/sub events.
+ * COOKBOOK — Real-time chat fan-out with presence.
  *
- * Demonstrates the eventClass pattern for real-time features. Same code
- * works in single-process mode (memory backend) or distributed mode
- * (Redis pub/sub when REDIS_URL is set).
+ * Modules:    auth + event + cache + error + logger
+ * Required:   BLOOM_AUTH_SECRET
+ * Optional:   REDIS_URL (enables cross-process fan-out; required in multi-worker prod)
  *
- * Pair with a WebSocket library (Socket.IO, ws, etc.) for the actual
- * client transport. This file shows the bloomneo backend half — the
- * WebSocket layer just calls events.emit() / events.on() under the hood.
+ * Transport selection:
+ *   • With REDIS_URL, every Node process that subscribes to 'chat:*' sees
+ *     every emit across the cluster. Without it, fan-out is in-process only.
  *
- * Modules used: event, auth, database, error
- * Required env: BLOOM_AUTH_SECRET, DATABASE_URL
- * Optional env: REDIS_URL (for cross-process event distribution)
+ * Pattern:
+ *   • One event namespace per chat room ('chat-<roomId>') keeps keyspaces clean.
+ *   • Presence cached with a short TTL; each client refresh extends it.
+ *   • WebSocket wiring is intentionally abstract — plug in ws / socket.io.
  */
 
+import { randomUUID } from 'crypto';
 import {
-  eventClass,
   authClass,
-  databaseClass,
+  eventClass,
+  cacheClass,
   errorClass,
+  loggerClass,
 } from '@bloomneo/appkit';
 
-// Namespaced events: 'chat' isolates these events from other event streams
-// in the same app.
-const events = eventClass.get('chat');
-const auth = authClass.get();
-const database = await databaseClass.get();
-const error = errorClass.get();
+const auth   = authClass.get();
+const logger = loggerClass.get('chat');
 
-// ── EVENT HANDLERS (subscribe at startup) ───────────────────────────
+// Presence TTL — clients must "ping" within this window to stay online.
+const PRESENCE_TTL_SECONDS = 30;
 
-// User connects (called from your WebSocket onConnection handler)
-events.on('user.connected', async (data: { userId: number; socketId: string }) => {
-  const { userId, socketId } = data;
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  userId: string;
+  text: string;
+  at: string; // ISO timestamp
+}
 
-  // Look up the user's rooms from the database
-  const memberships = await database.roomMember.findMany({
-    where: { userId },
-    select: { roomId: true },
-  });
+function roomEvents(roomId: string) {
+  // Namespace is alphanumeric + `_-` only; sanitize the id.
+  const safe = roomId.replace(/[^a-zA-Z0-9_-]/g, '-');
+  return eventClass.get(`chat-${safe}`);
+}
 
-  // Tell the WebSocket layer to join this socket to its rooms
-  await events.emit('socket.join-rooms', {
-    socketId,
-    rooms: [
-      `user:${userId}`,
-      ...memberships.map((m) => `room:${m.roomId}`),
-    ],
-  });
-});
+function presenceCache() {
+  return cacheClass.get('chat-presence');
+}
 
-// User sends a message
-events.on('message.send', async (data: {
-  userId: number;
-  roomId: number;
-  content: string;
-}) => {
-  // Persist the message
-  const message = await database.message.create({
-    data: {
-      content: data.content,
-      userId: data.userId,
-      roomId: data.roomId,
-    },
-    include: { user: { select: { id: true, name: true, avatar: true } } },
-  });
+// ── Server-side API used by your WebSocket layer ────────────────────
 
-  // Broadcast to everyone in the room
-  await events.emit('message.broadcast', {
-    roomId: data.roomId,
-    message: {
-      id: message.id,
-      content: message.content,
-      user: message.user,
-      timestamp: message.createdAt.toISOString(),
-    },
-  });
-});
+/** Authenticate a socket by validating the bearer token they sent. */
+export function verifySocket(token: string) {
+  try {
+    return auth.verifyToken(token);
+  } catch {
+    throw errorClass.unauthorized('Invalid chat token');
+  }
+}
 
-// Wildcard subscriber for analytics / logging
-events.on('*', async (eventName: string, data: any) => {
-  // Log every chat event for analytics
-  // (in production, send to a queue instead of logging inline)
-  console.log(`[chat] ${eventName}`, JSON.stringify(data));
-});
+/** Subscribe a socket to a room. Returns an unsubscribe function. */
+export function joinRoom(
+  roomId: string,
+  userId: string,
+  deliver: (msg: ChatMessage) => void,
+) {
+  const events = roomEvents(roomId);
 
-// ── REST API: send message via HTTP (alternative to WebSocket) ──────
-import { Router } from 'express';
-const router = Router();
+  const handler = (payload: ChatMessage) => deliver(payload);
+  events.on('message', handler);
 
-router.post(
-  '/rooms/:roomId/messages',
-  auth.requireLoginToken(),
-  error.asyncRoute(async (req, res) => {
-    const u = auth.user(req);
-    if (!u) throw error.unauthorized();
+  presenceCache().set(`${roomId}:${userId}`, Date.now(), PRESENCE_TTL_SECONDS)
+    .catch((err) => logger.warn('presence set failed', { err: err.message }));
 
-    const roomId = Number(req.params.roomId);
-    const { content } = req.body;
-    if (!content) throw error.badRequest('content required');
+  logger.info('room joined', { roomId, userId });
 
-    // Verify membership
-    const membership = await database.roomMember.findFirst({
-      where: { userId: u.userId, roomId },
-    });
-    if (!membership) throw error.forbidden('Not a member of this room');
+  return () => events.off('message', handler);
+}
 
-    // Emit the event — WebSocket layer + persistence both happen via the
-    // events.on('message.send') handler above.
-    await events.emit('message.send', {
-      userId: u.userId,
-      roomId,
-      content,
-    });
+/** Heartbeat — extends presence. Call on every client ping. */
+export async function heartbeat(roomId: string, userId: string) {
+  await presenceCache().set(`${roomId}:${userId}`, Date.now(), PRESENCE_TTL_SECONDS);
+}
 
-    res.status(202).json({ queued: true });
-  }),
-);
+/** Publish a chat message to every subscriber of the room. */
+export async function postMessage(roomId: string, userId: string, text: string) {
+  if (!text?.trim()) throw errorClass.badRequest('text required');
+  if (text.length > 2000) throw errorClass.badRequest('text too long');
 
-export default router;
+  const msg: ChatMessage = {
+    id: randomUUID(),
+    roomId,
+    userId,
+    text,
+    at: new Date().toISOString(),
+  };
+  await roomEvents(roomId).emit('message', msg);
+  logger.debug('message posted', { roomId, userId, id: msg.id });
+  return msg;
+}
+
+/** Replay the last N messages (best-effort — transport may cap history). */
+export async function recent(roomId: string, limit = 50) {
+  const history = await roomEvents(roomId).history('message', limit);
+  return history.map(h => h.data as ChatMessage);
+}
+
+/** Graceful shutdown — call from SIGTERM handler in worker processes. */
+export async function shutdownChat() {
+  await eventClass.shutdown();
+  await cacheClass.disconnectAll();
+}

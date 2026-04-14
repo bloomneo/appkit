@@ -53,7 +53,7 @@ export class ConsoleStrategy {
             };
         }
         catch (error) {
-            console.error(`❌ [AppKit] Console email error:`, error.message);
+            console.error(`❌ [@bloomneo/appkit/email] Console email error:`, error.message);
             return {
                 success: false,
                 error: error.message,

@@ -1,14 +1,19 @@
 /**
- * COOKBOOK RECIPE — Multi-tenant SaaS with auto-filtering and per-tenant cache.
+ * COOKBOOK — Multi-tenant SaaS request pipeline.
  *
- * Demonstrates the unique bloomneo multi-tenant pattern: every database
- * query is automatically filtered by the current user's tenant_id, and
- * the cache namespace is derived from the tenant id so cache entries
- * never leak between tenants.
+ * Modules:    auth + database + cache + error + logger
+ * Required:   BLOOM_AUTH_SECRET, DATABASE_URL, BLOOM_DB_TENANT=auto
+ * Optional:   REDIS_URL, ORG_<NAME>=... per-org URLs
  *
- * Modules used: auth, database, cache, security, error
- * Required env: BLOOM_AUTH_SECRET, DATABASE_URL, BLOOM_DB_TENANT=auto
- * Optional env: REDIS_URL (for distributed cache)
+ * How databaseClass detects tenant/org from the request:
+ *   org:    x-org-id header → req.user.org_id → req.params.orgId → ?org=
+ *   tenant: x-tenant-id header → req.user.tenant_id → req.params.tenantId → ?tenant=
+ *
+ * databaseClass.get(req) applies row-level filtering automatically when
+ * BLOOM_DB_TENANT is set. databaseClass.getTenants(req) skips the filter
+ * (admin view).
+ *
+ * Caches are namespaced per (orgId|tenantId) so keys never cross tenants.
  */
 
 import { Router } from 'express';
@@ -16,71 +21,90 @@ import {
   authClass,
   databaseClass,
   cacheClass,
-  securityClass,
   errorClass,
+  loggerClass,
 } from '@bloomneo/appkit';
 
-const auth = authClass.get();
-const security = securityClass.get();
-const error = errorClass.get();
-
-// IMPORTANT: databaseClass.get() returns a tenant-aware client when
-// BLOOM_DB_TENANT=auto. Every query below is auto-filtered.
-const database = await databaseClass.get();
+const auth   = authClass.get();
+const logger = loggerClass.get('multi-tenant');
 
 const router = Router();
+router.use(auth.requireLoginToken());
 
-// ── Per-tenant cached list ──────────────────────────────────────────
+// Derive a cache namespace from the authenticated user context.
+function cacheFor(req: any) {
+  const user = auth.getUser(req);
+  const org    = user?.org_id    ?? 'default';
+  const tenant = user?.tenant_id ?? 'shared';
+  // Namespaces allow only [a-zA-Z0-9_-]
+  return cacheClass.get(`app-${org}-${tenant}`);
+}
+
+// ── Tenant-scoped dashboard (cached per tenant) ─────────────────────
 router.get(
-  '/users',
-  auth.requireLoginToken(),
-  security.requests(100, 15 * 60 * 1000), // per-IP rate limit
-  error.asyncRoute(async (req, res) => {
-    const user = auth.user(req);
-    if (!user) throw error.unauthorized();
+  '/dashboard',
+  errorClass.asyncRoute(async (req, res) => {
+    const cache = cacheFor(req);
 
-    // Cache key includes tenantId so different tenants don't share cache.
-    const tenantCache = cacheClass.get(`tenant:${user.tenantId}`);
+    const data = await cache.getOrSet('dashboard:summary', async () => {
+      const db: any = await databaseClass.get(req);                 // tenant-filtered
+      const [users, invoices] = await Promise.all([
+        db.user.count(),
+        db.invoice.aggregate({ _sum: { amountCents: true } }),
+      ]);
+      return { users, revenueCents: invoices._sum.amountCents ?? 0 };
+    }, 60);
 
-    const users = await tenantCache.getOrSet(
-      'users:list',
-      () => database.user.findMany({ orderBy: { createdAt: 'desc' } }),
-      300, // 5 minutes
-    );
-
-    res.json({ users, tenant: user.tenantId });
+    res.json(data);
   }),
 );
 
-// ── Per-tenant cache invalidation on write ──────────────────────────
+// ── Admin-only cross-tenant report ──────────────────────────────────
+router.get(
+  '/admin/tenants',
+  auth.requireUserRoles(['admin.org']),
+  errorClass.asyncRoute(async (req, res) => {
+    const user = auth.getUser(req as any);
+    if (!user?.org_id) throw errorClass.forbidden('Missing org context');
+
+    // Org-scoped, no tenant filter — admin sees every tenant's data.
+    const adminDb = await databaseClass.org(user.org_id).getTenants(req);
+    const tenants = await databaseClass.list(req);
+    logger.info('admin listing tenants', { org: user.org_id, count: tenants.length });
+
+    res.json({ tenants, adminConnected: Boolean(adminDb) });
+  }),
+);
+
+// ── Provision a new tenant under the caller's org ───────────────────
 router.post(
-  '/users',
-  auth.requireUserRoles(['admin.tenant']),
-  error.asyncRoute(async (req, res) => {
-    const u = auth.user(req);
-    if (!u) throw error.unauthorized();
+  '/admin/tenants',
+  auth.requireUserRoles(['admin.org']),
+  errorClass.asyncRoute(async (req, res) => {
+    const { tenantId } = req.body ?? {};
+    if (typeof tenantId !== 'string' || !tenantId) {
+      throw errorClass.badRequest('tenantId required');
+    }
 
-    const newUser = await database.user.create({ data: req.body });
-
-    // Invalidate the cached list so the next read sees the new user.
-    const tenantCache = cacheClass.get(`tenant:${u.tenantId}`);
-    await tenantCache.delete('users:list');
-
-    res.status(201).json({ user: newUser });
+    // Row-level strategy: create() validates the id shape. No tables created.
+    await databaseClass.create(tenantId, req);
+    logger.info('tenant registered', { tenantId });
+    res.status(201).json({ tenantId });
   }),
 );
 
-// ── Cross-tenant analytics (admin.system only — uses unfiltered client) ──
-router.get(
-  '/admin/analytics',
-  auth.requireUserRoles(['admin.system']),
-  error.asyncRoute(async (req, res) => {
-    const dbAll = await databaseClass.getTenants();
-    const stats = await dbAll.user.groupBy({
-      by: ['tenant_id'],
-      _count: { _all: true },
-    });
-    res.json({ tenants: stats });
+// ── Purge a tenant (destructive, requires explicit confirm) ─────────
+router.delete(
+  '/admin/tenants/:tenantId',
+  auth.requireUserRoles(['admin.org']),
+  errorClass.asyncRoute(async (req, res) => {
+    const { tenantId } = req.params;
+    const exists = await databaseClass.exists(tenantId, req);
+    if (!exists) throw errorClass.notFound('Tenant not found');
+
+    await databaseClass.delete(tenantId, { confirm: true }, req);
+    logger.warn('tenant purged', { tenantId });
+    res.json({ deleted: true });
   }),
 );
 

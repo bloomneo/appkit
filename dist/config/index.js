@@ -19,7 +19,8 @@
  * ❌ BLOOM_DATABASE_HOST=localhost      → Framework var (won't be parsed as app config)
  */
 import { ConfigClass } from './config.js';
-import { getSmartDefaults } from './defaults.js';
+import { getSmartDefaults, validateConfig, isFrameworkVariable, isSystemVariable, } from './defaults.js';
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/config/README.md';
 // Global configuration instance for performance
 let globalConfig = null;
 /**
@@ -27,36 +28,34 @@ let globalConfig = null;
  * Environment variables parsed once for performance
  * @llm-rule WHEN: Starting any operation that needs configuration - this is your main entry point
  * @llm-rule AVOID: Calling new ConfigClass() directly - always use this function
+ * @llm-rule AVOID: Passing overrides after first call - they are rejected; use reset(newConfig) to rebuild
  * @llm-rule NOTE: Typical flow - get() → config.get('path') → use value
  * @llm-rule NOTE: Only parses non-framework variables for your app config
  */
 function get(overrides = {}) {
-    // Lazy initialization - parse environment once
-    if (!globalConfig) {
-        const defaults = getSmartDefaults();
-        const finalConfig = { ...defaults, ...overrides };
-        globalConfig = new ConfigClass(finalConfig);
+    if (globalConfig) {
+        if (overrides && Object.keys(overrides).length > 0) {
+            throw new Error(`[@bloomneo/appkit/config] configClass.get() overrides are only applied on first call. Use configClass.reset(newConfig) to rebuild with new config. See: ${DOCS_URL}#configuration`);
+        }
+        return globalConfig;
     }
+    const defaults = getSmartDefaults();
+    const finalConfig = { ...defaults, ...overrides };
+    validateConfig(finalConfig);
+    globalConfig = new ConfigClass(finalConfig);
     return globalConfig;
 }
 /**
  * Reset global instance (useful for testing or config changes)
- * @llm-rule WHEN: Testing config logic with different environment variables
+ * @llm-rule WHEN: Testing config logic with different environment variables, or forcing an env re-read
  * @llm-rule AVOID: Using in production - only for tests and development
  */
 function reset(newConfig = {}) {
     const defaults = getSmartDefaults();
     const finalConfig = { ...defaults, ...newConfig };
+    validateConfig(finalConfig);
     globalConfig = new ConfigClass(finalConfig);
     return globalConfig;
-}
-/**
- * Clear the cached configuration instance
- * @llm-rule WHEN: Testing or when you need to reload environment variables
- * @llm-rule AVOID: Using in production - only for tests and development
- */
-function clearCache() {
-    globalConfig = null;
 }
 /**
  * Get current environment (development, production, test)
@@ -65,7 +64,7 @@ function clearCache() {
  */
 function getEnvironment() {
     const config = get();
-    return config.get('app.environment', 'development') || 'development';
+    return config.get('app.environment', 'development');
 }
 /**
  * Check if running in development mode
@@ -99,15 +98,14 @@ function isTest() {
  */
 function getEnvVars() {
     const envVars = {};
+    // Mirror the filter used by buildConfigFromEnv so this helper's output
+    // stays consistent with what configClass.get() actually parses.
     for (const [key, value] of Object.entries(process.env)) {
-        // Skip framework variables - only show app config
-        if (!key.startsWith('BLOOM_') &&
-            !key.startsWith('FLUX_') &&
-            !key.startsWith('NODE_') &&
-            !key.startsWith('npm_') &&
-            value !== undefined) {
-            envVars[key] = value;
-        }
+        if (value === undefined)
+            continue;
+        if (isFrameworkVariable(key) || isSystemVariable(key))
+            continue;
+        envVars[key] = value;
     }
     return envVars;
 }
@@ -127,8 +125,7 @@ function validateRequired(paths) {
     }
     if (missing.length > 0) {
         const envVars = missing.map(path => path.split('.').join('_').toUpperCase());
-        throw new Error(`Missing required configuration: ${missing.join(', ')}\n` +
-            `Set environment variables: ${envVars.join(', ')}`);
+        throw new Error(`[@bloomneo/appkit/config] Missing required configuration: ${missing.join(', ')}. Set environment variables: ${envVars.join(', ')}. See: ${DOCS_URL}#startup-validation`);
     }
 }
 /**
@@ -148,7 +145,6 @@ export const configClass = {
     // Core methods
     get,
     reset,
-    clearCache,
     // Environment helpers
     getEnvironment,
     isDevelopment,

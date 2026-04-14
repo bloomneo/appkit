@@ -1,58 +1,73 @@
 /**
- * CANONICAL PATTERN — background job queue with auto-scaling backend.
+ * examples/queue.ts
  *
- * Copy this file when you need background jobs. Default backend is in-process
- * memory (good for dev). Set REDIS_URL to upgrade to distributed Redis.
+ * Runnable tour of the @bloomneo/appkit/queue module.
  *
- * Same code works for all backends — no changes needed.
+ * Transport auto-selection (highest-priority match wins):
+ *   • REDIS_URL set                               → Redis
+ *   • BLOOM_QUEUE_DB=true  + DATABASE_URL set     → Database
+ *   • neither                                     → in-process Memory
  *
- * queue.add(jobType, data, options)   — enqueue immediately or with a fixed delay
- * queue.schedule(jobType, data, delayMs) — alias: enqueue with a delay in ms
- * queue.process(jobType, handler)     — register a worker for that job type
- *
- * For cron-style recurring jobs: use a cron library (node-cron, etc.) to call
- * queue.add() at the right interval — there is no built-in cron scheduler.
+ * Run: tsx examples/queue.ts
  */
 
-import { queueClass, loggerClass, errorClass } from '@bloomneo/appkit';
+import { queueClass } from '../src/queue/index.js';
 
-const queue = queueClass.get();
-const logger = loggerClass.get('queue');
-const error = errorClass.get();
+async function main() {
+  const queue = queueClass.get();
 
-// ── Producer: enqueue jobs from a route ─────────────────────────────
-export const enqueueEmailRoute = error.asyncRoute(async (req, res) => {
-  const { to, subject, body } = req.body;
+  // 1. Register a worker. Each job type has exactly one handler per process.
+  queue.process<{ to: string; body: string }>('send-email', async (data) => {
+    // real work would live here
+    console.log('worker: send-email →', data.to);
+    return { messageId: `msg_${Date.now()}` };
+  });
 
-  await queue.add(
+  queue.process<{ userId: string }>('sync-profile', async ({ userId }) => {
+    console.log('worker: sync-profile →', userId);
+  });
+
+  // 2. Enqueue immediately, with optional retry/backoff controls.
+  const jobId = await queue.add(
     'send-email',
-    { to, subject, body },
-    {
-      delay: 0,       // run immediately (ms)
-      attempts: 3,    // retry up to 3 times on failure (not "retries")
-      priority: 1,    // lower number = higher priority
-    },
+    { to: 'user@example.com', body: 'hi' },
+    { attempts: 3, backoff: 'exponential', priority: 10, removeOnComplete: 100 },
   );
+  console.log('enqueued:', jobId);
 
-  res.json({ queued: true });
-});
+  // 3. Delay a job (runs ~5s from now).
+  await queue.schedule('sync-profile', { userId: 'u_1' }, 5_000);
 
-// ── Consumer: process jobs (run in a worker process or main app) ────
-queue.process('send-email', async (data) => {
-  const { to, subject, body } = data as { to: string; subject: string; body: string };
-  logger.info('Email sent', { to, subject });
-  return { sent: true };
-});
+  // 4. Pause / resume a single type, or the whole queue (no arg).
+  await queue.pause('send-email');
+  await queue.resume('send-email');
 
-// ── Delayed job (run once after N ms, not cron-style) ───────────────
-// To run cleanup every day at 03:00, use node-cron to call queue.add() at the
-// right time — queue.schedule() accepts a delay in milliseconds, not a cron expression.
-await queue.schedule(
-  'cleanup-expired-tokens',
-  {},
-  8 * 60 * 60 * 1000,   // run once, 8 hours from now
-);
+  // 5. Introspection.
+  const stats = await queue.getStats();              // all types
+  const emailStats = await queue.getStats('send-email');
+  console.log('stats all  =', stats);
+  console.log('stats mail =', emailStats);
 
-queue.process('cleanup-expired-tokens', async () => {
-  logger.info('Token cleanup ran');
+  const waiting = await queue.getJobs('waiting', 'send-email');
+  console.log('waiting send-email jobs:', waiting.length);
+
+  // 6. Retry / remove specific jobs by id.
+  // await queue.retry(jobId);
+  // await queue.remove(jobId);
+
+  // 7. Cleanup old completed jobs (grace in ms).
+  await queue.clean('completed', 60_000);
+
+  // 8. Debug.
+  console.log('transport =', queueClass.getActiveTransport());
+  console.log('config    =', queueClass.getConfig());
+  console.log('health    =', queueClass.getHealth());
+
+  // 9. Teardown.
+  await queueClass.clear();
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });

@@ -1,105 +1,135 @@
 /**
- * COOKBOOK RECIPE — Third-party API key management with encryption.
+ * COOKBOOK — API key issuance & verification service.
  *
- * Demonstrates how to issue API tokens (separate from user login tokens)
- * for webhooks and integrations, store the actual key encrypted at rest,
- * and rate-limit the key holder. This is the "give my customer a key to
- * call our API" pattern.
+ * Modules:    auth + security + database + error + logger
+ * Required:   BLOOM_AUTH_SECRET, BLOOM_SECURITY_ENCRYPTION_KEY, DATABASE_URL
  *
- * Modules used: auth (API tokens), security (encryption + rate limiting),
- *               database, error, logger
- * Required env: BLOOM_AUTH_SECRET, BLOOM_SECURITY_ENCRYPTION_KEY, DATABASE_URL
+ * Design:
+ *   • We issue a JWT-style API token via auth.generateApiToken() and ALSO
+ *     persist an encrypted copy server-side. The JWT is self-verifying;
+ *     the DB copy lets us revoke, audit, and list keys.
+ *   • auth.requireApiToken() middleware validates signature + expiry on
+ *     every request. The DB lookup is only needed for revocation checks.
+ *
+ * Schema expectation (Prisma example):
+ *   model ApiKey {
+ *     id          String   @id @default(cuid())
+ *     userId      String
+ *     keyId       String   @unique            // goes into JWT.keyId
+ *     label       String
+ *     scope       String                       // e.g. "read:users"
+ *     role        String                       // e.g. "service"
+ *     level       String                       // e.g. "basic"
+ *     cipher      String                       // encrypted token blob
+ *     revokedAt   DateTime?
+ *     createdAt   DateTime @default(now())
+ *     expiresAt   DateTime?
+ *   }
  */
 
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import {
   authClass,
   securityClass,
   databaseClass,
   errorClass,
   loggerClass,
-  utilClass,
 } from '@bloomneo/appkit';
 
-const auth = authClass.get();
+const auth     = authClass.get();
 const security = securityClass.get();
-const database = await databaseClass.get();
-const error = errorClass.get();
-const logger = loggerClass.get('api-keys');
-const util = utilClass.get();
+const logger   = loggerClass.get('api-keys');
 
 const router = Router();
 
-// ── ISSUE: admin issues a new API key for a third party ────────────
+// ── Issue a new API key (requires human login) ──────────────────────
 router.post(
   '/api-keys',
-  auth.requireUserRoles(['admin.tenant']),
-  error.asyncRoute(async (req, res) => {
-    const u = auth.getUser(req);
-    if (!u) throw error.unauthorized();
+  auth.requireLoginToken(),
+  auth.requireUserPermissions(['manage:api-keys']),
+  errorClass.asyncRoute(async (req, res) => {
+    const user = auth.getUser(req as any);
+    if (!user) throw errorClass.unauthorized();
 
-    const { name, scopes } = req.body;
-    if (!name) throw error.badRequest('name required');
+    const { label, scope, ttl = '90d' } = req.body ?? {};
+    if (typeof label !== 'string' || !label) throw errorClass.badRequest('label required');
+    if (typeof scope !== 'string' || !scope) throw errorClass.badRequest('scope required');
 
-    // Generate a fresh API token (separate from user login tokens)
-    const apiToken = auth.generateApiToken({
-      keyId: util.uuid(),
-      role: 'service',
-      level: scopes?.[0] ?? 'webhook',
-    }, '1y');  // long expiry
+    const keyId = randomUUID();
+    const token = auth.generateApiToken(
+      { keyId, userId: user.userId, scope, role: 'service', level: 'basic' },
+      ttl,
+    );
 
-    // Store the token ENCRYPTED at rest (so a database leak doesn't
-    // expose the plaintext keys)
-    const encryptedToken = security.encrypt(apiToken);
-
-    const record = await database.apiKey.create({
+    // Store an encrypted copy so we can re-show (never) or audit (yes).
+    const db: any = await databaseClass.get(req);
+    await db.apiKey.create({
       data: {
-        name,
-        scopes: JSON.stringify(scopes ?? []),
-        encryptedToken,
-        createdBy: u.userId,
-        tenantId: u.tenantId,
+        keyId,
+        userId: user.userId,
+        label,
+        scope,
+        role: 'service',
+        level: 'basic',
+        cipher: security.encrypt(token),
       },
     });
 
-    logger.info('API key issued', { keyId: record.id, by: u.userId });
+    logger.info('api key issued', { keyId, userId: user.userId, label });
 
-    // Return the plaintext token ONCE — caller is responsible for storing it.
-    // The plaintext is never written to disk in our system.
-    res.status(201).json({
-      id: record.id,
-      name: record.name,
-      token: apiToken,
-      warning: 'Store this token now. It will not be shown again.',
-    });
+    // Plaintext token is returned exactly once.
+    res.status(201).json({ keyId, token, label, scope });
   }),
 );
 
-// ── REVOKE: admin revokes a key ─────────────────────────────────────
+// ── List my API keys (no tokens — just metadata) ────────────────────
+router.get(
+  '/api-keys',
+  auth.requireLoginToken(),
+  errorClass.asyncRoute(async (req, res) => {
+    const user = auth.getUser(req as any)!;
+    const db: any = await databaseClass.get(req);
+    const keys = await db.apiKey.findMany({
+      where: { userId: user.userId, revokedAt: null },
+      select: { keyId: true, label: true, scope: true, createdAt: true, expiresAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ keys });
+  }),
+);
+
+// ── Revoke ──────────────────────────────────────────────────────────
 router.delete(
-  '/api-keys/:id',
-  auth.requireUserRoles(['admin.tenant']),
-  error.asyncRoute(async (req, res) => {
-    const id = Number(req.params.id);
-    await database.apiKey.update({
-      where: { id },
+  '/api-keys/:keyId',
+  auth.requireLoginToken(),
+  errorClass.asyncRoute(async (req, res) => {
+    const user = auth.getUser(req as any)!;
+    const db: any = await databaseClass.get(req);
+    const existing = await db.apiKey.findUnique({ where: { keyId: req.params.keyId } });
+    if (!existing || existing.userId !== user.userId) throw errorClass.notFound();
+
+    await db.apiKey.update({
+      where: { keyId: req.params.keyId },
       data: { revokedAt: new Date() },
     });
-    logger.warn('API key revoked', { keyId: id });
+    logger.warn('api key revoked', { keyId: req.params.keyId, userId: user.userId });
     res.json({ revoked: true });
   }),
 );
 
-// ── PROTECTED ROUTE: third party hits this with their API token ────
-// Note: requireApiToken (NOT requireLoginToken) — different middleware
-// for different token types.
+// ── Protected endpoint hit with an API token ────────────────────────
 router.get(
-  '/webhook-data',
+  '/v1/ping',
   auth.requireApiToken(),
-  security.requests(60, 60 * 1000),  // 60 requests per minute per token
-  error.asyncRoute(async (req, res) => {
-    const data = await database.event.findMany({ take: 100 });
-    res.json({ data });
+  errorClass.asyncRoute(async (req, res) => {
+    const caller = auth.getUser(req as any)!;
+    // Revocation check — auth.requireApiToken only verifies the JWT.
+    const db: any = await databaseClass.get(req);
+    const row = await db.apiKey.findUnique({ where: { keyId: (caller as any).keyId } });
+    if (!row || row.revokedAt) throw errorClass.unauthorized('Key revoked');
+
+    res.json({ ok: true, keyId: (caller as any).keyId, scope: row.scope });
   }),
 );
 
