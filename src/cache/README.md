@@ -730,7 +730,7 @@ await cache.set('user:123', userData, 3600);
 ## Agent-Dev Friendliness Score
 
 **Score: 89.1/100 — 🟢 Exemplary** *(no cap)*
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 *Delta vs previous (75.3, 2026-04-11): **+13.8***
 
 | # | Dimension | Score | Notes |

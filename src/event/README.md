@@ -735,7 +735,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 82/100 — 🟡 Solid**
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 *Delta vs previous (2026-04-13): **+9** (73 → 82)*
 
 > No anti-pattern caps applied. Fresh `examples/event.ts` and `cookbook/*.ts` are runtime-verified and typecheck-clean. `event.test.ts` now includes a dedicated "Public API surface — drift check" suite that asserts every real class + instance method exists AND that previously-hallucinated names (`subscribe`, `publish`, `getConfigSummary`, etc.) do not. `llms.txt` and root `README.md` are aligned with source as of today.

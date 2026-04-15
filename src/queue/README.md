@@ -870,7 +870,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 85/100 — 🟢 Exemplary**
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
 > No anti-pattern caps applied. Delta vs previous (2026-04-13): **+10** (75 → 85). Post-audit: `examples/queue.ts` runtime-verified today, `cookbook/*.ts` typecheck clean, `llms.txt` + root `README.md` aligned with source, `dist/` rebuilt 2026-04-14. Biggest lifts: D1 (8→10, full method audit vs source passed), D6 (7→9, example runtime-verified), D7 (7→9, `file-upload-pipeline.ts` composes 7 modules), D2 (8→9, llms.txt aligned), D8 (6→8, all throws prefix `[@bloomneo/appkit/queue]` + DOCS_URL anchor).
 

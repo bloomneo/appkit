@@ -20,7 +20,8 @@ src/**/*.js
 src/**/*.test.ts
 src/**/*.spec.ts
 
-# Old docs/ folder (replaced by AGENTS.md + llms.txt at the package root)
+# Internal governance docs (NAMING.md, AGENT_DEV_SCORING_ALGORITHM.md) —
+# not consumer-facing. Agents use AGENTS.md + llms.txt at the package root.
 docs/
 
 # Editor files

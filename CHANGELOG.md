@@ -2,6 +2,80 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [2.0.0] - 2026-04-15
+
+Pre-v1 API audit and full revamp. Breaking renames, removed hallucinated
+methods, and aligned the public surface across all 12 modules to a single
+canonical pattern. Upgrading from 1.5.x requires code changes.
+
+### Breaking — auth
+
+- `auth.user(req)` renamed to `auth.getUser(req)` (no alias).
+- `auth.can(user, perm)` renamed to `auth.hasPermission(user, perm)` (no alias).
+- `auth.requireLogin()` and `auth.requireRole()` never existed — use
+  `auth.requireLoginToken()` and `auth.requireUserRoles([...])`. Docs and
+  templates that referenced the hallucinated names are now fixed.
+
+### Breaking — security
+
+- `security.csrf()` renamed to `security.forms()` (no alias).
+
+### Breaking — logger
+
+- Removed the accidentally-public `logger.gethasTransport()` and
+  `logger.getclear()`. Use `loggerClass.hasTransport()` and
+  `loggerClass.clear()` at the class level.
+
+### Breaking — error
+
+- `error.handleErrors()` option renamed: `includeStack` → `showStack`, and
+  `logErrors` is now an explicit option rather than implicit.
+
+### Added
+
+- `docs/NAMING.md` — authoritative API naming policy for the package.
+- `docs/AGENT_DEV_SCORING_ALGORITHM.md` — 15-dimension agent-dev friendliness
+  rubric; per-module scores are in each `src/<module>/README.md`.
+- `scripts/check-doc-drift.ts` — CI drift gate that fails the build if any
+  renamed or hallucinated method reappears in docs, examples, cookbook,
+  per-module READMEs, or `bin/templates/`.
+- `./event` subpath export in `package.json` (previously documented but not
+  wired up).
+- `appkit generate app` now copies `AGENTS.md` and `llms.txt` into the
+  scaffold root so agents landing in downstream projects have the rules
+  file and full API reference without digging into `node_modules/`.
+- Per-module "See also" pointer block in every `src/<module>/README.md`
+  linking AGENTS.md, llms.txt, the module's example, and relevant cookbook
+  recipes.
+- Task-oriented TOC ("Pick your starting point") in `AGENTS.md`.
+
+### Fixed
+
+- Queue test (`queue.add() + queue.process()`) was flaky under
+  `NODE_ENV=test` because the memory transport's processing loop was
+  disabled. Test now force-enables the worker and polls deterministically.
+- `bin/templates/feature-user/user.route.ts.template`: 4 call sites used
+  the old `auth.user()` — now `auth.getUser()`.
+- `bin/templates/backend/src/api/server.ts.template`: `VOILA_FRONTEND_KEY`
+  references → `BLOOM_FRONTEND_KEY`.
+- `bin/commands/generate.js`: random frontend key prefix `voila_` →
+  `bloom_`.
+- `llms.txt`: `config.getMany(['A','B'])` signature was wrong; corrected to
+  the object-form `config.getMany({a: 'section.key_a', ...})`. `userId`
+  type broadened to `string | number`. `error.internal` → `error.serverError`.
+
+### Moved
+
+- `NAMING.md` → `docs/NAMING.md`
+- `AGENT_DEV_SCORING_ALGORITHM.md` → `docs/AGENT_DEV_SCORING_ALGORITHM.md`
+
+Neither ships in the tarball (internal governance only). All references in
+per-module READMEs and CONTRIBUTING.md updated.
+
+### Removed
+
+- `uploads/` directory and stale test artifacts.
+
 ## [1.5.2] - 2026-04-11
 
 ### Behavior fix — `auth.can()` permission resolution

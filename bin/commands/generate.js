@@ -87,7 +87,7 @@ async function generateApp(name, options) {
 
     // Generate shared random keys for the project
     const randomFrontendKey =
-      'voila_' +
+      'bloom_' +
       Math.random().toString(36).substring(2, 15) +
       Math.random().toString(36).substring(2, 15);
     const randomAuthSecret =
@@ -119,6 +119,11 @@ async function generateApp(name, options) {
       createdFiles,
       skippedFiles
     );
+
+    // Copy AGENTS.md + llms.txt from the installed @bloomneo/appkit package
+    // into the project root so agents landing in the scaffolded repo have the
+    // rules file and full API reference without needing to dig into node_modules.
+    await copyAgentDocs(projectPath, createdFiles, skippedFiles);
 
     // Report results
     console.log(`\n📊 Summary:`);
@@ -346,7 +351,7 @@ async function copyDirectorySafe(
       // Use shared keys or generate them if not provided
       const frontendKey =
         sharedFrontendKey ||
-        'voila_' +
+        'bloom_' +
           Math.random().toString(36).substring(2, 15) +
           Math.random().toString(36).substring(2, 15);
       const authSecret =
@@ -752,6 +757,28 @@ function installDependencies(projectPath) {
 /**
  * Check if file exists
  */
+/**
+ * Copy AGENTS.md + llms.txt from the appkit package root into the scaffolded
+ * project root. Skips silently if the source file isn't present (e.g. running
+ * from a dev checkout before those files are built). Never overwrites existing
+ * files in the destination.
+ */
+async function copyAgentDocs(projectPath, createdFiles, skippedFiles) {
+  const pkgRoot = path.join(__dirname, '..', '..');
+  const docs = ['AGENTS.md', 'llms.txt'];
+  for (const name of docs) {
+    const src = path.join(pkgRoot, name);
+    const dest = path.join(projectPath, name);
+    if (!(await fileExists(src))) continue;
+    if (await fileExists(dest)) {
+      skippedFiles.push(`📄 ${name} (exists)`);
+      continue;
+    }
+    await fs.copyFile(src, dest);
+    createdFiles.push(`📄 ${name}`);
+  }
+}
+
 async function fileExists(filePath) {
   try {
     await fs.access(filePath);

@@ -475,8 +475,8 @@ configClass.isTest(): boolean
 configClass.validateRequired(['BLOOM_AUTH_SECRET', 'DATABASE_URL'])  // throws if missing
 ```
 
-`config.get('auth.secret')` reads `BLOOM_AUTH_SECRET`. There is no legacy
-fallback — the `VOILA_*` prefix was removed entirely in 1.5.2.
+`config.get('auth.secret')` reads `BLOOM_AUTH_SECRET`. All env vars use
+the `BLOOM_*` prefix.
 
 ---
 
@@ -519,10 +519,7 @@ logger.fatal(message: string, meta?)
 | `BLOOM_LOGGER_HTTP_URL` | HTTP transport for logger | optional |
 | `ORG_<NAME>` | Per-org database (multi-org SaaS) | optional |
 
-**No backwards compatibility.** The legacy `VOILA_*` env var prefix from
-`@voilajsx/appkit` was removed entirely in 1.5.2. There is no fallback,
-no deprecation warning, no compatibility shim. Consumers upgrading must
-rename `VOILA_FOO` → `BLOOM_FOO` in their `.env` files in one go.
+All environment variables use the `BLOOM_*` prefix. No legacy fallbacks.
 
 ---
 
@@ -550,21 +547,21 @@ modules are used in the same file (most common case).
 
 ---
 
-## Migration from `@voilajsx/appkit`
+## Migration — 1.5.x → 2.0.0
 
-```diff
-- import { authClass } from '@voilajsx/appkit/auth';
-+ import { authClass } from '@bloomneo/appkit/auth';
-```
+Pre-v1 audit. No aliases kept. Project-wide find-and-replace:
 
-```diff
-- VOILA_AUTH_SECRET=...
-+ BLOOM_AUTH_SECRET=...
-```
+- `auth.user(req)` → `auth.getUser(req)`
+- `auth.can(user, perm)` → `auth.hasPermission(user, perm)`
+- `security.csrf()` → `security.forms()`
+- `error.handleErrors({ includeStack })` → `error.handleErrors({ showStack })`
 
-**BREAKING in 1.5.2:** the legacy `VOILA_*` env var prefix is gone. Rename
-every `VOILA_*` in your `.env` files to `BLOOM_*` in one go. There is no
-fallback, no deprecation warning.
+Removed (never actually existed — docs were wrong): `auth.requireLogin()`,
+`auth.requireRole()`, `logger.gethasTransport()`, `logger.getclear()`. Use
+`auth.requireLoginToken()`, `auth.requireUserRoles([...])`,
+`loggerClass.hasTransport()`, `loggerClass.clear()`.
+
+See [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full list.
 
 ---
 

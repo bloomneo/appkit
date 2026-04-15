@@ -1014,7 +1014,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 85/100 — 🟢 Exemplary** *(Δ +8 vs 77/100 on 2026-04-13)*
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
 > No anti-pattern caps applied. Pre-v1 audit complete: `examples/storage.ts` runtime-verified, `cookbook/file-upload-pipeline.ts` typechecks clean, `storage.test.ts` now includes an explicit drift-check block that fails the build if class/instance methods diverge from the documented surface, and `llms.txt` lists the full storage API with anti-drift notes (`delete NOT del`, `exists NOT has`). `storageClass` is the named export; default export is `StorageClass` (the constructor) — README correctly warns against `new StorageClass()`.
 

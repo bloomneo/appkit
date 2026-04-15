@@ -962,7 +962,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 83/100 — 🟡 Solid** *(uncapped; no anti-pattern caps apply)*
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 *Previous: 55/100 (2026-04-13, capped at 55 for runtime ReferenceError). Delta: **+28**. Cap lifted — `examples/util.ts` was rewritten from scratch and runtime-verified; all `utils.` → `util.` typos gone; `truncate` now called with the required options object.*
 
 | # | Dimension | Score | Notes |

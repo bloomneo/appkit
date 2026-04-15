@@ -636,7 +636,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 83/100 — 🟡 Solid** *(Δ +9 vs 2026-04-13 — post pre-v1 audit: `csrf()` → `forms()` rename enforced, fresh runtime-verified example, cookbook typecheck-clean, docs aligned with source)*
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
 > ✅ **No anti-pattern caps active.** Previous `secure.*`/`security.*` ReferenceError resolved; `security.csrf()` → `security.forms()` rename enforced with no alias; `llms.txt`, `AGENTS.md`, root `README.md`, `examples/security.ts`, and `cookbook/*.ts` all aligned with source as of 2026-04-14; `dist/` rebuilt today.
 

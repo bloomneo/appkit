@@ -6,8 +6,6 @@
 [![AI Ready](https://img.shields.io/badge/AI-Optimized-purple.svg)](https://github.com/bloomneo/appkit)
 
 > Minimal, framework-agnostic Node.js toolkit designed for AI agentic backend development.
-> Previously published as `@voilajsx/appkit`. Same code, new home, new namespace.
-> See [migration](#migration) below.
 
 **12 integrated modules. One pattern. Zero config to start, enterprise scaling on demand.**
 
@@ -173,7 +171,6 @@ Generated project structure:
 myproject/
 ├── AGENTS.md                       # ← copied from @bloomneo/appkit at scaffold time
 ├── llms.txt                        # ← copied from @bloomneo/appkit at scaffold time
-├── .env                            # ← contains generated BLOOM_AUTH_SECRET
 ├── src/api/
 │   ├── server.ts                   # Express bootstrap
 │   ├── lib/api-router.ts           # auto-discovery routing
@@ -181,47 +178,30 @@ myproject/
 │       ├── welcome/
 │       └── [your-features]/
 └── package.json
+
+# `.env` is created on demand — `generate feature user` (or any `--db` feature)
+# drops DATABASE_URL, BLOOM_AUTH_SECRET, and DEFAULT_USER_PASSWORD into it.
 ```
 
 ---
 
 ## 🏗️ Migration
 
-### From `@voilajsx/appkit`
+### From `@bloomneo/appkit@1.5.x` → `2.0.0`
 
-Two breaking changes between `@voilajsx/appkit@1.2.8` and `@bloomneo/appkit@1.5.2`:
+2.0.0 is a pre-v1 audit: renames are final, no aliases kept. Project-wide
+find-and-replace:
 
-**1. The npm scope changed.** Project-wide find-and-replace:
+- `auth.user(req)` → `auth.getUser(req)`
+- `auth.can(user, perm)` → `auth.hasPermission(user, perm)`
+- `security.csrf()` → `security.forms()`
+- `error.handleErrors({ includeStack })` → `error.handleErrors({ showStack })`
 
-```diff
-- import { authClass } from '@voilajsx/appkit/auth';
-+ import { authClass } from '@bloomneo/appkit/auth';
-```
+If your code called `auth.requireLogin()` or `auth.requireRole(...)`, it
+was already broken — those methods never existed. Use
+`auth.requireLoginToken()` and `auth.requireUserRoles([...])`.
 
-**2. The env var prefix changed.** This is a hard cutover with no fallback:
-
-```diff
-- VOILA_AUTH_SECRET=...
-+ BLOOM_AUTH_SECRET=...
-
-- VOILA_SECURITY_CSRF_SECRET=...
-+ BLOOM_SECURITY_CSRF_SECRET=...
-
-- VOILA_DB_TENANT=auto
-+ BLOOM_DB_TENANT=auto
-```
-
-Every `VOILA_*` in your `.env` files needs to become `BLOOM_*`. There is no
-deprecation period — the legacy prefix is gone.
-
-Rationale: the rebrand was a clean break, the env var prefix was the last
-remaining piece of legacy branding, and shipping a backwards-compat shim
-just kept the old name visible in error messages and docs forever.
-
-### From `@bloomneo/appkit@1.5.1` → `1.5.2`
-
-Same env var rename as above. Source code (imports + module API) is
-unchanged. The breaking change is **only** the env var prefix.
+See [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full list.
 
 ---
 

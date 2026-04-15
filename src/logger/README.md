@@ -442,7 +442,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 82/100 — 🟡 Solid** *(+42 vs previous 40/100 capped; +16 vs previous 66/100 uncapped)*
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
 > ✅ **Cap lifted**: Previous round was capped at 40 for hallucinated `gethasTransport`/`getclear` names. Those were fixed, and today's audit re-verified:
 > - `src/logger/README.md` — every method reference resolves to a real export.

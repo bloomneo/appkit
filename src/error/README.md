@@ -687,7 +687,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 83/100 — 🟡 Solid** *(uncapped: 83/100 — no cap applies)*
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 *Delta vs previous (2026-04-13): **+23** (previous 60 capped / 75 uncapped → now 83 uncapped, no cap).*
 
 > ✅ **Cap lifted**: The prior Fastify/Koa variable-shadowing runtime bug has been fixed — the current README Fastify snippet uses `err` (not `error`) as the caught-param name, so `error.serverError(err.message)` resolves correctly. `examples/error.ts` is runtime-verified and uses the correct `handleErrors({ showStack, logErrors })` signature (the `includeStack` hallucination from the prior round is gone). `llms.txt` and the root `README.md` were aligned today, and `dist/` was rebuilt today. No anti-pattern cap applies.

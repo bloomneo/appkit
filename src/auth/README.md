@@ -796,7 +796,7 @@ A: Roles are hierarchical (admin.org > admin.tenant), permissions are specific a
 ## Agent-Dev Friendliness Score
 
 **Score: 89/100 — 🟢 Exemplary** *(no cap applies)*
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 
 > ✅ **Cap cleared**: Previous round was capped at 50 because cookbook files
 > referenced hallucinated `auth.requireLogin()` / `auth.requireRole()`.

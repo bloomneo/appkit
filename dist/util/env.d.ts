@@ -1,15 +1,8 @@
 /**
  * Environment variable reader for @bloomneo/appkit.
  *
- * Canonical prefix is `BLOOM_`. The legacy `VOILA_*` prefix from the original
- * `@voilajsx/appkit` package was removed entirely in 1.5.2 — there is no
- * backwards-compatibility, no fallback, no deprecation warning. Consumers
- * upgrading must rename their env vars in one go.
- *
- * Internal use only. Consumers should call `configClass.get()` instead of
- * touching env vars directly. This file exists so future code has one
- * canonical helper for reading env vars, instead of scattering
- * `process.env.BLOOM_*` calls across the codebase.
+ * All env vars use the `BLOOM_` prefix. Internal use only — consumers should
+ * call `configClass.get()` instead of touching env vars directly.
  *
  * @file src/util/env.ts
  */

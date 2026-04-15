@@ -73,11 +73,11 @@ app.use('/api', (req, res, next) => {
   }
 
   const frontendKey = req.headers['x-frontend-key'] as string;
-  const expectedKey = process.env.VOILA_FRONTEND_KEY;
+  const expectedKey = process.env.BLOOM_FRONTEND_KEY;
 
   // Warn if no key is configured in production
   if (!expectedKey) {
-    logger.warn('⚠️ VOILA_FRONTEND_KEY not configured in production environment');
+    logger.warn('⚠️ BLOOM_FRONTEND_KEY not configured in production environment');
     return next(); // Fail gracefully
   }
 

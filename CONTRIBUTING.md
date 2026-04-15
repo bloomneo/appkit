@@ -178,7 +178,7 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `style`, `chore`
 
 ### API Naming
 
-Public API names follow [`NAMING.md`](./NAMING.md). Any new public method,
+Public API names follow [`NAMING.md`](./docs/NAMING.md). Any new public method,
 class, env var, or error type must comply with the patterns in that doc
 (`get<Thing>` for nullable extractors, `has` / `is` / `can` for booleans,
 `require<Thing>` for middleware factories, etc.). PRs that add or rename

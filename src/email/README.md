@@ -768,7 +768,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ## Agent-Dev Friendliness Score
 
 **Score: 81/100 — 🟡 Solid**
-*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
+*Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 *Delta vs previous (2026-04-13): **+8** (73 → 81)*
 
 > No anti-pattern caps applied. All 16 public surface methods on `emailClass` resolve to real runtime functions; `examples/email.ts` was runtime-verified today; `llms.txt` and root `README.md` re-aligned with source on 2026-04-14; `dist/` rebuilt same day.

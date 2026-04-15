@@ -87,9 +87,7 @@ Every file path below ships inside the npm tarball at `node_modules/@bloomneo/ap
 
 ## Environment variables
 
-AppKit reads env vars with the `BLOOM_*` prefix. There is **no** backwards
-compatibility for the legacy `VOILA_*` prefix from `@voilajsx/appkit` —
-that was removed entirely in 1.5.2.
+AppKit reads env vars with the `BLOOM_*` prefix.
 
 Required for production:
 
@@ -202,14 +200,7 @@ backend, no frontend.
 
 ## Migration notes
 
-- This package was previously published as `@voilajsx/appkit` (frozen at
-  1.2.8). Run a project-wide find-and-replace of `@voilajsx/appkit` →
-  `@bloomneo/appkit`. The API is identical.
-- **BREAKING (1.5.2):** the legacy `VOILA_*` env var prefix is gone.
-  Rename every `VOILA_FOO` in your `.env` files to `BLOOM_FOO`. There
-  is no fallback, no deprecation warning, no compatibility shim — the
-  rebrand is a clean break and consumers upgrading from earlier versions
-  must rename in one go.
+**BREAKING in 2.0.0:** pre-v1 API audit — see [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full rename list. Key renames with no aliases: `auth.getUser()` (was `auth.user`), `auth.hasPermission()` (was `auth.can`), `security.forms()` (was `security.csrf`).
 
 ## Where to look next
 
