@@ -3,8 +3,14 @@
  * @file src/queue/queue.test.ts
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
-import { queueClass } from './index.js';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
+
+// Worker mode is off by default when NODE_ENV=test. The handler-processing
+// test below needs the in-memory processing loop running, so force-enable
+// it before the queue module loads its config.
+beforeAll(() => { process.env.BLOOM_QUEUE_WORKER = 'true'; });
+
+const { queueClass } = await import('./index.js');
 
 afterEach(async () => { await queueClass.clear(); });
 
@@ -36,8 +42,14 @@ describe('queue.add() + queue.process()', () => {
     });
 
     await queue.add('greeting', { name: 'world' });
-    // Allow in-memory queue to process synchronously or via microtask
-    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Memory transport re-polls every 1000ms. Poll up to 1500ms so we
+    // deterministically wait for the next tick instead of racing a
+    // fixed setTimeout.
+    const deadline = Date.now() + 1500;
+    while (!results.includes('world') && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
     expect(results).toContain('world');
   });
 });
