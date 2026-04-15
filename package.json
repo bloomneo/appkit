@@ -38,6 +38,10 @@
       "types": "./dist/email/index.d.ts",
       "default": "./dist/email/index.js"
     },
+    "./event": {
+      "types": "./dist/event/index.d.ts",
+      "default": "./dist/event/index.js"
+    },
     "./error": {
       "types": "./dist/error/index.d.ts",
       "default": "./dist/error/index.js"
