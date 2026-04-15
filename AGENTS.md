@@ -61,6 +61,30 @@ multiple modules in the same file) but it tree-shakes slightly better.
 
 For full method signatures and examples, read `llms.txt` in this same directory.
 
+## Pick your starting point (task → files)
+
+If you know *what you want to build*, jump straight to the files that demonstrate it.
+Every file path below ships inside the npm tarball at `node_modules/@bloomneo/appkit/`.
+
+| Goal | Start here |
+|---|---|
+| Authenticate a user with password + JWT | [`examples/auth.ts`](./examples/auth.ts) |
+| Protect a route by login | [`examples/auth.ts`](./examples/auth.ts) → [`cookbook/auth-protected-crud.ts`](./cookbook/auth-protected-crud.ts) |
+| Protect a route by role or permission | [`cookbook/auth-protected-crud.ts`](./cookbook/auth-protected-crud.ts) |
+| Issue and verify API keys (service-to-service) | [`cookbook/api-key-service.ts`](./cookbook/api-key-service.ts) |
+| Query a tenant-aware database | [`examples/database.ts`](./examples/database.ts) |
+| Build a multi-tenant SaaS (auth + db + org scoping) | [`cookbook/multi-tenant-saas.ts`](./cookbook/multi-tenant-saas.ts) |
+| Upload + process files in the background | [`cookbook/file-upload-pipeline.ts`](./cookbook/file-upload-pipeline.ts) |
+| Real-time pub/sub across processes | [`cookbook/real-time-chat.ts`](./cookbook/real-time-chat.ts) |
+| Send email (dev → SMTP → Resend) | [`examples/email.ts`](./examples/email.ts) |
+| Cache DB queries (memory → Redis) | [`examples/cache.ts`](./examples/cache.ts) |
+| Background jobs with retries | [`examples/queue.ts`](./examples/queue.ts) |
+| Structured logging with components | [`examples/logger.ts`](./examples/logger.ts) |
+| Type-safe env vars | [`examples/config.ts`](./examples/config.ts) |
+| Rate limit / CSRF / crypto / sanitize | [`examples/security.ts`](./examples/security.ts) |
+| Error-handling middleware | [`examples/error.ts`](./examples/error.ts) |
+| Small helpers (uuid, chunk, debounce, slugify) | [`examples/util.ts`](./examples/util.ts) |
+
 ## Environment variables
 
 AppKit reads env vars with the `BLOOM_*` prefix. There is **no** backwards

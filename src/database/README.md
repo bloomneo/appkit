@@ -12,6 +12,8 @@ databases to complex multi-org, multi-tenant architectures. **Zero configuration
 needed**, production-ready by default, with **mandatory future-proofing** built
 in.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/database.ts](../../examples/database.ts) · cookbook: [auth-protected-crud.ts](../../cookbook/auth-protected-crud.ts), [multi-tenant-saas.ts](../../cookbook/multi-tenant-saas.ts)
+
 ## 🚀 Why Choose AppKit Database?
 
 - **⚡ One Function** - `databaseClass.get()` handles all use cases, environment

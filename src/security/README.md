@@ -9,6 +9,8 @@
 Zero configuration needed, production-ready by default, with built-in CSRF
 protection, rate limiting, input sanitization, and AES-256-GCM encryption.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/security.ts](../../examples/security.ts) · cookbook: [api-key-service.ts](../../cookbook/api-key-service.ts)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `securityClass.get()`, everything else is automatic

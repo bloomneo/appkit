@@ -9,6 +9,8 @@
 Zero configuration needed, production-ready cloud integration by default, with
 built-in CDN support and cost optimization.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/storage.ts](../../examples/storage.ts) · cookbook: [file-upload-pipeline.ts](../../cookbook/file-upload-pipeline.ts)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `storageClass.get()`, everything else is automatic

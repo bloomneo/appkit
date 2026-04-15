@@ -9,6 +9,8 @@
 configuration needed, production-ready by default, with built-in performance
 optimization and comprehensive edge case handling.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/util.ts](../../examples/util.ts) · [cookbook/](../../cookbook/) (composed recipes)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `utilClass.get()`, everything else is automatic

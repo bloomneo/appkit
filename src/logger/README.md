@@ -6,6 +6,8 @@
 [![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/logger.ts](../../examples/logger.ts) · [cookbook/](../../cookbook/) (every recipe uses logger)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `loggerClass.get()`, everything else is automatic

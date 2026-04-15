@@ -9,6 +9,8 @@
 **One function** returns a cache object with automatic strategy selection. Zero
 configuration needed, production-ready performance by default.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/cache.ts](../../examples/cache.ts) · cookbook: [auth-protected-crud.ts](../../cookbook/auth-protected-crud.ts)
+
 ## 🚀 Why Choose This?
 
 - ⚡ One Function - Just cacheClass.get() (optional namespace), everything else

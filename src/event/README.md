@@ -10,6 +10,8 @@
 configuration needed, production-ready distribution by default, with built-in
 wildcard patterns and event history.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/event.ts](../../examples/event.ts) · cookbook: [real-time-chat.ts](../../cookbook/real-time-chat.ts)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `eventClass.get()`, everything else is automatic

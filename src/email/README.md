@@ -10,6 +10,8 @@
 configuration needed, production-ready sending by default, with built-in
 template system and development preview.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/email.ts](../../examples/email.ts) · [cookbook/](../../cookbook/) (composed recipes)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `emailClass.get()`, everything else is automatic

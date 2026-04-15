@@ -7,6 +7,8 @@
 
 **Two token types** for different authentication needs: Login tokens for users, API tokens for external services. Built-in role hierarchy and permission inheritance. Production-ready security.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/auth.ts](../../examples/auth.ts) · cookbook: [api-key-service.ts](../../cookbook/api-key-service.ts), [auth-protected-crud.ts](../../cookbook/auth-protected-crud.ts)
+
 ## 🚀 Why Choose This?
 
 - **⚡ Simple API** - Just `authClass.get()`, everything else is automatic

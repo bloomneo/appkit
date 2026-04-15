@@ -9,6 +9,8 @@
 production-ready by default, with built-in retry logic and distributed
 processing.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/queue.ts](../../examples/queue.ts) · cookbook: [file-upload-pipeline.ts](../../cookbook/file-upload-pipeline.ts)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `queueClass.get()`, everything else is automatic

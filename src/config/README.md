@@ -9,6 +9,8 @@
 parsing. Zero configuration files needed, production-ready validation by
 default, with built-in type conversion and smart defaults.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/config.ts](../../examples/config.ts) · [cookbook/](../../cookbook/) (composed recipes)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `configClass.get()`, everything else is automatic

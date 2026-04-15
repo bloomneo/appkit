@@ -10,6 +10,8 @@
 middleware handles everything automatically. Works with any Express-compatible
 framework.
 
+> **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/error.ts](../../examples/error.ts) · cookbook: [auth-protected-crud.ts](../../cookbook/auth-protected-crud.ts), [api-key-service.ts](../../cookbook/api-key-service.ts)
+
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `error.get()`, everything else is automatic
