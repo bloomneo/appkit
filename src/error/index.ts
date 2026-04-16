@@ -213,3 +213,6 @@ export const errorClass = {
 // Re-export types for consumers
 export type { ErrorConfig } from './defaults.js';
 export { ErrorClass } from './error.js';
+
+// Default export
+export default errorClass;

@@ -38,7 +38,7 @@ app.use(error.handleErrors());  // last middleware
 
 ## 🤖 For AI coding agents — read these first
 
-Four locations at the package root tell agents everything they need to know:
+Five locations at the package root tell agents everything they need to know:
 
 | File | Purpose |
 |---|---|
@@ -46,8 +46,9 @@ Four locations at the package root tell agents everything they need to know:
 | **[`llms.txt`](./llms.txt)** | Reference: every export, every method, signatures + examples. |
 | **[`examples/`](./examples)** | 12 minimal `.ts` files, one per module. Copy and modify. |
 | **[`cookbook/`](./cookbook)** | Composed recipes for whole patterns (CRUD, multi-tenant, file upload, real-time). |
+| **[`.claude/skills/`](./.claude/skills)** | Claude Code skills (`appkit`, `appkit-auth`, `appkit-cache`, `appkit-database`, `appkit-error`) that auto-trigger when agents work on code that imports this package. Copy the directory into your own repo's `.claude/skills/` to activate. |
 
-All four ship inside the npm tarball. AI agents installing `@bloomneo/appkit`
+All of the above ship inside the npm tarball. AI agents installing `@bloomneo/appkit`
 can read them directly from `node_modules/@bloomneo/appkit/`.
 
 ---
@@ -60,12 +61,80 @@ can read them directly from `node_modules/@bloomneo/appkit/`.
 npm install @bloomneo/appkit
 ```
 
+**Three things your project needs** before the first `import` works — these are
+the most common first-run stumbles, so do them up front:
+
+1. **ESM.** AppKit is ESM-only. Your `package.json` must have `"type": "module"`,
+   or your source files must use the `.mjs` extension. Without this, `import`
+   throws `ERR_REQUIRE_ESM`.
+2. **Required env vars** must exist in `process.env` before you call any
+   `xxxClass.get()`. The minimum for auth:
+   ```bash
+   BLOOM_AUTH_SECRET=<at least 32 random chars>
+   ```
+   Full list: [`.env.example`](./.env.example) — copy it to `.env` and fill in
+   what your app uses.
+3. **AppKit does NOT auto-load `.env`.** Load it yourself, before any AppKit
+   import. Either preload on the command line:
+   ```bash
+   node --import=dotenv/config ./server.mjs
+   ```
+   or import at the very top of your entry file:
+   ```ts
+   import 'dotenv/config';   // MUST be the first import
+   import { authClass } from '@bloomneo/appkit/auth';
+   ```
+
+### Minimum working example
+
+`package.json`:
+
+```json
+{
+  "type": "module",
+  "dependencies": {
+    "@bloomneo/appkit": "^2.0.0",
+    "dotenv": "^16.0.0",
+    "express": "^5.0.0"
+  }
+}
+```
+
+`.env`:
+
+```bash
+BLOOM_AUTH_SECRET=change-me-to-at-least-32-random-characters
+```
+
+`server.mjs`:
+
 ```ts
+import 'dotenv/config';
+import express from 'express';
 import { authClass } from '@bloomneo/appkit/auth';
-import { databaseClass } from '@bloomneo/appkit/database';
 
 const auth = authClass.get();
-const database = await databaseClass.get();
+const app = express();
+app.use(express.json());
+
+app.post('/login', async (req, res) => {
+  // ... verify user ...
+  const token = auth.generateLoginToken({ userId: 1, role: 'user', level: 'basic' });
+  res.json({ token });
+});
+
+app.get('/me', auth.requireLoginToken(), (req, res) => {
+  res.json(auth.getUser(req));
+});
+
+app.listen(3000, () => console.log('http://localhost:3000'));
+```
+
+Run it:
+
+```bash
+npm install
+node server.mjs
 ```
 
 ### As a complete scaffold (CLI)
@@ -189,8 +258,9 @@ myproject/
 
 ### From `@bloomneo/appkit@1.5.x` → `2.0.0`
 
-2.0.0 is a pre-v1 audit: renames are final, no aliases kept. Project-wide
-find-and-replace:
+2.0.0 is the stable API reference after a compatibility break. Renames are
+final, no aliases kept. Any further breaking change requires a new major.
+Project-wide find-and-replace:
 
 - `auth.user(req)` → `auth.getUser(req)`
 - `auth.can(user, perm)` → `auth.hasPermission(user, perm)`

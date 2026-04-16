@@ -350,6 +350,37 @@ auth.generateLoginToken({ keyId: 'test' }); // keyId is for API tokens
 auth.generateApiToken({ userId: 123 });    // userId is for login tokens
 ```
 
+#### Payload pass-through — attach your own fields
+
+The payload object accepts any extra fields beyond the required ones. They're
+signed into the JWT and are available on `req.user` after `requireLoginToken()`
+verifies the token. Useful for stashing identifying data that doesn't belong
+in your user table (e.g. `email`, `orgId`, `tenantId`) so `/me`-style handlers
+can respond without a database round-trip.
+
+```typescript
+// Attach extra fields at token creation — they survive verification intact
+const token = auth.generateLoginToken({
+  userId: user.id,
+  role: 'user',
+  level: 'basic',
+  // extras — any JSON-serializable key/value is preserved
+  email: user.email,
+  orgId: user.orgId,
+});
+
+// After requireLoginToken(), the whole payload is on req.user
+app.get('/me', auth.requireLoginToken(), (req, res) => {
+  const u = auth.getUser(req);    // { userId, role, level, email, orgId, iat, exp }
+  res.json({ id: u.userId, email: u.email });  // no DB lookup needed
+});
+```
+
+Constraints: keys are preserved verbatim but JWTs are **not** encrypted — don't
+put secrets, password hashes, or PII you wouldn't want a client to see in there.
+Keep payloads small (<1 KB is a good ceiling) so they fit in `Authorization`
+headers comfortably.
+
 ### **Middleware Patterns (Copy These)**
 
 ```typescript

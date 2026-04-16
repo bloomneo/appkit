@@ -12,7 +12,7 @@ beforeAll(() => { process.env.BLOOM_QUEUE_WORKER = 'true'; });
 
 const { queueClass } = await import('./index.js');
 
-afterEach(async () => { await queueClass.clear(); });
+afterEach(async () => { await queueClass.disconnectAll(); });
 
 describe('queueClass.get()', () => {
   it('returns a Queue instance', () => {
@@ -84,7 +84,7 @@ describe('queue.add() — JobOptions', () => {
 
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
-    'get', 'reset', 'clear',
+    'get', 'reset', 'disconnectAll',
     'getActiveTransport', 'hasTransport', 'getConfig', 'getHealth',
   ];
 
@@ -102,6 +102,7 @@ describe('Public API surface — drift check', () => {
     'add', 'process', 'schedule', 'pause', 'resume',
     'retry', 'remove', 'clean', 'close', 'getStats', 'getJobs',
     'getValidatedDefaults',
+    'clear',    // renamed to disconnectAll() — NAMING.md §70 teardown naming
   ];
 
   for (const m of CLASS_METHODS) {

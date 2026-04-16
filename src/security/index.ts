@@ -225,3 +225,6 @@ export type {
 } from './security.js';
 
 export { SecurityClass } from './security.js';
+
+// Default export
+export default securityClass;

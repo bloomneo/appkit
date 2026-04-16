@@ -4,6 +4,7 @@ node_modules/
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Logs
 logs/
@@ -34,8 +35,9 @@ coverage/
 *.swp
 *.swo
 
-# Claude Code configuration
-.claude/
+# Claude Code configuration is local; skills shipped with the package are tracked.
+.claude/*
+!.claude/skills/
 
 # OS files
 .DS_Store
@@ -43,7 +45,10 @@ Thumbs.db
 
 # Build files
 build/
-scripts/
+
+# Local scripts ignored; the ones referenced from package.json / CI are tracked.
+scripts/*
+!scripts/check-*.ts
 
 # Temporary files
 temp/

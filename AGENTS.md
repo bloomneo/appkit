@@ -200,7 +200,7 @@ backend, no frontend.
 
 ## Migration notes
 
-**BREAKING in 2.0.0:** pre-v1 API audit — see [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full rename list. Key renames with no aliases: `auth.getUser()` (was `auth.user`), `auth.hasPermission()` (was `auth.can`), `security.forms()` (was `security.csrf`).
+**BREAKING in 2.0.0:** compatibility break — see [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full rename list. Key renames with no aliases: `auth.getUser()` (was `auth.user`), `auth.hasPermission()` (was `auth.can`), `security.forms()` (was `security.csrf`). 2.0.0 is stable; any further rename requires a new major.
 
 ## Where to look next
 

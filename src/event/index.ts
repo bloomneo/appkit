@@ -397,30 +397,9 @@ export { EventClass } from './event.js';
 // Default export
 export default eventClass;
 
-// Auto-setup graceful shutdown handlers
-if (typeof process !== 'undefined') {
-  // Handle graceful shutdown
-  const shutdownHandler = () => {
-    shutdown().finally(() => {
-      process.exit(0);
-    });
-  };
-
-  process.on('SIGTERM', shutdownHandler);
-  process.on('SIGINT', shutdownHandler);
-
-  // Handle uncaught errors
-  process.on('uncaughtException', (error) => {
-    console.error('[@bloomneo/appkit/event] Uncaught exception during event operation:', error);
-    shutdown().finally(() => {
-      process.exit(1);
-    });
-  });
-
-  process.on('unhandledRejection', (reason) => {
-    console.error('[@bloomneo/appkit/event] Unhandled rejection during event operation:', reason);
-    shutdown().finally(() => {
-      process.exit(1);
-    });
-  });
-}
+// Graceful shutdown is opt-in. The library does not register process signal
+// handlers — the host app owns its lifecycle. Wire it up yourself:
+//
+//   import eventClass from '@bloomneo/appkit/event';
+//   process.on('SIGTERM', () => eventClass.shutdown().finally(() => process.exit(0)));
+//   process.on('SIGINT',  () => eventClass.shutdown().finally(() => process.exit(0)));

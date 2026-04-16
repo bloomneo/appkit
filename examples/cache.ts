@@ -45,9 +45,9 @@ async function main() {
   console.log('config summary   =', cacheClass.getConfig());
 
   // 6. Test teardown:
-  //    • flushAll()      — clear DATA in every namespace (between tests)
-  //    • disconnectAll() — close transports + reset state (end of suite)
-  await cacheClass.flushAll();
+  //    • clearAll()      — clear DATA in every namespace (between tests)
+  //    • disconnectAll() — close transports + reset state (end of suite / SIGTERM)
+  await cacheClass.clearAll();
   await cacheClass.disconnectAll();
 }
 

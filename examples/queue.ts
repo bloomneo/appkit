@@ -64,7 +64,7 @@ async function main() {
   console.log('health    =', queueClass.getHealth());
 
   // 9. Teardown.
-  await queueClass.clear();
+  await queueClass.disconnectAll();
 }
 
 main().catch((err) => {

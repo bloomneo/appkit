@@ -192,3 +192,6 @@ export const configClass = {
 // Re-export types for consumers
 export type { ConfigValue, AppConfig } from './defaults.js';
 export { ConfigClass } from './config.js';
+
+// Default export
+export default configClass;

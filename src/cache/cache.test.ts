@@ -27,9 +27,9 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  // flushAll() clears cached data between individual tests.
+  // clearAll() clears cached data between individual tests.
   // disconnectAll() is reserved for full suite teardown.
-  await cacheClass.flushAll();
+  await cacheClass.clearAll();
 });
 
 // ─── cacheClass.get() ───────────────────────────────────────────────────────
@@ -268,10 +268,10 @@ describe('cacheClass utility methods', () => {
     expect(typeof cacheClass.hasRedis()).toBe('boolean');
   });
 
-  it('flushAll() clears all data without throwing', async () => {
-    const cache = cacheClass.get('flush-test');
+  it('clearAll() clears all data without throwing', async () => {
+    const cache = cacheClass.get('clear-test');
     await cache.set('x', 1, 60);
-    const result = await cacheClass.flushAll();
+    const result = await cacheClass.clearAll();
     expect(typeof result).toBe('boolean');
     expect(await cache.get('x')).toBeNull();
   });
@@ -332,8 +332,8 @@ describe('CacheError', () => {
 describe('Public API surface — drift check', () => {
   // Update this list if you add or rename a method on cacheClass.
   const CACHECLASS_METHODS = [
-    'get', 'disconnectAll', 'reset', 'getStrategy', 'getActiveNamespaces',
-    'getConfig', 'hasRedis', 'flushAll', 'shutdown',
+    'get', 'clearAll', 'disconnectAll', 'reset', 'getStrategy',
+    'getActiveNamespaces', 'getConfig', 'hasRedis',
   ];
 
   // Update this list if you add or rename a method on a Cache instance.
@@ -349,7 +349,9 @@ describe('Public API surface — drift check', () => {
 
   // cacheClass-level methods that must NOT exist (old names).
   const RENAMED_CACHECLASS_METHODS = [
-    'clear', // renamed to disconnectAll() to eliminate collision with cache.clear()
+    'clear',    // renamed to disconnectAll() to eliminate collision with cache.clear()
+    'flushAll', // renamed to clearAll() — NAMING.md §69 forbids flush/clear synonym drift
+    'shutdown', // removed — use disconnectAll() (NAMING.md §70 forbids shutdown/disconnect drift)
   ];
 
   for (const method of CACHECLASS_METHODS) {

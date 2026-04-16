@@ -322,30 +322,9 @@ export { EmailClass } from './email.js';
 // Default export
 export default emailClass;
 
-// Auto-setup graceful shutdown handlers
-if (typeof process !== 'undefined') {
-  // Handle graceful shutdown
-  const shutdownHandler = () => {
-    shutdown().finally(() => {
-      process.exit(0);
-    });
-  };
-
-  process.on('SIGTERM', shutdownHandler);
-  process.on('SIGINT', shutdownHandler);
-
-  // Handle uncaught errors
-  process.on('uncaughtException', (error) => {
-    console.error('[@bloomneo/appkit/email] Uncaught exception during email operation:', error);
-    shutdown().finally(() => {
-      process.exit(1);
-    });
-  });
-
-  process.on('unhandledRejection', (reason) => {
-    console.error('[@bloomneo/appkit/email] Unhandled rejection during email operation:', reason);
-    shutdown().finally(() => {
-      process.exit(1);
-    });
-  });
-}
+// Graceful shutdown is opt-in. The library does not register process signal
+// handlers — the host app owns its lifecycle. Wire it up yourself:
+//
+//   import emailClass from '@bloomneo/appkit/email';
+//   process.on('SIGTERM', () => emailClass.shutdown().finally(() => process.exit(0)));
+//   process.on('SIGINT',  () => emailClass.shutdown().finally(() => process.exit(0)));

@@ -137,7 +137,7 @@ queueClass.getActiveTransport(); // See which transport is running
 queueClass.hasTransport('redis'); // Check specific transport
 queueClass.getConfig(); // Debug configuration
 queueClass.getHealth(); // Health status
-await queueClass.clear(); // Clear all (testing)
+await queueClass.disconnectAll(); // Close transports + reset singleton (teardown / SIGTERM)
 queueClass.reset(overrides?); // Reset with new config (testing)
 ```
 
@@ -596,7 +596,7 @@ import { queueClass } from '@bloomneo/appkit/queue';
 describe('Queue Tests', () => {
   afterEach(async () => {
     // IMPORTANT: Clear queue state between tests
-    await queueClass.clear();
+    await queueClass.disconnectAll();
   });
 
   test('should process jobs', async () => {
@@ -767,7 +767,7 @@ queue.process('job', async (data) => {
 // ❌ DON'T forget cleanup in tests
 test('my test', () => {
   // ... test code
-  // Missing: await queueClass.clear();
+  // Missing: await queueClass.disconnectAll();
 });
 ```
 

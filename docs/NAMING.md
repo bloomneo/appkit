@@ -1,6 +1,8 @@
 # Naming Policy — `@bloomneo/appkit`
 
-**Status:** pre-v1. Breaking renames are acceptable and expected. Lock-in happens at v1.0.
+**Status:** stable. `@bloomneo/appkit@2.0.0` is the public-API reference. Any
+breaking rename from here requires a major version bump and a `CHANGELOG.md`
+migration entry.
 
 This document defines the naming conventions every module in `@bloomneo/appkit`
 must follow. The goal is **predictability for LLM agents and human developers**:
@@ -153,6 +155,9 @@ Before a module is considered "reviewed" and marked for v1:
 ## Version
 
 - **v1.0** — 2026-04-14. Initial policy derived from the auth + cache module reviews.
+- **v1.1** — 2026-04-16. Side-effects-on-import explicitly forbidden; cache
+  synonym drift called out (`flushAll` removed, `shutdown` removed).
 
-Changes to this document are themselves API contracts: bumping it after v1.0
-of the package requires a major version.
+Changes to this document are themselves API contracts: any rename or policy
+tightening that makes previously-valid code invalid requires a major version
+bump of `@bloomneo/appkit`.

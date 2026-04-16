@@ -132,3 +132,6 @@ export type {
 } from './auth.js';
 
 export { AuthenticationClass, TokenError } from './auth.js';
+
+// Default export
+export default authClass;

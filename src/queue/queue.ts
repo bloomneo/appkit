@@ -45,9 +45,10 @@ export class QueueClass implements Queue {
     this.config = config;
     this.transportType = config.transport;
     this.transport = this.initializeTransport();
-    
-    // Setup graceful shutdown
-    this.setupGracefulShutdown();
+
+    // Graceful shutdown is opt-in — host app calls queueClass.disconnectAll()
+    // from its own SIGTERM/SIGINT handler. See src/queue/index.ts for the
+    // wire-up snippet.
   }
 
   /**
@@ -366,20 +367,6 @@ export class QueueClass implements Queue {
     }
     
     console.warn(`[@bloomneo/appkit/queue] Graceful shutdown timeout (${timeout}ms) exceeded, forcing close`);
-  }
-
-  /**
-   * Setup graceful shutdown handlers
-   */
-  private setupGracefulShutdown(): void {
-    const handleShutdown = async (signal: string) => {
-      console.log(`[@bloomneo/appkit/queue] Received ${signal}, starting graceful shutdown...`);
-      await this.close();
-      process.exit(0);
-    };
-
-    process.once('SIGTERM', () => handleShutdown('SIGTERM'));
-    process.once('SIGINT', () => handleShutdown('SIGINT'));
   }
 
   // ============================================================================

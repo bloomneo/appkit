@@ -209,3 +209,6 @@ export type {
 } from './util.js';
 
 export { UtilClass } from './util.js';
+
+// Default export
+export default utilClass;

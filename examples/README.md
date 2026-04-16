@@ -34,7 +34,7 @@ using the published package, swap those imports for `'@bloomneo/appkit/<module>'
 | File              | Module   | What it shows                                                                   |
 | ----------------- | -------- | ------------------------------------------------------------------------------- |
 | `auth.ts`         | auth     | hashing, login + API tokens, getUser, role / permission checks, middleware      |
-| `cache.ts`        | cache    | namespaced caches, getOrSet, clear vs flushAll vs disconnectAll                 |
+| `cache.ts`        | cache    | namespaced caches, getOrSet, clear vs clearAll vs disconnectAll                 |
 | `config.ts`       | config   | dotted lookups, getRequired, validateRequired, env helpers                      |
 | `database.ts`     | database | single-tenant, row-level multi-tenant, per-org connections, tenant admin ops    |
 | `email.ts`        | email    | sendText / sendHtml / send / sendBatch, validateConfig, health status           |

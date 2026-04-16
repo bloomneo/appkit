@@ -4,9 +4,10 @@ All notable changes to AppKit will be documented in this file.
 
 ## [2.0.0] - 2026-04-15
 
-Pre-v1 API audit and full revamp. Breaking renames, removed hallucinated
-methods, and aligned the public surface across all 12 modules to a single
-canonical pattern. Upgrading from 1.5.x requires code changes.
+Stable-API compatibility break. Full revamp: breaking renames, removed
+hallucinated methods, and aligned the public surface across all 12 modules to
+a single canonical pattern. Upgrading from 1.5.x requires code changes. After
+2.0.0 the API is stable — any further breaking rename requires a new major.
 
 ### Breaking — auth
 

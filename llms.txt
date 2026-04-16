@@ -549,7 +549,7 @@ modules are used in the same file (most common case).
 
 ## Migration — 1.5.x → 2.0.0
 
-Pre-v1 audit. No aliases kept. Project-wide find-and-replace:
+Compatibility break. 2.0.0 is stable; no aliases kept. Project-wide find-and-replace:
 
 - `auth.user(req)` → `auth.getUser(req)`
 - `auth.can(user, perm)` → `auth.hasPermission(user, perm)`

@@ -187,14 +187,14 @@ if (!user) {
 // ❌ WRONG - No cleanup between tests
 test('should cache user', async () => {
   await cache.set('user:123', userData);
-  // Missing: await cacheClass.flushAll();
+  // Missing: await cacheClass.clearAll();
 });
 
 // ✅ CORRECT - Proper test cleanup
 afterEach(async () => {
-  // flushAll() clears cached data between individual tests.
+  // clearAll() clears cached data between individual tests.
   // disconnectAll() is reserved for full end-of-suite teardown.
-  await cacheClass.flushAll();
+  await cacheClass.clearAll();
 });
 ```
 
@@ -593,9 +593,9 @@ import { cacheClass } from '@bloomneo/appkit/cache';
 
 describe('Cache Tests', () => {
   afterEach(async () => {
-    // flushAll() clears cached data between individual tests.
+    // clearAll() clears cached data between individual tests.
     // Use disconnectAll() only for full end-of-suite teardown.
-    await cacheClass.flushAll();
+    await cacheClass.clearAll();
   });
 
   test('basic caching', async () => {
@@ -643,7 +643,7 @@ describe('Cache with Memory Strategy', () => {
   });
 
   afterEach(async () => {
-    await cacheClass.flushAll(); // clear data; disconnectAll() is for full teardown
+    await cacheClass.clearAll(); // clear data; disconnectAll() is for full teardown
   });
 });
 ```
@@ -740,15 +740,15 @@ await cache.set('user:123', userData, 3600);
 | 3 | Runtime verification | **10** | 382-line `cache.test.ts` exercises every public method; fresh `examples/cache.ts` runtime-verified today. |
 | 4 | Type safety | **9** | `Cache` interface now uses generics: `get<T>() → Promise<T \| null>`, `set<T>()`, `getOrSet<T>()`. No `any` on the public surface (strategy-internal `any` is not exported). |
 | 5 | Discoverability | **10** | `package.json` description is prompt-shaped, README hero is a copy-pasteable 3-line import, one canonical pattern. |
-| 6 | Example completeness | **9** | `examples/cache.ts` covers get/set/delete/clear/getOrSet + every utility method (`getStrategy`, `hasRedis`, `getActiveNamespaces`, `getConfig`, `flushAll`, `disconnectAll`). |
+| 6 | Example completeness | **9** | `examples/cache.ts` covers get/set/delete/clear/getOrSet + every utility method (`getStrategy`, `hasRedis`, `getActiveNamespaces`, `getConfig`, `clearAll`, `disconnectAll`). |
 | 7 | Composability | **9** | Used in 3 cookbook recipes (`real-time-chat`, `multi-tenant-saas`, `file-upload-pipeline`) composing cache with auth/db/event. |
 | 8 | Educational errors | **7** | All throws use `[@bloomneo/appkit/cache] …` prefix + stable `code` (e.g. `CACHE_INVALID_KEY`). Missing DOCS_URL anchor. |
-| 9 | Convention enforcement | **9** | Exactly one way to construct (`cacheClass.get`), one teardown pattern (`flushAll` per-test / `disconnectAll` per-suite), explicitly documented. |
+| 9 | Convention enforcement | **9** | Exactly one way to construct (`cacheClass.get`), one teardown pattern (`clearAll` per-test / `disconnectAll` per-suite), explicitly documented. |
 | 10 | Drift prevention | **5** | Tests catch runtime drift; no scripted doc-vs-source checker. |
 | 11 | Reading order | **9** | README → Quick Start → API → examples → cookbook forms a complete path; all internal links resolve. |
 | **12** | **Simplicity** | **8** | 5 instance ops + 8 class utilities. 80% case uses 3 methods (`get`, `set`, `getOrSet`). |
-| **13** | **Clarity** | **8** | Previous `cacheClass.clear()` collision is gone — teardown now uses distinct names (`flushAll` / `disconnectAll` / `shutdown`). `getOrSet`, `hasRedis`, `getActiveNamespaces` all self-documenting. |
-| **14** | **Unambiguity** | **8** | `getOrSet` explicitly documents cached-null handling via `has()` membership check. `flushAll` vs `disconnectAll` semantics spelled out inline in both source and README. |
+| **13** | **Clarity** | **8** | Previous `cacheClass.clear()` collision is gone — teardown now uses distinct names (`clearAll` / `disconnectAll`). `getOrSet`, `hasRedis`, `getActiveNamespaces` all self-documenting. |
+| **14** | **Unambiguity** | **8** | `getOrSet` explicitly documents cached-null handling via `has()` membership check. `clearAll` vs `disconnectAll` semantics spelled out inline in both source and README. |
 | **15** | **Learning curve** | **10** | Zero config, first working call in < 2 minutes from README hero alone. Strategy auto-detected from `REDIS_URL`. |
 
 ### Weighted (v1.1)
@@ -766,7 +766,7 @@ No anti-pattern cap (examples compile and run; no hallucinations; no contradicti
 
 1. **D10 Drift prevention → 9**: Add a CI script that greps every doc file for `cache.<method>(` / `cacheClass.<method>(` and asserts each name against the exported surface in `dist/types/cache/index.d.ts`.
 2. **D8 Educational errors → 9**: Append `See https://…/cache#<code>` anchors to each `CacheError` message, as the auth module does.
-3. **D13/D14 → 9**: Collapse the 8 `cacheClass.*` utility methods by dropping `getStrategy`/`getConfig` (subsumed by `getConfig().strategy`) and merging `shutdown` into `disconnectAll`. Shrinks surface area; removes the `shutdown` vs `disconnectAll` choice.
+3. **D13/D14 → 9**: Collapse the remaining `cacheClass.*` utility methods by dropping `getStrategy` (subsumed by `getConfig().strategy`). Shrinks surface area.
 
 **Realistic ceiling:** ~94/100 with fixes 1–3.
 

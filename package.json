@@ -68,6 +68,7 @@
     "bin/",
     "examples/",
     "cookbook/",
+    ".claude/skills/",
     "src/auth/README.md",
     "src/cache/README.md",
     "src/config/README.md",
@@ -83,17 +84,20 @@
     "README.md",
     "AGENTS.md",
     "llms.txt",
+    ".env.example",
     "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "vitest --run --passWithNoTests",
+    "test": "npm run check:docs && npm run check:anchors && vitest --run --passWithNoTests",
+    "test:unit": "vitest --run --passWithNoTests",
     "lint": "eslint src/",
     "format": "prettier --write 'src/**/*.js'",
     "prisma:generate": "prisma generate",
     "build": "tsc",
     "check:docs": "npx tsx scripts/check-doc-drift.ts",
-    "prepublishOnly": "npm run build"
+    "check:anchors": "npx tsx scripts/check-readme-anchors.ts",
+    "prepublishOnly": "npm run test && npm run build"
   },
   "keywords": [
     "nodejs",
