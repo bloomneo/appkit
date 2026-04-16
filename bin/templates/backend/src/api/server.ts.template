@@ -165,7 +165,7 @@ async function startServer() {
     // AppKit error handling middleware (ALWAYS LAST)
     app.use(error.handleErrors());
 
-    app.listen(PORT, () => {
+    const httpServer = app.listen(PORT, () => {
       if (frontendExists) {
         logger.info(`🚀 Full-stack server running on http://localhost:${PORT}`);
         logger.info(`🌐 Frontend: http://localhost:${PORT}`);
@@ -177,6 +177,35 @@ async function startServer() {
       logger.info(`💊 Health check: http://localhost:${PORT}/health`);
       logger.info('Server initialization completed successfully');
     });
+
+    // Graceful shutdown. AppKit does NOT register signal handlers — the host
+    // app owns its lifecycle. Drain each module you use before the process
+    // exits so in-flight requests finish, caches disconnect, queues drain,
+    // and log batches flush.
+    //
+    // Add a drain call for every AppKit module this project imports. The
+    // list below is a menu — uncomment the ones you use:
+    async function gracefulShutdown(signal: NodeJS.Signals) {
+      logger.info(`${signal} received — shutting down gracefully`);
+      httpServer.close();
+
+      try {
+        // await cacheClass.disconnectAll();
+        // await queueClass.disconnectAll();
+        // await eventClass.shutdown();
+        // await emailClass.shutdown();
+        // await storageClass.shutdown();
+        // await databaseClass.disconnectAll();
+        await logger.flush?.();       // flush batch log transports (HTTP, webhook)
+      } catch (err) {
+        logger.error('Shutdown drain failed', { error: err });
+      }
+
+      process.exit(0);
+    }
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
 
   } catch (err: any) {
     logger.error('Failed to start server', { error: err });

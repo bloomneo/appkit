@@ -2,6 +2,30 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [3.0.1] - 2026-04-16
+
+Patch — fixes a template regression introduced by 3.0.0 removing the
+library's auto-registered signal handlers.
+
+### Fixed
+
+- `bin/templates/backend/src/api/server.ts.template` now wires
+  `process.on('SIGTERM' | 'SIGINT', …)` to a `gracefulShutdown` block that
+  closes the HTTP server, flushes the logger, and shows a commented menu of
+  per-module drain calls consumers uncomment for whichever modules they use.
+  Scaffolded apps from `appkit generate app` no longer exit abruptly under
+  SIGTERM.
+
+### Known — deferred to 4.0.0
+
+- Cross-module shutdown verb split. After 3.0.0, cache and queue expose
+  `disconnectAll()` while email, event, and storage still expose `shutdown()`.
+  Not a NAMING.md violation (policy forbids drift **within** a module, not
+  across), but real agent-predictability friction — e.g. `cookbook/real-time-chat.ts`
+  has `eventClass.shutdown()` and `cacheClass.disconnectAll()` on adjacent
+  lines. Unifying requires a major (renaming `shutdown` → `disconnectAll`
+  in email/event/storage is breaking).
+
 ## [3.0.0] - 2026-04-16
 
 Post-2.0.0 audit cleanup. Shipped as a major per NAMING.md ("any rename
