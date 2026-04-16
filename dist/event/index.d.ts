@@ -144,11 +144,17 @@ declare function getHealthStatus(): {
     timestamp: string;
 };
 /**
- * Graceful shutdown for all event instances
- * @llm-rule WHEN: App shutdown or process termination
- * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data loss
+ * Close every namespace's transport and reset internal state — the canonical
+ * teardown call. Named to match cache/queue per NAMING.md §Bulk-and-Lifecycle-Ops
+ * so agents see one teardown verb across every appkit module.
+ *
+ * Emits a final `system.shutdown` broadcast before closing so subscribers in
+ * worker processes get a heads-up (with Redis strategy).
+ *
+ * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+ * @llm-rule AVOID: Abrupt process exit — graceful drain prevents in-flight event loss
  */
-declare function shutdown(): Promise<void>;
+declare function disconnectAll(): Promise<void>;
 /**
  * Single eventing export with minimal API (like auth module)
  */
@@ -165,7 +171,7 @@ export declare const eventClass: {
     readonly validateConfig: typeof validateConfig;
     readonly validateProduction: typeof validateProduction;
     readonly getHealthStatus: typeof getHealthStatus;
-    readonly shutdown: typeof shutdown;
+    readonly disconnectAll: typeof disconnectAll;
 };
 export type { EventConfig } from './defaults.js';
 export { EventClass } from './event.js';

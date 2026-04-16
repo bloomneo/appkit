@@ -125,7 +125,7 @@ describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
     'get', 'clear', 'reset', 'getStrategy', 'getActiveNamespaces', 'getConfig',
     'hasRedis', 'getStats', 'broadcast',
-    'validateConfig', 'validateProduction', 'getHealthStatus', 'shutdown',
+    'validateConfig', 'validateProduction', 'getHealthStatus', 'disconnectAll',
   ];
 
   const INSTANCE_METHODS = [
@@ -136,11 +136,10 @@ describe('Public API surface — drift check', () => {
   // Instance methods that do NOT exist — previously hallucinated
   const HALLUCINATED_INSTANCE = ['subscribe', 'unsubscribe', 'publish', 'listen'];
 
-  // Class-level methods that MUST NOT exist — removed dead exports that
-  // were never part of the public surface (getConfigSummary,
-  // getEnvironmentOptimizedConfig, getMicroservicesConfig).
+  // Class-level methods that MUST NOT exist — removed dead exports + renames.
   const HALLUCINATED_CLASS = [
     'getConfigSummary', 'getEnvironmentOptimizedConfig', 'getMicroservicesConfig',
+    'shutdown',   // renamed to disconnectAll() in 3.0.2 — NAMING.md §70
   ];
 
   for (const m of CLASS_METHODS) {

@@ -108,6 +108,6 @@ export async function recent(roomId: string, limit = 50) {
 
 /** Graceful shutdown — call from SIGTERM handler in worker processes. */
 export async function shutdownChat() {
-  await eventClass.shutdown();
+  await eventClass.disconnectAll();
   await cacheClass.disconnectAll();
 }

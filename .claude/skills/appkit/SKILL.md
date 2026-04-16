@@ -69,6 +69,8 @@ Everything else is opt-in and auto-detected.
   `[@bloomneo/appkit/<module>]` and ends with a `README.md#anchor` link.
 - **Graceful shutdown is opt-in.** Library does not register `process.on`
   handlers. Host app wires `SIGTERM` → `xxxClass.disconnectAll()` itself.
+  One teardown verb across every module — `disconnectAll()`. There is no
+  `xxxClass.shutdown()` on any module in 3.0.2+.
 
 ## Before writing code
 

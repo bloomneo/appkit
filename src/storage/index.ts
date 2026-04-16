@@ -190,13 +190,16 @@ function getStats(): {
 }
 
 /**
- * Graceful shutdown for storage system
- * @llm-rule WHEN: App shutdown or process termination
- * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data corruption
+ * Close storage provider connections and reset internal state — the canonical
+ * teardown call. Named to match cache/queue per NAMING.md §Bulk-and-Lifecycle-Ops
+ * so agents see one teardown verb across every appkit module.
+ *
+ * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+ * @llm-rule AVOID: Abrupt process exit — graceful drain prevents in-flight upload loss
  */
-async function shutdown(): Promise<void> {
+async function disconnectAll(): Promise<void> {
   console.log('🔄 [@bloomneo/appkit/storage] Storage graceful shutdown...');
-  
+
   try {
     await clear();
     console.log('✅ [@bloomneo/appkit/storage] Storage shutdown complete');
@@ -283,8 +286,8 @@ export const storageClass = {
   isLocal,
   getStats,
   validateConfig,
-  shutdown,
-  
+  disconnectAll,
+
   // Helper methods
   upload,
   download,
@@ -301,5 +304,5 @@ export default storageClass;
 // handlers — the host app owns its lifecycle. Wire it up yourself:
 //
 //   import storageClass from '@bloomneo/appkit/storage';
-//   process.on('SIGTERM', () => storageClass.shutdown().finally(() => process.exit(0)));
-//   process.on('SIGINT',  () => storageClass.shutdown().finally(() => process.exit(0)));
+//   process.on('SIGTERM', () => storageClass.disconnectAll().finally(() => process.exit(0)));
+//   process.on('SIGINT',  () => storageClass.disconnectAll().finally(() => process.exit(0)));

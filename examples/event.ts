@@ -66,7 +66,7 @@ async function main() {
   await eventClass.broadcast('shutdown', { reason: 'deploy' });
 
   // 10. Teardown.
-  await eventClass.shutdown();
+  await eventClass.disconnectAll();
 }
 
 main().catch((err) => {

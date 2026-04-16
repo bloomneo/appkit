@@ -80,7 +80,7 @@ emailClass.getStrategy()                      // 'console' | 'resend' | 'smtp'
 emailClass.hasResend() / hasSmtp() / hasProvider()
 emailClass.validateConfig() / validateProduction()
 emailClass.getHealthStatus()
-emailClass.shutdown()                         // graceful close (call from SIGTERM)
+emailClass.disconnectAll()                    // graceful close (call from SIGTERM)
 ```
 
 ## Env vars

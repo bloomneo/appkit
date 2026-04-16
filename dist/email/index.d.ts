@@ -146,11 +146,14 @@ declare function getHealthStatus(): {
     timestamp: string;
 };
 /**
- * Graceful shutdown for email instance
- * @llm-rule WHEN: App shutdown or process termination
- * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents connection issues
+ * Close email provider connections and reset internal state — the canonical
+ * teardown call. Named to match cache/queue per NAMING.md §Bulk-and-Lifecycle-Ops
+ * so agents see one teardown verb across every appkit module.
+ *
+ * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+ * @llm-rule AVOID: Abrupt process exit — graceful drain prevents partial sends
  */
-declare function shutdown(): Promise<void>;
+declare function disconnectAll(): Promise<void>;
 /**
  * Single email export with minimal API (like auth module)
  */
@@ -168,7 +171,7 @@ export declare const emailClass: {
     readonly validateConfig: typeof validateConfig;
     readonly validateProduction: typeof validateProduction;
     readonly getHealthStatus: typeof getHealthStatus;
-    readonly shutdown: typeof shutdown;
+    readonly disconnectAll: typeof disconnectAll;
 };
 export type { EmailConfig } from './defaults.js';
 export { EmailClass } from './email.js';

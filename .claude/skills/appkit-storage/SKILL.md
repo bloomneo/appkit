@@ -74,7 +74,7 @@ storageClass.getStrategy()                    // 'local' | 's3' | 'r2'
 storageClass.hasCloudStorage()                // → boolean
 storageClass.isLocal()                        // → boolean
 storageClass.getStats()                       // → { strategy, totalFiles?, totalSize? }
-storageClass.shutdown()                       // graceful close (call from SIGTERM)
+storageClass.disconnectAll()                  // graceful close (call from SIGTERM)
 ```
 
 ## Env vars

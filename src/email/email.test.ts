@@ -101,7 +101,7 @@ describe('Public API surface — drift check', () => {
     'get', 'clear', 'reset', 'getStrategy', 'getConfig',
     'hasResend', 'hasSmtp', 'hasProvider',
     'send', 'sendText',
-    'validateConfig', 'validateProduction', 'getHealthStatus', 'shutdown',
+    'validateConfig', 'validateProduction', 'getHealthStatus', 'disconnectAll',
   ];
 
   const INSTANCE_METHODS = [
@@ -113,9 +113,12 @@ describe('Public API surface — drift check', () => {
   const HALLUCINATED_INSTANCE = ['sendWithTemplate', 'queue', 'schedule'];
 
   // Class-level methods that MUST NOT exist — drift trap for docs.
-  // `disconnectAll`/`flush`/`connect` have never been exposed at the class
-  // level; `clear()` and `shutdown()` are the documented lifecycle hooks.
-  const HALLUCINATED_CLASS = ['disconnectAll', 'flush', 'connect'];
+  // `flush`/`connect` have never existed at class level. `shutdown` was renamed
+  // to `disconnectAll` in 3.0.2 to align with cache/queue teardown naming.
+  const HALLUCINATED_CLASS = [
+    'flush', 'connect',
+    'shutdown',   // renamed to disconnectAll() — NAMING.md §70
+  ];
 
   for (const m of CLASS_METHODS) {
     it(`emailClass.${m} exists`, () => {

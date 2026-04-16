@@ -85,7 +85,7 @@ eventClass.hasRedis()                          // → boolean
 eventClass.getStats()                          // → diagnostic
 eventClass.validateProduction()
 eventClass.getHealthStatus()
-eventClass.shutdown()                          // graceful close (call from SIGTERM)
+eventClass.disconnectAll()                     // graceful close (call from SIGTERM)
 ```
 
 ## Env vars

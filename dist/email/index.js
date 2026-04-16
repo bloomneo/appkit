@@ -184,11 +184,14 @@ function getHealthStatus() {
     return performHealthCheck();
 }
 /**
- * Graceful shutdown for email instance
- * @llm-rule WHEN: App shutdown or process termination
- * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents connection issues
+ * Close email provider connections and reset internal state — the canonical
+ * teardown call. Named to match cache/queue per NAMING.md §Bulk-and-Lifecycle-Ops
+ * so agents see one teardown verb across every appkit module.
+ *
+ * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+ * @llm-rule AVOID: Abrupt process exit — graceful drain prevents partial sends
  */
-async function shutdown() {
+async function disconnectAll() {
     console.log('🔄 [@bloomneo/appkit/email] Email graceful shutdown...');
     try {
         await clear();
@@ -219,7 +222,7 @@ export const emailClass = {
     validateConfig,
     validateProduction,
     getHealthStatus,
-    shutdown,
+    disconnectAll,
 };
 export { EmailClass } from './email.js';
 // Default export
@@ -228,6 +231,6 @@ export default emailClass;
 // handlers — the host app owns its lifecycle. Wire it up yourself:
 //
 //   import emailClass from '@bloomneo/appkit/email';
-//   process.on('SIGTERM', () => emailClass.shutdown().finally(() => process.exit(0)));
-//   process.on('SIGINT',  () => emailClass.shutdown().finally(() => process.exit(0)));
+//   process.on('SIGTERM', () => emailClass.disconnectAll().finally(() => process.exit(0)));
+//   process.on('SIGINT',  () => emailClass.disconnectAll().finally(() => process.exit(0)));
 //# sourceMappingURL=index.js.map

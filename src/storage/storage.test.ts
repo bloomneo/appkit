@@ -73,7 +73,7 @@ describe('storage.list()', () => {
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
     'get', 'clear', 'reset', 'getStrategy', 'getConfig',
-    'hasCloudStorage', 'isLocal', 'getStats', 'validateConfig', 'shutdown',
+    'hasCloudStorage', 'isLocal', 'getStats', 'validateConfig', 'disconnectAll',
     'upload', 'download',
   ];
 
@@ -89,6 +89,7 @@ describe('Public API surface — drift check', () => {
   // assume symmetry with the instance surface.
   const HALLUCINATED_CLASS = [
     'put', 'delete', 'list', 'url', 'signedUrl', 'exists', 'copy', 'disconnect',
+    'shutdown',   // renamed to disconnectAll() in 3.0.2 — NAMING.md §70
   ];
 
   for (const m of CLASS_METHODS) {

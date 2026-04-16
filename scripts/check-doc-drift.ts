@@ -38,6 +38,11 @@ const BANNED: Banned[] = [
   // queue — 2.0.1 align with cache teardown naming
   { pattern: /\bqueueClass\.clear\s*\(/,    now: 'queueClass.disconnectAll()' },
 
+  // email / event / storage — 3.0.2 unify teardown verb across all 12 modules
+  { pattern: /\bemailClass\.shutdown\s*\(/,   now: 'emailClass.disconnectAll()' },
+  { pattern: /\beventClass\.shutdown\s*\(/,   now: 'eventClass.disconnectAll()' },
+  { pattern: /\bstorageClass\.shutdown\s*\(/, now: 'storageClass.disconnectAll()' },
+
   // logger — 1.5.x hallucinations
   { pattern: /\bgethasTransport\b/,        now: 'hasTransport' },
   { pattern: /\bgetclear\b/,               now: 'clear' },

@@ -2,6 +2,44 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [3.0.2] - 2026-04-16
+
+One teardown verb across every module. Resolves the cross-module split that
+3.0.1 flagged as "deferred to 4.0.0" — we chose to land it in the 3.x line
+while there are no external consumers of 3.0.0/3.0.1 (neither was published
+to npm).
+
+### Breaking — email, event, storage
+
+- `emailClass.shutdown()`   → `emailClass.disconnectAll()` (no alias)
+- `eventClass.shutdown()`   → `eventClass.disconnectAll()` (no alias)
+- `storageClass.shutdown()` → `storageClass.disconnectAll()` (no alias)
+
+After this change, every module in the package uses the same teardown verb
+(`xxxClass.disconnectAll()`). An agent that learns the pattern for one
+module gets the same pattern for all 12.
+
+### Migration from 3.0.x
+
+Project-wide find-and-replace (exactly these three):
+
+- `emailClass.shutdown(`    → `emailClass.disconnectAll(`
+- `eventClass.shutdown(`    → `eventClass.disconnectAll(`
+- `storageClass.shutdown(`  → `storageClass.disconnectAll(`
+
+### Enforcement
+
+`scripts/check-doc-drift.ts` bans the old names — any doc, example, cookbook,
+template, or `src/` file using `emailClass.shutdown(` / `eventClass.shutdown(`
+/ `storageClass.shutdown(` fails `npm test`.
+
+### Versioning note
+
+Strict semver would call this 4.0.0. It shipped as 3.0.2 because 3.0.0 and
+3.0.1 were never published to npm — the public `latest` is still 2.0.0, so no
+external code references the removed names. Future breaking changes after an
+npm publish will take a proper major.
+
 ## [3.0.1] - 2026-04-16
 
 Patch — fixes a template regression introduced by 3.0.0 removing the
@@ -15,16 +53,6 @@ library's auto-registered signal handlers.
   per-module drain calls consumers uncomment for whichever modules they use.
   Scaffolded apps from `appkit generate app` no longer exit abruptly under
   SIGTERM.
-
-### Known — deferred to 4.0.0
-
-- Cross-module shutdown verb split. After 3.0.0, cache and queue expose
-  `disconnectAll()` while email, event, and storage still expose `shutdown()`.
-  Not a NAMING.md violation (policy forbids drift **within** a module, not
-  across), but real agent-predictability friction — e.g. `cookbook/real-time-chat.ts`
-  has `eventClass.shutdown()` and `cacheClass.disconnectAll()` on adjacent
-  lines. Unifying requires a major (renaming `shutdown` → `disconnectAll`
-  in email/event/storage is breaking).
 
 ## [3.0.0] - 2026-04-16
 
@@ -51,9 +79,9 @@ release; upgrading from 2.0.0 requires small renames, mostly in teardown code.
   time. A library must not commandeer the host app's signal handling. Wire
   shutdown yourself:
   ```ts
-  process.on('SIGTERM', () => emailClass.shutdown().finally(() => process.exit(0)));
   process.on('SIGTERM', () => cacheClass.disconnectAll().finally(() => process.exit(0)));
-  // ...etc for each module you use
+  // ...etc for each module you use (3.0.2 unified the teardown verb across
+  // all modules, so every one uses disconnectAll())
   ```
 - `storage` default export was the class (`StorageClass`); now the lowercase
   singleton (`storageClass`), matching the other modules. If you did

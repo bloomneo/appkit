@@ -339,11 +339,17 @@ function getHealthStatus(): {
 }
 
 /**
- * Graceful shutdown for all event instances
- * @llm-rule WHEN: App shutdown or process termination
- * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data loss
+ * Close every namespace's transport and reset internal state — the canonical
+ * teardown call. Named to match cache/queue per NAMING.md §Bulk-and-Lifecycle-Ops
+ * so agents see one teardown verb across every appkit module.
+ *
+ * Emits a final `system.shutdown` broadcast before closing so subscribers in
+ * worker processes get a heads-up (with Redis strategy).
+ *
+ * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+ * @llm-rule AVOID: Abrupt process exit — graceful drain prevents in-flight event loss
  */
-async function shutdown(): Promise<void> {
+async function disconnectAll(): Promise<void> {
   console.log('🔄 [@bloomneo/appkit/event] Event graceful shutdown...');
 
   try {
@@ -387,7 +393,7 @@ export const eventClass = {
   validateConfig,
   validateProduction,
   getHealthStatus,
-  shutdown,
+  disconnectAll,
 } as const;
 
 // Re-export types for consumers
@@ -401,5 +407,5 @@ export default eventClass;
 // handlers — the host app owns its lifecycle. Wire it up yourself:
 //
 //   import eventClass from '@bloomneo/appkit/event';
-//   process.on('SIGTERM', () => eventClass.shutdown().finally(() => process.exit(0)));
-//   process.on('SIGINT',  () => eventClass.shutdown().finally(() => process.exit(0)));
+//   process.on('SIGTERM', () => eventClass.disconnectAll().finally(() => process.exit(0)));
+//   process.on('SIGINT',  () => eventClass.disconnectAll().finally(() => process.exit(0)));

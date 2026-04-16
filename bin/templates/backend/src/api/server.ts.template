@@ -192,9 +192,9 @@ async function startServer() {
       try {
         // await cacheClass.disconnectAll();
         // await queueClass.disconnectAll();
-        // await eventClass.shutdown();
-        // await emailClass.shutdown();
-        // await storageClass.shutdown();
+        // await eventClass.disconnectAll();
+        // await emailClass.disconnectAll();
+        // await storageClass.disconnectAll();
         // await databaseClass.disconnectAll();
         await logger.flush?.();       // flush batch log transports (HTTP, webhook)
       } catch (err) {
