@@ -143,10 +143,6 @@ export declare class QueueClass implements Queue {
      * Wait for active jobs to complete with timeout
      */
     private waitForActiveJobs;
-    /**
-     * Setup graceful shutdown handlers
-     */
-    private setupGracefulShutdown;
     private validateJobType;
     private validateJobData;
     private validateHandler;

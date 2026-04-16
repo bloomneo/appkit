@@ -98,4 +98,6 @@ export const authClass = {
     getAllRoles,
 };
 export { AuthenticationClass, TokenError } from './auth.js';
+// Default export
+export default authClass;
 //# sourceMappingURL=index.js.map

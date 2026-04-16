@@ -93,11 +93,14 @@ declare function hasTransport(name: string): boolean;
  */
 declare function getConfig(): QueueConfig | null;
 /**
- * Clear all queues and close transports - essential for testing
- * @llm-rule WHEN: Testing queuing logic or app shutdown
- * @llm-rule AVOID: Using in production without graceful shutdown
+ * Close transports and reset the singleton — the canonical teardown call.
+ * Name mirrors cacheClass.disconnectAll() per NAMING.md §Bulk-and-Lifecycle-Ops.
+ *
+ * @llm-rule WHEN: End-of-test-suite teardown, graceful shutdown, SIGTERM handler
+ * @llm-rule AVOID: Calling between individual tests if your jobs are still
+ *   running — wait for queue drain first
  */
-declare function clear(): Promise<void>;
+declare function disconnectAll(): Promise<void>;
 /**
  * Get health status of queuing system
  * @llm-rule WHEN: Health checks or monitoring dashboard
@@ -113,12 +116,14 @@ declare function getHealth(): {
  */
 export declare const queueClass: {
     readonly get: typeof get;
+    readonly disconnectAll: typeof disconnectAll;
     readonly reset: typeof reset;
-    readonly clear: typeof clear;
     readonly getActiveTransport: typeof getActiveTransport;
     readonly hasTransport: typeof hasTransport;
     readonly getConfig: typeof getConfig;
     readonly getHealth: typeof getHealth;
 };
-export {};
+export type { QueueConfig } from './defaults.js';
+export { QueueClass } from './queue.js';
+export default queueClass;
 //# sourceMappingURL=index.d.ts.map

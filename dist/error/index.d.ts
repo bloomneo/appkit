@@ -153,4 +153,5 @@ export declare const errorClass: {
 };
 export type { ErrorConfig } from './defaults.js';
 export { ErrorClass } from './error.js';
+export default errorClass;
 //# sourceMappingURL=index.d.ts.map

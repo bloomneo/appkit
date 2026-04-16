@@ -107,4 +107,5 @@ export declare const securityClass: {
 export type { SecurityConfig, CSRFConfig, RateLimitConfig, SanitizationConfig, EncryptionConfig, EnvironmentConfig, SecurityError, } from './defaults.js';
 export type { ExpressRequest, ExpressResponse, ExpressNextFunction, ExpressMiddleware, CSRFOptions, RateLimitOptions, InputOptions, HTMLOptions, } from './security.js';
 export { SecurityClass } from './security.js';
+export default securityClass;
 //# sourceMappingURL=index.d.ts.map

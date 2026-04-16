@@ -2,6 +2,81 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [3.0.0] - 2026-04-16
+
+Post-2.0.0 audit cleanup. Shipped as a major per NAMING.md ("any rename
+requires a new major"). Library hygiene fixes that surfaced after 2.0.0's
+release; upgrading from 2.0.0 requires small renames, mostly in teardown code.
+
+### Breaking — cache
+
+- `cacheClass.flushAll()` renamed to `cacheClass.clearAll()` (no alias) —
+  NAMING.md §69 forbids `flush` / `clear` synonym drift.
+- `cacheClass.shutdown()` removed (no alias) — use `cacheClass.disconnectAll()`.
+  NAMING.md §70 forbids `shutdown` / `disconnect` drift.
+
+### Breaking — queue
+
+- `queueClass.clear()` renamed to `queueClass.disconnectAll()` (no alias) —
+  aligns teardown naming with cache.
+
+### Breaking — library hygiene
+
+- `email`, `event`, `storage`, and `queue` no longer register `SIGTERM` /
+  `SIGINT` / `uncaughtException` / `unhandledRejection` handlers at import
+  time. A library must not commandeer the host app's signal handling. Wire
+  shutdown yourself:
+  ```ts
+  process.on('SIGTERM', () => emailClass.shutdown().finally(() => process.exit(0)));
+  process.on('SIGTERM', () => cacheClass.disconnectAll().finally(() => process.exit(0)));
+  // ...etc for each module you use
+  ```
+- `storage` default export was the class (`StorageClass`); now the lowercase
+  singleton (`storageClass`), matching the other modules. If you did
+  `import StorageClass from '@bloomneo/appkit/storage'` and used it as a
+  class, switch to the named import `import { StorageClass } from ...`.
+
+### Added
+
+- Every module now ships `export default <lowercase singleton>` (auth, config,
+  error, security, util previously lacked one).
+- `queue` now re-exports `QueueClass`, `QueueConfig` to match other modules.
+- Root `.env.example` with every common BLOOM_* var organized by module.
+- Root README quick-start calls out the three fresh-consumer stumbles: ESM
+  requirement, `BLOOM_AUTH_SECRET` bootstrap, dotenv is not auto-loaded.
+- `src/auth/README.md` documents `generateLoginToken` payload pass-through
+  (any extra JSON-serializable field is preserved into `req.user`).
+- `scripts/check-readme-anchors.ts` + `npm run check:anchors`: every error
+  message's `See: .../README.md#anchor` URL is verified to resolve.
+- `scripts/check-doc-drift.ts` now scans `src/` (plugged the gap that let
+  the cache synonym drift land in the first place).
+- `tests/public-surface.test.ts`: top-level shape assertions over every
+  module — defaults, class re-exports, flat-vs-deep identity.
+- GitHub Actions CI workflow (`check:docs` + `check:anchors` + `vitest` on
+  Node 18/20/22 for push + PR).
+- Claude Code skills at `.claude/skills/` — one `appkit` overview + one per
+  module (12 modules × 1 skill each). Shipped in the tarball; consumers copy
+  into their own `.claude/skills/` to activate.
+
+### Framing
+
+- `docs/NAMING.md`, `README.md`, `AGENTS.md`, `llms.txt`, `CHANGELOG.md`:
+  remove "pre-v1" language. The public API is stable from 2.0.0 forward;
+  this 3.0.0 exists because the 2.0.0 audit itself needed a few more renames
+  after shipping, and per our own policy those require a major.
+
+### Migration from 2.0.0
+
+Project-wide find-and-replace:
+
+- `cacheClass.flushAll(`     → `cacheClass.clearAll(`
+- `cacheClass.shutdown(`     → `cacheClass.disconnectAll(`
+- `queueClass.clear(`        → `queueClass.disconnectAll(`
+
+Remove any top-level `import '@bloomneo/appkit/email'` (or event/storage/queue)
+code that relied on the old auto-registered signal handlers; wire them
+explicitly into your process lifecycle.
+
 ## [2.0.0] - 2026-04-15
 
 Stable-API compatibility break. Full revamp: breaking renames, removed

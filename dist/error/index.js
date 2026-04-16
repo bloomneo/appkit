@@ -153,4 +153,6 @@ export const errorClass = {
     isServerError: (err) => get().isServerError(err),
 };
 export { ErrorClass } from './error.js';
+// Default export
+export default errorClass;
 //# sourceMappingURL=index.js.map

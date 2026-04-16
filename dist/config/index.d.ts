@@ -96,4 +96,5 @@ export declare const configClass: {
 };
 export type { ConfigValue, AppConfig } from './defaults.js';
 export { ConfigClass } from './config.js';
+export default configClass;
 //# sourceMappingURL=index.d.ts.map

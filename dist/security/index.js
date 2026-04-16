@@ -158,4 +158,6 @@ export const securityClass = {
     getStatus,
 };
 export { SecurityClass } from './security.js';
+// Default export
+export default securityClass;
 //# sourceMappingURL=index.js.map

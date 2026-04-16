@@ -34,11 +34,11 @@ export interface Cache {
 declare function get(namespace?: string): Cache;
 /**
  * Disconnect all cache instances and reset internal state.
- * Use this for full teardown (e.g., end-of-suite cleanup).
- * For clearing cached data between individual tests use flushAll().
+ * Use this for full teardown (e.g., end-of-suite cleanup, graceful shutdown).
+ * For clearing cached data between individual tests use clearAll().
  *
- * @llm-rule WHEN: End-of-test-suite teardown or app restart
- * @llm-rule AVOID: Calling between individual tests — use flushAll() instead
+ * @llm-rule WHEN: End-of-test-suite teardown, app shutdown, or SIGTERM handler
+ * @llm-rule AVOID: Calling between individual tests — use clearAll() instead
  */
 declare function disconnectAll(): Promise<void>;
 /**
@@ -78,31 +78,24 @@ declare function getConfig(): {
  */
 declare function hasRedis(): boolean;
 /**
- * Flush all caches across all namespaces (dangerous)
- * @llm-rule WHEN: Testing or emergency cache clearing across all namespaces
+ * Clear all cached data across all namespaces (keeps connections open).
+ * @llm-rule WHEN: Between tests, or emergency cache clearing
  * @llm-rule AVOID: Using in production - this clears ALL cached data in ALL namespaces
- * @llm-rule NOTE: Only use for testing or emergency situations
+ * @llm-rule NOTE: Use disconnectAll() instead for full teardown (closes connections)
  */
-declare function flushAll(): Promise<boolean>;
-/**
- * Graceful shutdown for all cache instances
- * @llm-rule WHEN: App shutdown or process termination
- * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data loss
- */
-declare function shutdown(): Promise<void>;
+declare function clearAll(): Promise<boolean>;
 /**
  * Single caching export with minimal API (like auth module)
  */
 export declare const cacheClass: {
     readonly get: typeof get;
+    readonly clearAll: typeof clearAll;
     readonly disconnectAll: typeof disconnectAll;
     readonly reset: typeof reset;
     readonly getStrategy: typeof getStrategy;
     readonly getActiveNamespaces: typeof getActiveNamespaces;
     readonly getConfig: typeof getConfig;
     readonly hasRedis: typeof hasRedis;
-    readonly flushAll: typeof flushAll;
-    readonly shutdown: typeof shutdown;
 };
 export type { CacheConfig } from './defaults.js';
 export { CacheClass, CacheError } from './cache.js';

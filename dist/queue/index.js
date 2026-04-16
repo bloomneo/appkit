@@ -78,11 +78,14 @@ function getConfig() {
     return globalQueuing.getConfig();
 }
 /**
- * Clear all queues and close transports - essential for testing
- * @llm-rule WHEN: Testing queuing logic or app shutdown
- * @llm-rule AVOID: Using in production without graceful shutdown
+ * Close transports and reset the singleton — the canonical teardown call.
+ * Name mirrors cacheClass.disconnectAll() per NAMING.md §Bulk-and-Lifecycle-Ops.
+ *
+ * @llm-rule WHEN: End-of-test-suite teardown, graceful shutdown, SIGTERM handler
+ * @llm-rule AVOID: Calling between individual tests if your jobs are still
+ *   running — wait for queue drain first
  */
-async function clear() {
+async function disconnectAll() {
     if (globalQueuing) {
         await globalQueuing.close();
         globalQueuing = null;
@@ -105,12 +108,22 @@ function getHealth() {
 export const queueClass = {
     // Core method (like auth.get())
     get,
+    // Bulk / lifecycle ops
+    disconnectAll, // Close transports + reset singleton. Use for teardown / SIGTERM.
+    reset, // Close + reinitialize (tests with different config only)
     // Utility methods
-    reset,
-    clear,
     getActiveTransport,
     hasTransport,
     getConfig,
     getHealth,
 };
+export { QueueClass } from './queue.js';
+// Default export
+export default queueClass;
+// Graceful shutdown is opt-in. The library does not register process signal
+// handlers — the host app owns its lifecycle. Wire it up yourself:
+//
+//   import queueClass from '@bloomneo/appkit/queue';
+//   process.on('SIGTERM', () => queueClass.disconnectAll().finally(() => process.exit(0)));
+//   process.on('SIGINT',  () => queueClass.disconnectAll().finally(() => process.exit(0)));
 //# sourceMappingURL=index.js.map

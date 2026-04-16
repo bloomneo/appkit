@@ -156,4 +156,6 @@ export const configClass = {
     getModuleConfig,
 };
 export { ConfigClass } from './config.js';
+// Default export
+export default configClass;
 //# sourceMappingURL=index.js.map

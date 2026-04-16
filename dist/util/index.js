@@ -163,4 +163,6 @@ export const utilClass = {
     getStatus,
 };
 export { UtilClass } from './util.js';
+// Default export
+export default utilClass;
 //# sourceMappingURL=index.js.map

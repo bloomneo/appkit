@@ -8,7 +8,6 @@
  * @llm-rule NOTE: Uses storageClass.get() pattern like auth - get() → storage.put() → distributed
  * @llm-rule NOTE: Common pattern - storageClass.get() → storage.put() → storage.url() → served
  */
-import { StorageClass } from './storage.js';
 import { type StorageConfig } from './defaults.js';
 export interface Storage {
     put(key: string, data: Buffer | Uint8Array | string, options?: PutOptions): Promise<string>;
@@ -149,5 +148,5 @@ export declare const storageClass: {
 };
 export type { StorageConfig } from './defaults.js';
 export { StorageClass } from './storage.js';
-export default StorageClass;
+export default storageClass;
 //# sourceMappingURL=index.d.ts.map

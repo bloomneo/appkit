@@ -68,4 +68,5 @@ export declare const authClass: {
 export type { AuthConfig, RoleConfig, RoleHierarchy, PermissionDefaults, } from './defaults.js';
 export type { JwtPayload, LoginTokenPayload, ApiTokenPayload, ExpressRequest, ExpressResponse, MiddlewareOptions, ExpressMiddleware, } from './auth.js';
 export { AuthenticationClass, TokenError } from './auth.js';
+export default authClass;
 //# sourceMappingURL=index.d.ts.map

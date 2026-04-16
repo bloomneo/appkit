@@ -94,4 +94,5 @@ export declare const utilClass: {
 export type { UtilConfig } from './defaults.js';
 export type { GetOptions, ChunkOptions, TruncateOptions, DebounceOptions, FormatBytesOptions, SlugifyOptions, } from './util.js';
 export { UtilClass } from './util.js';
+export default utilClass;
 //# sourceMappingURL=index.d.ts.map

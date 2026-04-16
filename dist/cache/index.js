@@ -51,11 +51,11 @@ function get(namespace) {
 }
 /**
  * Disconnect all cache instances and reset internal state.
- * Use this for full teardown (e.g., end-of-suite cleanup).
- * For clearing cached data between individual tests use flushAll().
+ * Use this for full teardown (e.g., end-of-suite cleanup, graceful shutdown).
+ * For clearing cached data between individual tests use clearAll().
  *
- * @llm-rule WHEN: End-of-test-suite teardown or app restart
- * @llm-rule AVOID: Calling between individual tests — use flushAll() instead
+ * @llm-rule WHEN: End-of-test-suite teardown, app shutdown, or SIGTERM handler
+ * @llm-rule AVOID: Calling between individual tests — use clearAll() instead
  */
 async function disconnectAll() {
     const disconnectPromises = [];
@@ -130,12 +130,12 @@ function hasRedis() {
     return !!process.env.REDIS_URL;
 }
 /**
- * Flush all caches across all namespaces (dangerous)
- * @llm-rule WHEN: Testing or emergency cache clearing across all namespaces
+ * Clear all cached data across all namespaces (keeps connections open).
+ * @llm-rule WHEN: Between tests, or emergency cache clearing
  * @llm-rule AVOID: Using in production - this clears ALL cached data in ALL namespaces
- * @llm-rule NOTE: Only use for testing or emergency situations
+ * @llm-rule NOTE: Use disconnectAll() instead for full teardown (closes connections)
  */
-async function flushAll() {
+async function clearAll() {
     try {
         const clearPromises = [];
         for (const cache of namedCaches.values()) {
@@ -145,23 +145,8 @@ async function flushAll() {
         return results.every(result => result === true);
     }
     catch (error) {
-        console.error('[@bloomneo/appkit/cache] flushAll error:', error.message);
+        console.error('[@bloomneo/appkit/cache] clearAll error:', error.message);
         return false;
-    }
-}
-/**
- * Graceful shutdown for all cache instances
- * @llm-rule WHEN: App shutdown or process termination
- * @llm-rule AVOID: Abrupt process exit - graceful shutdown prevents data loss
- */
-async function shutdown() {
-    console.log('[@bloomneo/appkit/cache] Graceful shutdown starting...');
-    try {
-        await disconnectAll();
-        console.log('[@bloomneo/appkit/cache] Shutdown complete.');
-    }
-    catch (error) {
-        console.error('[@bloomneo/appkit/cache] Shutdown error:', error.message);
     }
 }
 /**
@@ -170,21 +155,23 @@ async function shutdown() {
 export const cacheClass = {
     // Core method (like auth.get())
     get,
+    // Bulk ops
+    clearAll, // Clears cached data across all namespaces (keeps connections). Use between tests.
+    disconnectAll, // Disconnects all instances + resets state. Use for teardown / graceful shutdown.
     // Utility methods
-    disconnectAll, // Disconnects all instances + resets state. Use flushAll() to clear data between tests.
     reset,
     getStrategy,
     getActiveNamespaces,
     getConfig,
     hasRedis,
-    flushAll, // Clears cached data across all namespaces. Use between individual tests.
-    shutdown,
 };
 export { CacheClass, CacheError } from './cache.js';
 // Default export
 export default cacheClass;
-// NOTE: This module does NOT register process-level signal handlers.
-// Wire cacheClass.shutdown() into your app's lifecycle explicitly:
-//   process.on('SIGTERM', () => cacheClass.shutdown().finally(() => process.exit(0)));
-// A library should not commandeer the host app's shutdown or error handling.
+// Graceful shutdown is opt-in. The library does not register process signal
+// handlers — the host app owns its lifecycle. Wire it up yourself:
+//
+//   import cacheClass from '@bloomneo/appkit/cache';
+//   process.on('SIGTERM', () => cacheClass.disconnectAll().finally(() => process.exit(0)));
+//   process.on('SIGINT',  () => cacheClass.disconnectAll().finally(() => process.exit(0)));
 //# sourceMappingURL=index.js.map
