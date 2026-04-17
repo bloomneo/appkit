@@ -64,7 +64,7 @@ async function main() {
   // console.log(users);
 
   // 8. Graceful shutdown — closes every cached connection.
-  await databaseClass.disconnect();
+  await databaseClass.disconnectAll();
 }
 
 main().catch((err) => {

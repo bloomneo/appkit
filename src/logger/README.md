@@ -295,7 +295,7 @@ log.close(); // Close transports
 loggerClass.getActiveTransports(); // ['console', 'file', 'database']
 loggerClass.hasTransport('database'); // true/false
 loggerClass.getConfig(); // Debug configuration
-await loggerClass.clear(); // Clear state (testing)
+await loggerClass.disconnectAll(); // Clear state (testing)
 ```
 
 ## 💡 Simple Examples
@@ -396,7 +396,7 @@ import { loggerClass } from '@bloomneo/appkit/logger';
 
 describe('Payment Service', () => {
   afterEach(async () => {
-    await loggerClass.clear(); // Clear state between tests
+    await loggerClass.disconnectAll(); // Clear state between tests
   });
 
   test('should log payment success', async () => {

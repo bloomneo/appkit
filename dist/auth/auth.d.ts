@@ -8,6 +8,7 @@
  * @llm-rule NOTE: Use requireUserRoles() for hierarchy-based access, requireUserPermissions() for action-specific access
  * @llm-rule NOTE: Uses role.level format (user.basic, admin.tenant) with automatic inheritance
  */
+import { AppKitError } from '../util/errors.js';
 import { type AuthConfig } from './defaults.js';
 /**
  * Typed error thrown by verifyToken() for all JWT failure modes.
@@ -19,7 +20,7 @@ import { type AuthConfig } from './defaults.js';
  * @llm-rule WHEN: Catching verifyToken() failures to branch on failure type
  * @llm-rule AVOID: Comparing error.message strings — use error.code instead
  */
-export declare class TokenError extends Error {
+export declare class TokenError extends AppKitError {
     readonly code: 'expired' | 'not_before' | 'invalid' | 'malformed';
     constructor(code: TokenError['code'], message: string);
 }

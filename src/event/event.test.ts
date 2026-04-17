@@ -6,7 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { eventClass } from './index.js';
 
-afterEach(async () => { await eventClass.clear(); });
+afterEach(async () => { await eventClass.disconnectAll(); });
 
 describe('eventClass.get()', () => {
   it('returns an Event instance for the default namespace', () => {
@@ -123,7 +123,7 @@ describe('eventClass.getActiveNamespaces()', () => {
 
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
-    'get', 'clear', 'reset', 'getStrategy', 'getActiveNamespaces', 'getConfig',
+    'get', 'reset', 'getStrategy', 'getActiveNamespaces', 'getConfig',
     'hasRedis', 'getStats', 'broadcast',
     'validateConfig', 'validateProduction', 'getHealthStatus', 'disconnectAll',
   ];
@@ -140,6 +140,7 @@ describe('Public API surface — drift check', () => {
   const HALLUCINATED_CLASS = [
     'getConfigSummary', 'getEnvironmentOptimizedConfig', 'getMicroservicesConfig',
     'shutdown',   // renamed to disconnectAll() in 3.0.2 — NAMING.md §70
+    'clear',      // removed in 4.0.0 — redundant alias, use disconnectAll()
   ];
 
   for (const m of CLASS_METHODS) {

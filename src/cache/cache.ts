@@ -10,6 +10,7 @@
 
 import { RedisStrategy } from './strategies/redis.js';
 import { MemoryStrategy } from './strategies/memory.js';
+import { AppKitError } from '../util/errors.js';
 import type { CacheConfig } from './defaults.js';
 
 /**
@@ -30,17 +31,18 @@ import type { CacheConfig } from './defaults.js';
  *   throw err; // re-throw unrelated errors
  * }
  */
-export class CacheError extends Error {
+export class CacheError extends AppKitError {
   /** Machine-readable error code, e.g. 'CACHE_GET_FAILED', 'CACHE_CONNECT_FAILED' */
   readonly code: string;
 
   constructor(message: string, options?: { code?: string; cause?: unknown }) {
-    super(`[@bloomneo/appkit/cache] ${message}`);
+    super(`[@bloomneo/appkit/cache] ${message}`, {
+      module: 'cache',
+      code: options?.code ?? 'CACHE_ERROR',
+      cause: options?.cause,
+    });
     this.name = 'CacheError';
     this.code = options?.code ?? 'CACHE_ERROR';
-    if (options?.cause) {
-      (this as any).cause = options.cause;
-    }
   }
 }
 

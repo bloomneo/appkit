@@ -8,7 +8,21 @@
  * @llm-rule NOTE: Uses emailClass.get() pattern like auth - get() → email.send() → done
  * @llm-rule NOTE: Common pattern - emailClass.get() → email.send({ to, subject, text }) → sent
  */
+import { AppKitError } from '../util/errors.js';
 import { type EmailConfig } from './defaults.js';
+/**
+ * Thrown by email validation/send paths. `send()` itself returns an
+ * EmailResult with `{success,error}` rather than throwing — EmailError fires
+ * for config/bootstrap failures that the consumer needs to see at startup.
+ * `instanceof AppKitError` also true.
+ */
+export declare class EmailError extends AppKitError {
+    readonly code: string;
+    constructor(message: string, options?: {
+        code?: string;
+        cause?: unknown;
+    });
+}
 export interface Email {
     send(data: EmailData): Promise<EmailResult>;
     sendBatch(emails: EmailData[], batchSize?: number): Promise<EmailResult[]>;
@@ -52,12 +66,6 @@ export interface EmailResult {
  * @llm-rule NOTE: Typical flow - get() → email.send() → email delivered/logged
  */
 declare function get(): Email;
-/**
- * Clear email instance and disconnect - essential for testing
- * @llm-rule WHEN: Testing email logic with different configurations or app shutdown
- * @llm-rule AVOID: Using in production except for graceful shutdown
- */
-declare function clear(): Promise<void>;
 /**
  * Reset email configuration (useful for testing)
  * @llm-rule WHEN: Testing email logic with different environment configurations
@@ -159,7 +167,6 @@ declare function disconnectAll(): Promise<void>;
  */
 export declare const emailClass: {
     readonly get: typeof get;
-    readonly clear: typeof clear;
     readonly reset: typeof reset;
     readonly getStrategy: typeof getStrategy;
     readonly getConfig: typeof getConfig;

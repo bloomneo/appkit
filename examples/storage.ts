@@ -61,7 +61,7 @@ async function main() {
   console.log('stats          =', storageClass.getStats());
 
   // 8. Teardown.
-  await storageClass.clear();
+  await storageClass.disconnectAll();
 }
 
 main().catch((err) => {

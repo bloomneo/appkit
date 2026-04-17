@@ -13,7 +13,7 @@ import { MemoryTransport } from './transports/memory.js';
 import { RedisTransport } from './transports/redis.js';
 import { DatabaseTransport } from './transports/database.js';
 import type { QueueConfig } from './defaults.js';
-import type { JobData, JobOptions, JobHandler, Queue, QueueStats, JobInfo, JobStatus } from './index.js';
+import type { JobData, JobOptions, JobHandler, ProcessOptions, Queue, QueueStats, JobInfo, JobStatus } from './index.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 
@@ -122,13 +122,20 @@ export class QueueClass implements Queue {
    * @llm-rule WHEN: Setting up job handlers for background processing
    * @llm-rule AVOID: Multiple processors for same job type - causes conflicts
    */
-  process<T = JobData>(jobType: string, handler: JobHandler<T>): void {
+  process<T = JobData>(
+    jobType: string,
+    handler: JobHandler<T>,
+    options: ProcessOptions = {},
+  ): void {
     this.validateJobType(jobType);
-    this.validateHandler(handler as JobHandler<any>); 
+    this.validateHandler(handler as JobHandler<any>);
 
-    // Wrap handler with error handling and retry logic
-    const wrappedHandler = this.wrapHandler<T>(handler);
-    
+    // Timeout default: 30 seconds. Pass 0 to opt out.
+    const timeoutMs = options.timeout ?? 30_000;
+
+    // Wrap handler with timeout + error handling + retry logic
+    const wrappedHandler = this.wrapHandler<T>(handler, timeoutMs, jobType);
+
     try {
         this.transport.process(jobType, wrappedHandler as JobHandler<JobData>);
     } catch (error) {
@@ -332,14 +339,33 @@ export class QueueClass implements Queue {
   /**
    * Wrap job handler with error handling and retry logic
    */
-  private wrapHandler<T = JobData>(handler: JobHandler<T>): JobHandler<T> {
+  private wrapHandler<T = JobData>(
+    handler: JobHandler<T>,
+    timeoutMs: number = 30_000,
+    jobType: string = 'unknown',
+  ): JobHandler<T> {
     return async (data: T): Promise<any> => {
+      // Race the handler against a timeout. 0 = opt-out; no timeout applied.
+      if (timeoutMs <= 0) {
+        return await handler(data);
+      }
+
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(
+            `[@bloomneo/appkit/queue] Handler for "${jobType}" exceeded ` +
+              `${timeoutMs}ms timeout. Job will be retried per attempts config. ` +
+              `Set process(type, handler, { timeout }) to override. ` +
+              `See: ${DOCS_URL}#handler-timeout`,
+          ));
+        }, timeoutMs);
+      });
+
       try {
-        const result = await handler(data);
-        return result;
-      } catch (error) {
-        // Re-throw error for transport to handle retry logic
-        throw error;
+        return await Promise.race([handler(data), timeoutPromise]);
+      } finally {
+        if (timer !== undefined) clearTimeout(timer);
       }
     };
   }

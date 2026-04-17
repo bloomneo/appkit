@@ -11,7 +11,25 @@
  */
 
 import { QueueClass } from './queue.js';
+import { AppKitError } from '../util/errors.js';
 import { getSmartDefaults, type QueueConfig } from './defaults.js';
+
+/**
+ * Thrown by queue operations (invalid job type, serialization errors, handler
+ * timeout, transport failures). `instanceof AppKitError` also true.
+ */
+export class QueueError extends AppKitError {
+  readonly code: string;
+  constructor(message: string, options?: { code?: string; cause?: unknown }) {
+    super(message, {
+      module: 'queue',
+      code: options?.code ?? 'QUEUE_ERROR',
+      cause: options?.cause,
+    });
+    this.name = 'QueueError';
+    this.code = options?.code ?? 'QUEUE_ERROR';
+  }
+}
 
 // Global queuing instance for performance (like auth module)
 let globalQueuing: QueueClass | null = null;
@@ -33,9 +51,22 @@ export interface JobHandler<T = JobData> {
   (data: T): Promise<any> | any;
 }
 
+/**
+ * Options for `queue.process(type, handler, options)`.
+ * Added in 4.0.0 — a stuck handler used to hang a worker indefinitely.
+ */
+export interface ProcessOptions {
+  /**
+   * Milliseconds before the handler's promise is rejected with a timeout
+   * error. The job is then retried per `attempts` config. Default 30_000.
+   * Pass `0` to disable (opt-out — handlers can then hang forever).
+   */
+  timeout?: number;
+}
+
 export interface Queue {
   add<T = JobData>(jobType: string, data: T, options?: JobOptions): Promise<string>;
-  process<T = JobData>(jobType: string, handler: JobHandler<T>): void;
+  process<T = JobData>(jobType: string, handler: JobHandler<T>, options?: ProcessOptions): void;
   schedule<T = JobData>(jobType: string, data: T, delay: number): Promise<string>;
   pause(jobType?: string): Promise<void>;
   resume(jobType?: string): Promise<void>;

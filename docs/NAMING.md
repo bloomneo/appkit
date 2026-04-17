@@ -64,21 +64,32 @@ Names must not lie about the contract.
 
 ## Bulk and Lifecycle Operations
 
+**One teardown verb across every stateful module: `disconnectAll()`.**
+(Finalized in 4.0.0. Prior versions' `shutdown()` and `clear()` at the class
+level are removed and banned by `scripts/check-doc-drift.ts`.)
+
 Pick **one** word per verb family per module and use it consistently:
 
 - **Data reset** (flush cached entries, keep connections): `clear()` / `clearAll()`
   → **Not**: `flush`, `flushAll`, `purge`, `reset`, `invalidate`.
-- **Teardown** (close connections, stop intervals, release resources): `disconnect()` / `disconnectAll()` / `shutdown()`
-  → Pick `disconnect` for per-instance, `shutdown` for module-level. Do not mix within one module.
+  → Lives on the *instance* returned by `.get()` (e.g. `cache.clear()` wipes
+    one namespace's data). The class-level `cacheClass.clearAll()` is the
+    only bulk variant; other modules don't have class-level `clear` since
+    there's no data-vs-connection distinction (data lives on the network).
+- **Teardown** (close connections, stop intervals, release resources):
+  `disconnect()` on the *instance*, `disconnectAll()` on the *class*.
+  → `xxxClass.shutdown()` and `xxxClass.clear()` are permanently forbidden
+    at the class level — drift-check fails any PR that reintroduces them.
 - **Full re-init** (for tests): `reset(newConfig?)`
   → Rebuilds the singleton. Not a data clear.
 
-Each module's README must have a 3-line table clarifying:
+Every stateful module's README must have this table verbatim:
 
 ```
-clear()        - removes cached data, keeps connection
-disconnect()   - closes connection, keeps data intact (where applicable)
-reset()        - full re-init with optional new config (tests only)
+xxxClass.disconnectAll()   - canonical teardown. Use from SIGTERM / test suite
+xxxClass.reset(cfg?)       - close + re-init with a new config (tests only)
+instance.clear()           - wipe cache data for ONE instance, keep connection
+                             (cache module only)
 ```
 
 ---

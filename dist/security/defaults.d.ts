@@ -43,9 +43,16 @@ export interface SecurityConfig {
     encryption: EncryptionConfig;
     environment: EnvironmentConfig;
 }
-export interface SecurityError extends Error {
-    statusCode: number;
+import { AppKitError } from '../util/errors.js';
+/**
+ * Thrown by security operations (CSRF mismatch, rate limit exceeded,
+ * encryption failure, sanitizer misuse). Extends AppKitError so consumers
+ * can `instanceof` against the package-wide base.
+ */
+export declare class SecurityError extends AppKitError {
+    readonly statusCode: number;
     [key: string]: any;
+    constructor(message: string, statusCode?: number, details?: Record<string, any>);
 }
 /**
  * Gets smart defaults using BLOOM_SECURITY_* environment variables

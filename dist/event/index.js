@@ -9,8 +9,25 @@
  * @llm-rule NOTE: Common pattern - eventClass.get(namespace) → event.on() → event.emit() → handled
  */
 import { EventClass } from './event.js';
+import { AppKitError } from '../util/errors.js';
 import { getSmartDefaults, validateProductionRequirements, validateStartupConfiguration, performHealthCheck } from './defaults.js';
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/event/README.md';
+/**
+ * Thrown by event operations (emit validation, invalid handlers, serialization
+ * failures). `instanceof AppKitError` also true.
+ */
+export class EventError extends AppKitError {
+    code;
+    constructor(message, options) {
+        super(message, {
+            module: 'event',
+            code: options?.code ?? 'EVENT_ERROR',
+            cause: options?.cause,
+        });
+        this.name = 'EventError';
+        this.code = options?.code ?? 'EVENT_ERROR';
+    }
+}
 // Global event instances for performance (like auth module)
 let globalConfig = null;
 const namedEvents = new Map();
@@ -264,7 +281,6 @@ export const eventClass = {
     // Core method (like auth.get())
     get,
     // Utility methods
-    clear,
     reset,
     getStrategy,
     getActiveNamespaces,

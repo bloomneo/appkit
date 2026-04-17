@@ -76,6 +76,21 @@ export { storageClass } from './storage/index.js';
 // Utilities
 export { utilClass } from './util/index.js';
 
+// Unified error types — every typed error below extends AppKitError, so
+// consumers can `catch (err) { if (err instanceof AppKitError) ... }` once
+// and match anything thrown from any module.
+export { AppKitError } from './util/errors.js';
+export { TokenError } from './auth/auth.js';
+export { CacheError } from './cache/cache.js';
+export { AppError } from './error/error.js';
+export { SecurityError } from './security/defaults.js';
+export { DatabaseError } from './database/index.js';
+export { EmailError } from './email/index.js';
+export { EventError } from './event/index.js';
+export { QueueError } from './queue/index.js';
+export { LoggerError } from './logger/index.js';
+export { StorageError } from './storage/index.js';
+
 /**
  * Quick health check for the library
  * @returns {Object} Basic library information

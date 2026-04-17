@@ -224,12 +224,12 @@ try {
 // ❌ WRONG - No cleanup between tests
 test('should upload file', async () => {
   await storage.put('test.jpg', buffer);
-  // Missing: await storageClass.clear();
+  // Missing: await storageClass.disconnectAll();
 });
 
 // ✅ CORRECT - Proper test cleanup
 afterEach(async () => {
-  await storageClass.clear(); // Essential for tests
+  await storageClass.disconnectAll(); // Essential for tests
 });
 ```
 
@@ -457,7 +457,7 @@ storageClass.getStats(); // Usage statistics
 
 // Cleanup
 await storage.disconnect();
-await storageClass.clear(); // For testing
+await storageClass.disconnectAll(); // For testing
 ```
 
 ## 🎯 Usage Examples
@@ -875,7 +875,7 @@ import { storageClass } from '@bloomneo/appkit/storage';
 describe('File Storage', () => {
   afterEach(async () => {
     // IMPORTANT: Clear storage state between tests
-    await storageClass.clear();
+    await storageClass.disconnectAll();
   });
 
   test('should upload and download files', async () => {
@@ -918,7 +918,7 @@ describe('Storage with Local Strategy', () => {
   });
 
   afterEach(async () => {
-    await storageClass.clear();
+    await storageClass.disconnectAll();
     // Clean up test directory
     await fs.rm('./test-uploads', { recursive: true, force: true });
   });

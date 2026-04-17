@@ -52,9 +52,27 @@ export interface SecurityConfig {
   environment: EnvironmentConfig;
 }
 
-export interface SecurityError extends Error {
-  statusCode: number;
+import { AppKitError } from '../util/errors.js';
+
+/**
+ * Thrown by security operations (CSRF mismatch, rate limit exceeded,
+ * encryption failure, sanitizer misuse). Extends AppKitError so consumers
+ * can `instanceof` against the package-wide base.
+ */
+export class SecurityError extends AppKitError {
+  readonly statusCode: number;
   [key: string]: any;
+
+  constructor(
+    message: string,
+    statusCode: number = 400,
+    details: Record<string, any> = {},
+  ) {
+    super(message, { module: 'security', code: `SECURITY_${statusCode}` });
+    this.name = 'SecurityError';
+    this.statusCode = statusCode;
+    Object.assign(this, details);
+  }
 }
 
 /**
@@ -238,12 +256,9 @@ function validateEncryptionKey(key: string): void {
  * @llm-rule NOTE: Use 400 for client errors, 401 for auth failures, 403 for access denied, 500 for server errors
  */
 export function createSecurityError(
-  message: string, 
-  statusCode: number = 400, 
+  message: string,
+  statusCode: number = 400,
   details: Record<string, any> = {}
 ): SecurityError {
-  const error = new Error(message) as SecurityError;
-  error.statusCode = statusCode;
-  Object.assign(error, details);
-  return error;
+  return new SecurityError(message, statusCode, details);
 }

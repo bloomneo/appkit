@@ -56,7 +56,7 @@ await databaseClass.get()                 // → DB client (singleton per tenant
 await databaseClass.get(tenantId)         // → DB client for explicit tenant
 databaseClass.getActiveTenantIds()        // → string[] (debug)
 databaseClass.getProvider()               // → 'postgres' | 'mysql' | 'sqlite' | 'mongoose'
-databaseClass.disconnectAll()             // → Promise<void> (teardown)
+databaseClass.disconnectAll()             // → Promise<void> (teardown; closes every cached org/tenant connection)
 databaseClass.reset(newConfig?)           // → void (tests only)
 ```
 

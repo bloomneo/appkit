@@ -269,14 +269,16 @@ annotations make the agent-facing docs worse.
 
 ### Current State
 
-Testing infrastructure is currently being developed. For now, focus on:
+Testing infrastructure is in place and gates every PR. `npm test` runs:
 
-- **Manual Testing**: Test your changes manually with example implementations
-- **TypeScript Compilation**: Ensure code compiles without errors
-- **Linting**: Follow code style guidelines
-- **CLI Testing**: Test CLI commands manually
+1. **`check:docs`** — `scripts/check-doc-drift.ts` scans docs + examples + cookbook + `src/` for renamed / hallucinated method names. Any hit fails the build.
+2. **`check:anchors`** — `scripts/check-readme-anchors.ts` verifies every `See: .../README.md#anchor` URL in a thrown error actually resolves to a heading in the target README.
+3. **Vitest** — 640+ unit/integration tests across all 12 modules, plus `tests/public-surface.test.ts` which asserts the top-level exported shape of every module.
+4. **CI** — `.github/workflows/ci.yml` runs the above on Node 18/20/22 for every push and pull request.
 
-### Future Test Structure (When Available)
+Every change must keep all four green.
+
+### Writing tests
 
 ```typescript
 import { describe, it, expect } from 'vitest';

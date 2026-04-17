@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loggerClass } from './index.js';
 
-beforeEach(async () => { await loggerClass.clear(); });
+beforeEach(async () => { await loggerClass.disconnectAll(); });
 
 describe('loggerClass.get()', () => {
   it('returns a Logger instance', () => {
@@ -73,14 +73,17 @@ describe('Public API surface — drift check', () => {
     'info', 'warn', 'error', 'debug', 'fatal', 'child', 'flush', 'close',
     'setLevel', 'getLevel', 'isLevelEnabled',
   ];
-  const CLASS_METHODS    = ['get', 'clear', 'getActiveTransports', 'hasTransport', 'getConfig'];
+  const CLASS_METHODS    = ['get', 'disconnectAll', 'getActiveTransports', 'hasTransport', 'getConfig'];
 
   // Methods that do NOT exist — drift trap.
   const HALLUCINATED_INSTANCE = ['trace', 'silly', 'verbose'];
 
   // Class-level methods that MUST NOT exist — drift trap for docs that
   // assume symmetry with the instance surface.
-  const HALLUCINATED_CLASS = ['setLevel', 'getLevel', 'isLevelEnabled', 'flush', 'close'];
+  const HALLUCINATED_CLASS = [
+    'setLevel', 'getLevel', 'isLevelEnabled', 'flush', 'close',
+    'clear',   // renamed to disconnectAll() in 4.0.0 — one teardown verb across package
+  ];
 
   const logger = loggerClass.get('drift');
   for (const m of INSTANCE_METHODS) {

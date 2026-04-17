@@ -10,6 +10,18 @@
  * @llm-rule VARIABLE: const {orgName}Db = await databaseClass.org('{orgName}').get() - org-specific data
  * @llm-rule VARIABLE: const {orgName}DbTenants = await databaseClass.org('{orgName}').getTenants() - all tenants in org
  */
+import { AppKitError } from '../util/errors.js';
+/**
+ * Thrown by database operations when connection, config, or tenant-filter
+ * validation fails. `instanceof AppKitError` also true.
+ */
+export declare class DatabaseError extends AppKitError {
+    readonly code: string;
+    constructor(message: string, options?: {
+        code?: string;
+        cause?: unknown;
+    });
+}
 interface DatabaseClient {
     _appKit?: boolean;
     _orgId?: string;
@@ -103,10 +115,16 @@ export declare const databaseClass: {
      */
     delete(tenantId: string, options: any, req?: any): Promise<void>;
     /**
-     * Disconnect all connections and cleanup
-     * @returns {Promise<void>}
+     * Close every cached org/tenant connection and reset internal state — the
+     * canonical teardown call. Named to match cache/queue/email/event/storage/logger
+     * per NAMING.md §Bulk-and-Lifecycle-Ops so agents see one teardown verb
+     * across every appkit module.
+     *
+     * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+     * @llm-rule AVOID: Abrupt process exit — graceful drain prevents dropped
+     *   in-flight queries and lets the ORM flush pending writes
      */
-    disconnect(): Promise<void>;
+    disconnectAll(): Promise<void>;
     /**
      * Get distinct tenant IDs from database
      * @private

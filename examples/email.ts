@@ -70,7 +70,7 @@ async function main() {
   console.log('health      =', emailClass.getHealthStatus());
 
   // 8. Graceful shutdown (app termination or tests).
-  await emailClass.clear();
+  await emailClass.disconnectAll();
 }
 
 main().catch((err) => {

@@ -48,7 +48,7 @@ async function main() {
   console.log('config summary    =', loggerClass.getConfig());
 
   // 8. Teardown (tests / graceful exit).
-  await loggerClass.clear();
+  await loggerClass.disconnectAll();
 }
 
 main().catch((err) => {

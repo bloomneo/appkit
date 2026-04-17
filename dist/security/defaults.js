@@ -8,6 +8,21 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
+import { AppKitError } from '../util/errors.js';
+/**
+ * Thrown by security operations (CSRF mismatch, rate limit exceeded,
+ * encryption failure, sanitizer misuse). Extends AppKitError so consumers
+ * can `instanceof` against the package-wide base.
+ */
+export class SecurityError extends AppKitError {
+    statusCode;
+    constructor(message, statusCode = 400, details = {}) {
+        super(message, { module: 'security', code: `SECURITY_${statusCode}` });
+        this.name = 'SecurityError';
+        this.statusCode = statusCode;
+        Object.assign(this, details);
+    }
+}
 /**
  * Gets smart defaults using BLOOM_SECURITY_* environment variables
  * @llm-rule WHEN: App startup to get production-ready security configuration
@@ -152,9 +167,6 @@ function validateEncryptionKey(key) {
  * @llm-rule NOTE: Use 400 for client errors, 401 for auth failures, 403 for access denied, 500 for server errors
  */
 export function createSecurityError(message, statusCode = 400, details = {}) {
-    const error = new Error(message);
-    error.statusCode = statusCode;
-    Object.assign(error, details);
-    return error;
+    return new SecurityError(message, statusCode, details);
 }
 //# sourceMappingURL=defaults.js.map

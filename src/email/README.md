@@ -239,7 +239,7 @@ import { emailClass } from '@bloomneo/appkit/email';
 
 describe('Email Tests', () => {
   afterEach(async () => {
-    await emailClass.clear(); // Clean up between tests
+    await emailClass.disconnectAll(); // Clean up between tests
   });
 
   test('should send email', async () => {

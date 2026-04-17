@@ -9,12 +9,9 @@
  * @llm-rule NOTE: Common pattern - errorClass.get() → throw error.badRequest() → app.use(error.handleErrors())
  * @llm-rule NOTE: COMPLETE SETUP: const error = errorClass.get(); app.use(error.handleErrors()); // Done!
  */
-import { ErrorClass } from './error.js';
+import { ErrorClass, AppError } from './error.js';
 import { type ErrorConfig } from './defaults.js';
-export interface AppError extends Error {
-    statusCode: number;
-    type: string;
-}
+export { AppError };
 export interface ExpressRequest {
     [key: string]: any;
 }
@@ -68,60 +65,60 @@ export declare const errorClass: {
      * @llm-rule NOTE: EXAMPLES: missing email, invalid JSON, malformed request
      * @llm-rule NOTE: PATTERN: if (!email) throw error.badRequest('Email required');
      */
-    readonly badRequest: (message?: string) => import("./error.js").AppError;
+    readonly badRequest: (message?: string) => AppError;
     /**
      * Creates 401 Unauthorized error
      * @llm-rule WHEN: Authentication required but missing or invalid
      * @llm-rule NOTE: EXAMPLES: missing token, expired session, invalid credentials
      * @llm-rule NOTE: PATTERN: if (!token) throw error.unauthorized('Login required');
      */
-    readonly unauthorized: (message?: string) => import("./error.js").AppError;
+    readonly unauthorized: (message?: string) => AppError;
     /**
      * Creates 403 Forbidden error
      * @llm-rule WHEN: User authenticated but lacks permission for action
      * @llm-rule NOTE: EXAMPLES: insufficient role, admin-only endpoint, blocked user
      * @llm-rule NOTE: PATTERN: if (!user.isAdmin) throw error.forbidden('Admin only');
      */
-    readonly forbidden: (message?: string) => import("./error.js").AppError;
+    readonly forbidden: (message?: string) => AppError;
     /**
      * Creates 404 Not Found error
      * @llm-rule WHEN: Requested resource does not exist in database/system
      * @llm-rule NOTE: EXAMPLES: user not found, post not found, file missing
      * @llm-rule NOTE: PATTERN: if (!user) throw error.notFound('User not found');
      */
-    readonly notFound: (message?: string) => import("./error.js").AppError;
+    readonly notFound: (message?: string) => AppError;
     /**
      * Creates 409 Conflict error
      * @llm-rule WHEN: Business logic conflicts or duplicate resources
      * @llm-rule NOTE: EXAMPLES: email already exists, username taken, state conflicts
      * @llm-rule NOTE: PATTERN: if (existingUser) throw error.conflict('Email exists');
      */
-    readonly conflict: (message?: string) => import("./error.js").AppError;
+    readonly conflict: (message?: string) => AppError;
     /**
      * Creates 500 Server Error
      * @llm-rule WHEN: Internal failures like database/API errors
      * @llm-rule NOTE: EXAMPLES: database down, external API timeout, file system errors
      * @llm-rule NOTE: PATTERN: catch (dbError) { throw error.serverError('DB unavailable'); }
      */
-    readonly serverError: (message?: string) => import("./error.js").AppError;
+    readonly serverError: (message?: string) => AppError;
     /**
      * Creates 429 Too Many Requests error
      * @llm-rule WHEN: Client exceeded rate limit
      * @llm-rule NOTE: PATTERN: if (rateExceeded) throw error.tooMany('Slow down');
      */
-    readonly tooMany: (message?: string) => import("./error.js").AppError;
+    readonly tooMany: (message?: string) => AppError;
     /**
      * Creates 500 Internal Server Error (alias for serverError)
      * @llm-rule WHEN: Unexpected internal failures
      * @llm-rule NOTE: Identical to serverError() — use either, not both in the same codebase
      */
-    readonly internal: (message?: string) => import("./error.js").AppError;
+    readonly internal: (message?: string) => AppError;
     /**
      * Creates custom error with any status code
      * @llm-rule WHEN: Need non-standard HTTP status codes not covered above
      * @llm-rule NOTE: PATTERN: error.createError(503, 'Maintenance mode', 'MAINTENANCE');
      */
-    readonly createError: (statusCode: number, message: string, type?: string) => import("./error.js").AppError;
+    readonly createError: (statusCode: number, message: string, type?: string) => AppError;
     /**
      * Express error handling middleware - handles all thrown errors
      * @llm-rule WHEN: Setting up Express app - use as LAST middleware

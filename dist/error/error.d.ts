@@ -8,9 +8,20 @@
  * @llm-rule NOTE: Provides semantic error creation (badRequest, unauthorized) and Express middleware
  */
 import type { ErrorConfig } from './defaults.js';
-export interface AppError extends Error {
-    statusCode: number;
-    type: string;
+import { AppKitError } from '../util/errors.js';
+/**
+ * Semantic HTTP error with statusCode + type. Thrown by `errorClass.get()`'s
+ * factory methods (badRequest, unauthorized, notFound, etc.) and caught by
+ * `handleErrors()` middleware which serializes the status/type into the
+ * HTTP response.
+ *
+ * Extends `AppKitError` so consumers can write one catch clause for every
+ * appkit-thrown error.
+ */
+export declare class AppError extends AppKitError {
+    readonly statusCode: number;
+    readonly type: string;
+    constructor(message: string, statusCode: number, type: string);
 }
 export interface ExpressRequest {
     [key: string]: any;

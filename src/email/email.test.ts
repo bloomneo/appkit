@@ -6,7 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { emailClass } from './index.js';
 
-afterEach(async () => { await emailClass.clear(); });
+afterEach(async () => { await emailClass.disconnectAll(); });
 
 describe('emailClass.get()', () => {
   it('returns an Email instance', () => {
@@ -98,7 +98,7 @@ describe('emailClass convenience methods', () => {
 
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
-    'get', 'clear', 'reset', 'getStrategy', 'getConfig',
+    'get', 'reset', 'getStrategy', 'getConfig',
     'hasResend', 'hasSmtp', 'hasProvider',
     'send', 'sendText',
     'validateConfig', 'validateProduction', 'getHealthStatus', 'disconnectAll',
@@ -112,12 +112,13 @@ describe('Public API surface — drift check', () => {
   // Instance methods that do NOT exist — previously hallucinated
   const HALLUCINATED_INSTANCE = ['sendWithTemplate', 'queue', 'schedule'];
 
-  // Class-level methods that MUST NOT exist — drift trap for docs.
-  // `flush`/`connect` have never existed at class level. `shutdown` was renamed
-  // to `disconnectAll` in 3.0.2 to align with cache/queue teardown naming.
+  // Class-level methods that MUST NOT exist — `flush`/`connect` never existed.
+  // `shutdown` was renamed to `disconnectAll` in 3.0.2. `clear` was removed
+  // in 4.0.0 (was a redundant alias for disconnectAll).
   const HALLUCINATED_CLASS = [
     'flush', 'connect',
     'shutdown',   // renamed to disconnectAll() — NAMING.md §70
+    'clear',      // removed in 4.0.0 — use disconnectAll()
   ];
 
   for (const m of CLASS_METHODS) {

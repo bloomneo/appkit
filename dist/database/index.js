@@ -13,10 +13,29 @@
 import fs from 'fs';
 import { PrismaAdapter } from './adapters/prisma.js';
 import { MongooseAdapter } from './adapters/mongoose.js';
+import { AppKitError } from '../util/errors.js';
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
+/**
+ * Thrown by database operations when connection, config, or tenant-filter
+ * validation fails. `instanceof AppKitError` also true.
+ */
+export class DatabaseError extends AppKitError {
+    code;
+    constructor(message, options) {
+        super(message, {
+            module: 'database',
+            code: options?.code ?? 'DATABASE_ERROR',
+            cause: options?.cause,
+        });
+        this.name = 'DatabaseError';
+        this.code = options?.code ?? 'DATABASE_ERROR';
+    }
+}
 // Global instances cache for performance
 const connections = new Map();
 let envWatcher = null;
+// One-shot warn flag so the tenant-filter hint only fires once per process.
+let _tenantHintWarned = false;
 /**
  * Environment file watcher for hot reload
  */
@@ -197,13 +216,24 @@ export const databaseClass = {
     async get(req = null) {
         // Setup env watching on first use
         setupEnvWatcher();
+        // Tenant-filter safety net: if BLOOM_DB_TENANT isn't set, warn once
+        // per process. If a consumer's schema has tenant_id columns and they
+        // forgot the env var, every query silently returns unfiltered data —
+        // the #1 prod risk pre-4.0.0. One-line nudge at boot time.
+        if (!_tenantHintWarned && process.env.BLOOM_DB_TENANT === undefined) {
+            _tenantHintWarned = true;
+            console.warn(`[@bloomneo/appkit/database] BLOOM_DB_TENANT is not set. If your schema ` +
+                `has tenant_id columns, set BLOOM_DB_TENANT=auto to enable automatic ` +
+                `row-level filtering. Set BLOOM_DB_TENANT=false to silence this. ` +
+                `See: ${DOCS_URL}#multi-tenant-mode`);
+        }
         // Detect context
         const orgId = detectOrg(req);
         const tenantId = detectTenant(req);
         // Get appropriate URL
         const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
         if (!url) {
-            throw new Error(`[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`);
+            throw new DatabaseError(`[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`, { code: 'DATABASE_MISSING_URL' });
         }
         return await createClient(url, tenantId, orgId);
     },
@@ -333,10 +363,16 @@ export const databaseClass = {
         this._clearTenantCache(tenantId);
     },
     /**
-     * Disconnect all connections and cleanup
-     * @returns {Promise<void>}
+     * Close every cached org/tenant connection and reset internal state — the
+     * canonical teardown call. Named to match cache/queue/email/event/storage/logger
+     * per NAMING.md §Bulk-and-Lifecycle-Ops so agents see one teardown verb
+     * across every appkit module.
+     *
+     * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+     * @llm-rule AVOID: Abrupt process exit — graceful drain prevents dropped
+     *   in-flight queries and lets the ORM flush pending writes
      */
-    async disconnect() {
+    async disconnectAll() {
         const disconnectPromises = [];
         for (const [key, connection] of connections) {
             disconnectPromises.push(this._closeConnection(connection).catch((error) => console.warn(`[@bloomneo/appkit/database] Disconnect warning for "${key}":`, error.message)));

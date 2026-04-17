@@ -8,7 +8,7 @@
  * @llm-rule NOTE: Auto-detects and switches between Memory, Redis, Database transports
  */
 import type { QueueConfig } from './defaults.js';
-import type { JobData, JobOptions, JobHandler, Queue, QueueStats, JobInfo, JobStatus } from './index.js';
+import type { JobData, JobOptions, JobHandler, ProcessOptions, Queue, QueueStats, JobInfo, JobStatus } from './index.js';
 export interface Transport {
     add(id: string, jobType: string, data: JobData, options: JobOptions): Promise<void>;
     process(jobType: string, handler: JobHandler<JobData>): void;
@@ -52,7 +52,7 @@ export declare class QueueClass implements Queue {
      * @llm-rule WHEN: Setting up job handlers for background processing
      * @llm-rule AVOID: Multiple processors for same job type - causes conflicts
      */
-    process<T = JobData>(jobType: string, handler: JobHandler<T>): void;
+    process<T = JobData>(jobType: string, handler: JobHandler<T>, options?: ProcessOptions): void;
     /**
      * Schedule job for future execution
      * @llm-rule WHEN: Need to delay job execution (reminders, notifications, etc.)

@@ -78,7 +78,7 @@ events.listenerCount(name)                     // → number
 ```ts
 eventClass.get(namespace?)                     // → Event (default 'default')
 eventClass.broadcast(eventName, data?)         // fires across all namespaces
-eventClass.clear() / eventClass.reset(cfg?)    // tests
+eventClass.reset(cfg?)                         // tests
 eventClass.getStrategy()                       // 'memory' | 'redis'
 eventClass.getActiveNamespaces()               // → string[]
 eventClass.hasRedis()                          // → boolean

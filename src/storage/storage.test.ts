@@ -6,7 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { storageClass } from './index.js';
 
-afterEach(async () => { await storageClass.clear(); });
+afterEach(async () => { await storageClass.disconnectAll(); });
 
 describe('storageClass.get()', () => {
   it('returns a Storage instance', () => {
@@ -72,7 +72,7 @@ describe('storage.list()', () => {
 
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
-    'get', 'clear', 'reset', 'getStrategy', 'getConfig',
+    'get', 'reset', 'getStrategy', 'getConfig',
     'hasCloudStorage', 'isLocal', 'getStats', 'validateConfig', 'disconnectAll',
     'upload', 'download',
   ];
@@ -85,11 +85,11 @@ describe('Public API surface — drift check', () => {
   // Instance methods that do NOT exist — previously hallucinated
   const HALLUCINATED_INSTANCE = ['has', 'save', 'upload', 'fetch'];
 
-  // Class-level methods that MUST NOT exist — drift trap for docs that
-  // assume symmetry with the instance surface.
+  // Class-level methods that MUST NOT exist.
   const HALLUCINATED_CLASS = [
     'put', 'delete', 'list', 'url', 'signedUrl', 'exists', 'copy', 'disconnect',
     'shutdown',   // renamed to disconnectAll() in 3.0.2 — NAMING.md §70
+    'clear',      // removed in 4.0.0 — redundant alias, use disconnectAll()
   ];
 
   for (const m of CLASS_METHODS) {

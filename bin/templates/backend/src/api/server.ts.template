@@ -27,6 +27,22 @@ const logger = loggerClass.get('server');
 const error = errorClass.get();
 const config = configClass.get();
 
+// Fail loud at boot if production environment is misconfigured. Each call is
+// a no-op in development; each throws an AppKitError in production when the
+// module's required env vars are missing. Uncomment the lines for modules
+// this project actually uses.
+if (process.env.NODE_ENV === 'production') {
+  try {
+    // emailClass.validateProduction();      // throws if no RESEND_API_KEY / SMTP_HOST
+    // storageClass.validateConfig();        // throws if AWS/R2 creds configured but invalid
+    // securityClass.validateRequired({ csrf: true, encryption: true });
+    // databaseClass.health();               // smoke-checks DATABASE_URL
+  } catch (err) {
+    logger.error('Production config validation failed', { error: err });
+    process.exit(1);
+  }
+}
+
 /**
  * Check if frontend build exists
  */

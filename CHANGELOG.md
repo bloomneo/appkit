@@ -2,7 +2,173 @@
 
 All notable changes to AppKit will be documented in this file.
 
-## [3.0.2] - 2026-04-16
+## [4.0.0] - 2026-04-17
+
+First public release since 2.0.0. Rolls up the unpublished 3.0.x internal
+audits plus an API-wide cleanup. `latest` on npm goes `2.0.0 → 4.0.0`.
+
+> Versions `3.0.0` / `3.0.1` / `3.0.2` exist only in git history and were
+> never published to npm. They represent incremental commits of the same
+> audit work that 4.0.0 collapses into one release.
+
+### Why 4.0.0
+
+Strict semver. The public surface has breaking renames (removed redundant
+class-level `clear()`, renamed `shutdown()` → `disconnectAll()` for every
+stateful module, renamed `databaseClass.disconnect()` → `disconnectAll()`).
+Safer to ship as a new major than to re-shuffle 2.x.y patches.
+
+### Breaking — teardown verb (unified across every stateful module)
+
+One canonical call: `xxxClass.disconnectAll()`. Every stateful module uses
+the same name. `shutdown()` and class-level `clear()` are removed and
+forbidden by `scripts/check-doc-drift.ts`.
+
+| 2.0.0 | 4.0.0 |
+|---|---|
+| `cacheClass.flushAll()` | `cacheClass.clearAll()` (bulk data, keeps connections) |
+| `cacheClass.shutdown()` | `cacheClass.disconnectAll()` |
+| `queueClass.clear()` | `queueClass.disconnectAll()` |
+| `emailClass.shutdown()` | `emailClass.disconnectAll()` |
+| `emailClass.clear()` | `emailClass.disconnectAll()` |
+| `eventClass.shutdown()` | `eventClass.disconnectAll()` |
+| `eventClass.clear()` | `eventClass.disconnectAll()` |
+| `storageClass.shutdown()` | `storageClass.disconnectAll()` |
+| `storageClass.clear()` | `storageClass.disconnectAll()` |
+| `loggerClass.clear()` | `loggerClass.disconnectAll()` |
+| `databaseClass.disconnect()` | `databaseClass.disconnectAll()` *(first time exposed on class)* |
+
+Instance-level `cache.clear()` stays — that's the per-namespace data wipe,
+a distinct operation.
+
+### Breaking — storage default export
+
+- `import StorageClass from '@bloomneo/appkit/storage'` used to pull the
+  **class**. Now pulls the lowercase singleton, matching every other module.
+  Switch to the named import `import { StorageClass } from '@bloomneo/appkit/storage'`
+  if you want the class.
+
+### Breaking — library hygiene (from the 3.0.x audit)
+
+- `email`, `event`, `storage`, `queue` no longer register `process.on(SIGTERM/…)`
+  handlers at import time. A library must not commandeer the host app's
+  signal handling. Wire shutdown yourself:
+  ```ts
+  process.on('SIGTERM', () => cacheClass.disconnectAll().finally(() => process.exit(0)));
+  // ...one line per module you use
+  ```
+
+### Breaking — production refuses silent fallbacks
+
+- `emailClass.get()` in `NODE_ENV=production` with no `RESEND_API_KEY` and no
+  `SMTP_HOST` now throws `EmailError` (`EMAIL_PROD_NO_PROVIDER`) at boot
+  instead of silently logging to Console. Silent console email in prod is
+  silent data loss.
+
+### Added — unified error base
+
+- `AppKitError` re-exported from the package root. Every typed error extends
+  it: `TokenError`, `CacheError`, `AppError`, `SecurityError`, plus new
+  `DatabaseError`, `EmailError`, `EventError`, `QueueError`, `LoggerError`,
+  `StorageError`.
+- Consumer can write one unified catch:
+  ```ts
+  try { ... } catch (err) {
+    if (err instanceof AppKitError) {
+      logger.warn('appkit error', { module: err.module, code: err.code });
+    }
+    throw err;
+  }
+  ```
+- `llms.txt` gains an error-code reference table (per-module code → fix).
+
+### Added — queue handler timeout
+
+- `queue.process(type, handler, { timeout?: ms })`. Default **30 000 ms**.
+  Handler promise is rejected on timeout and the job retries per `attempts`
+  config. Opt-out with `timeout: 0`. Fixes the class of "one stuck handler
+  wedges the worker forever" bugs.
+
+### Added — database tenant-filter safety net
+
+- First call to `databaseClass.get()` logs a one-shot `console.warn` if
+  `BLOOM_DB_TENANT` is unset. The warn explicitly points at the `=auto` /
+  `=false` choices. Silent unfiltered queries in multi-tenant apps was the
+  #1 prod risk pre-4.0; the warn makes it loud.
+- Database test count raised from 7 to 41 (integration-style coverage of
+  validators, error shapes, and the new tenant warn).
+
+### Added — scaffolding template validates prod config at boot
+
+- `bin/templates/backend/src/api/server.ts.template` now has a
+  commented-out `validateProduction()` / `validateConfig()` block in its
+  startup path. Consumers uncomment the modules they use so prod-misconfig
+  surfaces immediately at boot instead of on first request.
+
+### Added — docs / gates / meta
+
+- `AppKitError` base + `requireEnv` / `requireProp` / `warnInDev` helpers
+  wired together so every module can use the same error shape.
+- `scripts/check-doc-drift.ts` scans `src/` in addition to docs/examples/
+  cookbook/bin. Bans every removed method name (`emailClass.clear(`,
+  `eventClass.clear(`, `storageClass.clear(`, `loggerClass.clear(`,
+  `databaseClass.disconnect(`, `xxxClass.shutdown(`, the cache synonyms).
+- `tests/public-surface.test.ts` extended — now 90+ assertions including
+  `AppKitError` inheritance for every typed error and `disconnectAll`
+  presence on every stateful module.
+- `docs/NAMING.md` has an explicit *"one teardown verb across every stateful
+  module"* section with the instance-vs-class split spelled out.
+- `src/security/README.md` has a loud section about the in-memory rate
+  limiter not being distributed (recommends nginx / Cloudflare / envoy for
+  multi-process deployments).
+- `examples/{email,storage,logger}.ts` updated to the new teardown verb.
+- `examples/.env.example` removed (canonical `.env.example` is at repo root).
+- `CONTRIBUTING.md` testing section replaced with current reality
+  (`check:docs` + `check:anchors` + vitest + CI on Node 18/20/22).
+
+### Migration from 2.0.0
+
+Run this project-wide find-and-replace. Every breaking rename, one list:
+
+```
+cacheClass.flushAll(     → cacheClass.clearAll(
+cacheClass.shutdown(     → cacheClass.disconnectAll(
+queueClass.clear(        → queueClass.disconnectAll(
+emailClass.shutdown(     → emailClass.disconnectAll(
+emailClass.clear(        → emailClass.disconnectAll(
+eventClass.shutdown(     → eventClass.disconnectAll(
+eventClass.clear(        → eventClass.disconnectAll(
+storageClass.shutdown(   → storageClass.disconnectAll(
+storageClass.clear(      → storageClass.disconnectAll(
+loggerClass.clear(       → loggerClass.disconnectAll(
+databaseClass.disconnect( → databaseClass.disconnectAll(
+```
+
+Then:
+
+- If you relied on the library auto-registering `process.on('SIGTERM', …)`,
+  wire it yourself in your server bootstrap. Recommended pattern is in the
+  backend template at `bin/templates/backend/src/api/server.ts.template`.
+- If you use email / storage / database / security in production, confirm
+  the required env vars are set — 4.0.0 refuses to silently fall back.
+- If you caught errors with ad-hoc `instanceof CacheError` / `instanceof TokenError`
+  etc., consider switching to a single `instanceof AppKitError` guard.
+
+### Known gaps — deferred to a future major
+
+Explicitly out of scope for 4.0.0; filed here so users know they are NOT
+getting these:
+
+- Email templates / HTML rendering engine
+- Multipart upload for storage (streaming uploads limited to full buffer)
+- Distributed rate limiting (in-memory only; see `src/security/README.md`)
+- Queue handler priority across job types
+- Event dead-letter queue
+- Database schema-migration tooling
+
+---
+
+## [3.0.2] - 2026-04-16 (unpublished, folded into 4.0.0)
 
 One teardown verb across every module. Resolves the cross-module split that
 3.0.1 flagged as "deferred to 4.0.0" — we chose to land it in the 3.x line
@@ -40,7 +206,7 @@ Strict semver would call this 4.0.0. It shipped as 3.0.2 because 3.0.0 and
 external code references the removed names. Future breaking changes after an
 npm publish will take a proper major.
 
-## [3.0.1] - 2026-04-16
+## [3.0.1] - 2026-04-16 (unpublished, folded into 4.0.0)
 
 Patch — fixes a template regression introduced by 3.0.0 removing the
 library's auto-registered signal handlers.
@@ -54,7 +220,7 @@ library's auto-registered signal handlers.
   Scaffolded apps from `appkit generate app` no longer exit abruptly under
   SIGTERM.
 
-## [3.0.0] - 2026-04-16
+## [3.0.0] - 2026-04-16 (unpublished, folded into 4.0.0)
 
 Post-2.0.0 audit cleanup. Shipped as a major per NAMING.md ("any rename
 requires a new major"). Library hygiene fixes that surfaced after 2.0.0's

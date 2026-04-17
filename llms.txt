@@ -547,6 +547,42 @@ modules are used in the same file (most common case).
 
 ---
 
+## Error Types (4.0.0+)
+
+Every typed error extends `AppKitError`. Catch once, handle all:
+
+```ts
+import { AppKitError } from '@bloomneo/appkit';
+
+try { ... } catch (err) {
+  if (err instanceof AppKitError) {
+    logger.warn('appkit error', { module: err.module, code: err.code });
+  }
+  throw err;
+}
+```
+
+### Codes by module
+
+| Module | Class | Common codes | Fix |
+|---|---|---|---|
+| auth | `TokenError` | `expired` / `not_before` / `invalid` / `malformed` | Refresh or re-issue the token |
+| cache | `CacheError` | `CACHE_GET_FAILED` / `CACHE_SET_FAILED` / `CACHE_INVALID_KEY` / `CACHE_CONNECT_FAILED` | Check Redis connectivity / key format |
+| database | `DatabaseError` | `DATABASE_MISSING_URL` / `DATABASE_ERROR` | Set `DATABASE_URL` |
+| email | `EmailError` | `EMAIL_PROD_NO_PROVIDER` / `EMAIL_ERROR` | Set `RESEND_API_KEY` or `SMTP_HOST` in production |
+| error | `AppError` | HTTP type string (`BAD_REQUEST`, `NOT_FOUND`, etc.) | Handled by `error.handleErrors()` middleware automatically |
+| event | `EventError` | `EVENT_ERROR` | Fix serialization / handler shape |
+| logger | `LoggerError` | `LOGGER_ERROR` | Check transport config |
+| queue | `QueueError` | `QUEUE_ERROR` / `QUEUE_HANDLER_TIMEOUT` | Investigate handler; override `{ timeout }` on `process()` if intentional |
+| security | `SecurityError` | `SECURITY_MISSING_CONFIG` / `SECURITY_400` / `SECURITY_403` | Set required env; reject invalid input |
+| storage | `StorageError` | `STORAGE_ERROR` | Check bucket creds / key path |
+| util | `AppKitError` (via `requireProp` / `requireEnv`) | `UTIL_MISSING_PROP` / `UTIL_MISSING_ENV` | Fix the caller |
+
+Every message is prefixed `[@bloomneo/appkit/<module>]` and ends with
+`See: <README anchor URL>` so an agent can fetch the doc section and self-correct.
+
+---
+
 ## Migration — 1.5.x → 2.0.0
 
 Compatibility break. 2.0.0 is stable; no aliases kept. Project-wide find-and-replace:

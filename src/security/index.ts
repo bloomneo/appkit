@@ -10,7 +10,7 @@
  */
 
 import { SecurityClass } from './security.js';
-import { getSmartDefaults, type SecurityConfig } from './defaults.js';
+import { getSmartDefaults, SecurityError, type SecurityConfig } from './defaults.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
 
@@ -151,9 +151,11 @@ function validateRequired(checks: {
   }
 
   if (missing.length > 0) {
-    throw new Error(
+    throw new SecurityError(
       `[@bloomneo/appkit/security] Missing required security configuration: ${missing.join(', ')}. ` +
-      `Set environment variables for production security. See: ${DOCS_URL}#environment-variables`
+        `Set environment variables for production security. See: ${DOCS_URL}#environment-variables`,
+      500,
+      { code: 'SECURITY_MISSING_CONFIG' },
     );
   }
 }
@@ -210,8 +212,10 @@ export type {
   SanitizationConfig,
   EncryptionConfig,
   EnvironmentConfig,
-  SecurityError,
 } from './defaults.js';
+
+// Re-export typed error (value export — SecurityError is a class as of 4.0.0)
+export { SecurityError } from './defaults.js';
 
 export type {
   ExpressRequest,

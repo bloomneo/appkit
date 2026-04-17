@@ -68,7 +68,6 @@ storage.copy(from, to) / storage.move(from, to)
 storageClass.get(overrides?)                  // → Storage
 storageClass.upload(path, data, options?)     // shortcut: get().put(...)
 storageClass.download(path)                   // shortcut: get().get(...)
-storageClass.clear()                          // clear local strategy cache (rare)
 storageClass.reset(newConfig?)                // tests only
 storageClass.getStrategy()                    // 'local' | 's3' | 'r2'
 storageClass.hasCloudStorage()                // → boolean

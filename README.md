@@ -93,7 +93,7 @@ the most common first-run stumbles, so do them up front:
 {
   "type": "module",
   "dependencies": {
-    "@bloomneo/appkit": "^3.0.0",
+    "@bloomneo/appkit": "^4.0.0",
     "dotenv": "^16.0.0",
     "express": "^5.0.0"
   }
@@ -214,7 +214,7 @@ BLOOM_DB_TENANT=auto                      # → multi-tenant filtering
 BLOOM_LOGGER_HTTP_URL=https://logs.example.com  # → centralized logging
 ```
 
-See [`examples/.env.example`](./examples/.env.example) for the full canonical template.
+See [`.env.example`](./.env.example) at the repo root for the full canonical template — every BLOOM_* var, organized by module.
 
 ---
 

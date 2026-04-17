@@ -10,11 +10,31 @@
  */
 
 import { LoggerClass } from './logger.js';
+import { AppKitError } from '../util/errors.js';
 import { getSmartDefaults } from './defaults.js';
 
 // Global logger instances for performance (like auth module)
 let globalLogger: LoggerClass | null = null;
 const namedLoggers = new Map<string, LoggerClass>();
+
+/**
+ * Thrown by logger bootstrap / transport setup. Regular log emit paths do NOT
+ * throw (a failed transport is swallowed and reported on console) so consumers
+ * don't lose app flow over log-delivery problems. `instanceof AppKitError`
+ * also true.
+ */
+export class LoggerError extends AppKitError {
+  readonly code: string;
+  constructor(message: string, options?: { code?: string; cause?: unknown }) {
+    super(message, {
+      module: 'logger',
+      code: options?.code ?? 'LOGGER_ERROR',
+      cause: options?.cause,
+    });
+    this.name = 'LoggerError';
+    this.code = options?.code ?? 'LOGGER_ERROR';
+  }
+}
 
 export interface LogMeta {
   [key: string]: any;
@@ -61,11 +81,16 @@ function get(component?: string): Logger {
 }
 
 /**
- * Clear all loggers and close transports - essential for testing
- * @llm-rule WHEN: Testing logging logic with different configurations
- * @llm-rule AVOID: Using in production - only for tests and cleanup
+ * Close every logger + transport and reset internal state — the canonical
+ * teardown call. Named to match cache/queue/email/event/storage/database per
+ * NAMING.md §Bulk-and-Lifecycle-Ops so agents see one teardown verb across
+ * every appkit module.
+ *
+ * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+ * @llm-rule AVOID: Abrupt process exit — graceful drain prevents log loss
+ *   for batched transports (HTTP, webhook, database)
  */
-async function clear(): Promise<void> {
+async function disconnectAll(): Promise<void> {
   if (globalLogger) {
     await globalLogger.close();
     globalLogger = null;
@@ -115,9 +140,9 @@ function getConfig() {
 export const loggerClass = {
   // Core method (like auth.get())
   get,
-  
+
   // Utility methods
-  clear,
+  disconnectAll,
   getActiveTransports,
   hasTransport,
   getConfig,

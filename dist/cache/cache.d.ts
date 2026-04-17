@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Using directly - always get instance via cacheClass.get()
  * @llm-rule NOTE: Auto-detects Redis vs Memory from environment, namespace passed to get() function
  */
+import { AppKitError } from '../util/errors.js';
 import type { CacheConfig } from './defaults.js';
 /**
  * Thrown by all cache operations when the underlying strategy fails.
@@ -26,7 +27,7 @@ import type { CacheConfig } from './defaults.js';
  *   throw err; // re-throw unrelated errors
  * }
  */
-export declare class CacheError extends Error {
+export declare class CacheError extends AppKitError {
     /** Machine-readable error code, e.g. 'CACHE_GET_FAILED', 'CACHE_CONNECT_FAILED' */
     readonly code: string;
     constructor(message: string, options?: {

@@ -10,6 +10,7 @@
  */
 
 import { EmailClass } from './email.js';
+import { AppKitError } from '../util/errors.js';
 import {
   getSmartDefaults,
   validateProductionRequirements,
@@ -19,6 +20,25 @@ import {
 } from './defaults.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
+
+/**
+ * Thrown by email validation/send paths. `send()` itself returns an
+ * EmailResult with `{success,error}` rather than throwing — EmailError fires
+ * for config/bootstrap failures that the consumer needs to see at startup.
+ * `instanceof AppKitError` also true.
+ */
+export class EmailError extends AppKitError {
+  readonly code: string;
+  constructor(message: string, options?: { code?: string; cause?: unknown }) {
+    super(message, {
+      module: 'email',
+      code: options?.code ?? 'EMAIL_ERROR',
+      cause: options?.cause,
+    });
+    this.name = 'EmailError';
+    this.code = options?.code ?? 'EMAIL_ERROR';
+  }
+}
 
 // Global email instance for performance (like auth module)
 let globalEmail: EmailClass | null = null;
@@ -74,6 +94,20 @@ function get(): Email {
   // Lazy initialization - parse environment once (like auth)
   if (!globalEmail) {
     const config = getSmartDefaults();
+
+    // In production, refuse to silently fall back to the Console strategy.
+    // If neither RESEND_API_KEY nor SMTP_HOST is configured, the app would
+    // accept email "sends" that only log to stdout — silent data loss.
+    // Fail loud at boot so misconfig surfaces immediately.
+    if (process.env.NODE_ENV === 'production' && config.strategy === 'console') {
+      throw new EmailError(
+        `[@bloomneo/appkit/email] No email provider configured in production. ` +
+          `Set RESEND_API_KEY or SMTP_HOST (+ credentials) before starting. ` +
+          `See: ${DOCS_URL}#production-deployment`,
+        { code: 'EMAIL_PROD_NO_PROVIDER' },
+      );
+    }
+
     globalEmail = new EmailClass(config);
   }
 
@@ -241,10 +275,16 @@ function validateConfig(): {
 function validateProduction(): void {
   try {
     validateProductionRequirements();
-    
+
+    // In 4.0+, get() throws when no provider is configured in prod. validate-
+    // Production() remains as a pre-boot health check that fails with the
+    // same error so consumers can catch it somewhere other than first .get().
     if (process.env.NODE_ENV === 'production' && !hasProvider()) {
-      console.warn(
-        `[@bloomneo/appkit/email] No email provider configured in production. Set RESEND_API_KEY or SMTP_HOST to send real emails. See: ${DOCS_URL}#production-deployment`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] No email provider configured in production. ` +
+          `Set RESEND_API_KEY or SMTP_HOST to send real emails. ` +
+          `See: ${DOCS_URL}#production-deployment`,
+        { code: 'EMAIL_PROD_NO_PROVIDER' },
       );
     }
 
@@ -297,20 +337,19 @@ async function disconnectAll(): Promise<void> {
 export const emailClass = {
   // Core method (like auth.get())
   get,
-  
+
   // Utility methods
-  clear,
   reset,
   getStrategy,
   getConfig,
   hasResend,
   hasSmtp,
   hasProvider,
-  
+
   // Convenience methods
   send,
   sendText,
-  
+
   // Validation and lifecycle
   validateConfig,
   validateProduction,

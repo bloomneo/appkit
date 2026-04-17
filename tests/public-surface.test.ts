@@ -174,3 +174,66 @@ describe('Class re-exports — available for advanced consumers', () => {
   it('storage re-exports StorageClass',     () => expect(typeof StorageClass).toBe('function'));
   it('util re-exports UtilClass',           () => expect(typeof UtilClass).toBe('function'));
 });
+
+describe('Teardown verb — one name across every stateful module', () => {
+  // 4.0.0 committed to `disconnectAll()` as the canonical teardown call on
+  // every module that owns resources. Stateless modules (auth, config, error,
+  // security, util) don't have one because they have nothing to close.
+  it('cache.disconnectAll is a function',    () => expect(typeof (cacheClass as any).disconnectAll).toBe('function'));
+  it('database.disconnectAll is a function', () => expect(typeof (databaseClass as any).disconnectAll).toBe('function'));
+  it('email.disconnectAll is a function',    () => expect(typeof (emailClass as any).disconnectAll).toBe('function'));
+  it('event.disconnectAll is a function',    () => expect(typeof (eventClass as any).disconnectAll).toBe('function'));
+  it('logger.disconnectAll is a function',   () => expect(typeof (loggerClass as any).disconnectAll).toBe('function'));
+  it('queue.disconnectAll is a function',    () => expect(typeof (queueClass as any).disconnectAll).toBe('function'));
+  it('storage.disconnectAll is a function',  () => expect(typeof (storageClass as any).disconnectAll).toBe('function'));
+
+  // Negative assertions: `clear` / `shutdown` MUST NOT be on the class level.
+  // Drift-check also catches this in src/, but keeping a runtime assertion
+  // here makes the expectation explicit.
+  it('no xxxClass exposes both clear and disconnectAll', () => {
+    for (const cls of [cacheClass, emailClass, eventClass, loggerClass, queueClass, storageClass]) {
+      const hasBoth = typeof (cls as any).clear === 'function'
+        && typeof (cls as any).disconnectAll === 'function';
+      expect(hasBoth, `${(cls as any).get?.name ?? 'unknown'} has both clear + disconnectAll`).toBe(false);
+    }
+  });
+
+  it('no xxxClass exposes shutdown at class level', () => {
+    for (const cls of [cacheClass, emailClass, eventClass, loggerClass, queueClass, storageClass, databaseClass]) {
+      expect(typeof (cls as any).shutdown).not.toBe('function');
+    }
+  });
+});
+
+describe('AppKitError — unified error base across every typed error', () => {
+  // Consumer contract: `catch (err) { if (err instanceof AppKitError) ... }`
+  // must match every typed error the package can throw. If this test fails,
+  // a subclass forgot to extend AppKitError and a new error type is
+  // escaping the consumer's catch.
+  it('AppKitError is exported from root and is a class', async () => {
+    const { AppKitError } = await import('../src/index.js');
+    expect(typeof AppKitError).toBe('function');
+    const instance = new AppKitError('test', { module: 'test', code: 'TEST' });
+    expect(instance).toBeInstanceOf(Error);
+    expect(instance.module).toBe('test');
+    expect(instance.code).toBe('TEST');
+  });
+
+  it.each([
+    ['TokenError',    () => import('../src/index.js').then(m => new m.TokenError('invalid', 'x'))],
+    ['CacheError',    () => import('../src/index.js').then(m => new m.CacheError('x', { code: 'CACHE_ERROR' }))],
+    ['AppError',      () => import('../src/index.js').then(m => new m.AppError('x', 400, 'BAD_REQUEST'))],
+    ['SecurityError', () => import('../src/index.js').then(m => new m.SecurityError('x', 400))],
+    ['DatabaseError', () => import('../src/index.js').then(m => new m.DatabaseError('x'))],
+    ['EmailError',    () => import('../src/index.js').then(m => new m.EmailError('x'))],
+    ['EventError',    () => import('../src/index.js').then(m => new m.EventError('x'))],
+    ['QueueError',    () => import('../src/index.js').then(m => new m.QueueError('x'))],
+    ['LoggerError',   () => import('../src/index.js').then(m => new m.LoggerError('x'))],
+    ['StorageError',  () => import('../src/index.js').then(m => new m.StorageError('x'))],
+  ])('%s extends AppKitError', async (_name, factory) => {
+    const { AppKitError } = await import('../src/index.js');
+    const instance = await factory();
+    expect(instance).toBeInstanceOf(AppKitError);
+    expect(instance).toBeInstanceOf(Error);
+  });
+});

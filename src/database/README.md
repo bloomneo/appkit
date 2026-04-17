@@ -573,7 +573,7 @@ await databaseClass.delete('old-team', { confirm: true });
 ```typescript
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  await databaseClass.disconnect();
+  await databaseClass.disconnectAll();
   process.exit(0);
 });
 ```

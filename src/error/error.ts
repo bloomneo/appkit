@@ -9,10 +9,27 @@
  */
 
 import type { ErrorConfig } from './defaults.js';
+import { AppKitError } from '../util/errors.js';
 
-export interface AppError extends Error {
-  statusCode: number;
-  type: string;
+/**
+ * Semantic HTTP error with statusCode + type. Thrown by `errorClass.get()`'s
+ * factory methods (badRequest, unauthorized, notFound, etc.) and caught by
+ * `handleErrors()` middleware which serializes the status/type into the
+ * HTTP response.
+ *
+ * Extends `AppKitError` so consumers can write one catch clause for every
+ * appkit-thrown error.
+ */
+export class AppError extends AppKitError {
+  readonly statusCode: number;
+  readonly type: string;
+
+  constructor(message: string, statusCode: number, type: string) {
+    super(message, { module: 'error', code: type });
+    this.name = 'AppError';
+    this.statusCode = statusCode;
+    this.type = type;
+  }
 }
 
 export interface ExpressRequest {
@@ -64,10 +81,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: if (!req.body.email) throw error.badRequest('Email required');
    */
   badRequest(message?: string): AppError {
-    const error = new Error(message || this.config.messages.badRequest) as AppError;
-    error.statusCode = 400;
-    error.type = 'BAD_REQUEST';
-    return error;
+    return new AppError(message || this.config.messages.badRequest, 400, 'BAD_REQUEST');
   }
 
   /**
@@ -78,10 +92,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: if (!token) throw error.unauthorized('Token required');
    */
   unauthorized(message?: string): AppError {
-    const error = new Error(message || this.config.messages.unauthorized) as AppError;
-    error.statusCode = 401;
-    error.type = 'UNAUTHORIZED';
-    return error;
+    return new AppError(message || this.config.messages.unauthorized, 401, 'UNAUTHORIZED');
   }
 
   /**
@@ -92,10 +103,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: if (!user.isAdmin) throw error.forbidden('Admin access required');
    */
   forbidden(message?: string): AppError {
-    const error = new Error(message || this.config.messages.forbidden) as AppError;
-    error.statusCode = 403;
-    error.type = 'FORBIDDEN';
-    return error;
+    return new AppError(message || this.config.messages.forbidden, 403, 'FORBIDDEN');
   }
 
   /**
@@ -106,10 +114,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: if (!user) throw error.notFound('User not found');
    */
   notFound(message?: string): AppError {
-    const error = new Error(message || this.config.messages.notFound) as AppError;
-    error.statusCode = 404;
-    error.type = 'NOT_FOUND';
-    return error;
+    return new AppError(message || this.config.messages.notFound, 404, 'NOT_FOUND');
   }
 
   /**
@@ -120,10 +125,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: if (existingUser) throw error.conflict('Email already registered');
    */
   conflict(message?: string): AppError {
-    const error = new Error(message || this.config.messages.conflict) as AppError;
-    error.statusCode = 409;
-    error.type = 'CONFLICT';
-    return error;
+    return new AppError(message || this.config.messages.conflict, 409, 'CONFLICT');
   }
 
   /**
@@ -134,10 +136,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: catch (dbError) { throw error.serverError('Database unavailable'); }
    */
   serverError(message?: string): AppError {
-    const error = new Error(message || this.config.messages.serverError) as AppError;
-    error.statusCode = 500;
-    error.type = 'SERVER_ERROR';
-    return error;
+    return new AppError(message || this.config.messages.serverError, 500, 'SERVER_ERROR');
   }
 
   /**
@@ -146,10 +145,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: if (rateExceeded) throw error.tooMany('Slow down');
    */
   tooMany(message?: string): AppError {
-    const error = new Error(message || 'Too many requests') as AppError;
-    error.statusCode = 429;
-    error.type = 'TOO_MANY_REQUESTS';
-    return error;
+    return new AppError(message || 'Too many requests', 429, 'TOO_MANY_REQUESTS');
   }
 
   /**
@@ -169,10 +165,7 @@ export class ErrorClass {
    * @llm-rule NOTE: PATTERN: error.createError(429, 'Rate limit exceeded', 'RATE_LIMIT');
    */
   createError(statusCode: number, message: string, type?: string): AppError {
-    const error = new Error(message) as AppError;
-    error.statusCode = statusCode;
-    error.type = type || `HTTP_${statusCode}`;
-    return error;
+    return new AppError(message, statusCode, type || `HTTP_${statusCode}`);
   }
 
   /**

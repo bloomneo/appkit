@@ -75,7 +75,7 @@ email.renderTemplate(name, vars)              // built-ins: 'welcome', 'reset'
 emailClass.get(overrides?)                    // → Email
 emailClass.send(data)                         // shortcut, no .get() needed
 emailClass.sendText(to, subject, text, from?) // shortcut
-emailClass.clear() / emailClass.reset(cfg?)   // tests
+emailClass.reset(cfg?)                        // tests
 emailClass.getStrategy()                      // 'console' | 'resend' | 'smtp'
 emailClass.hasResend() / hasSmtp() / hasProvider()
 emailClass.validateConfig() / validateProduction()

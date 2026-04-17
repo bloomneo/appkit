@@ -69,7 +69,7 @@ logger.setLevel(level)                         // per-instance override
 
 ```ts
 loggerClass.get(component?)                    // → Logger (default component: service name)
-loggerClass.clear()                            // remove all transports (tests)
+loggerClass.disconnectAll()                    // close transports + flush (tests/teardown)
 loggerClass.getActiveTransports()              // → string[]
 loggerClass.hasTransport(name)                 // → boolean
 loggerClass.getConfig()                        // → diagnostic object

@@ -8,7 +8,19 @@
  * @llm-rule NOTE: Uses storageClass.get() pattern like auth - get() → storage.put() → distributed
  * @llm-rule NOTE: Common pattern - storageClass.get() → storage.put() → storage.url() → served
  */
+import { AppKitError } from '../util/errors.js';
 import { type StorageConfig } from './defaults.js';
+/**
+ * Thrown by storage operations (missing creds, invalid key, file not found
+ * on get(), upload failures). `instanceof AppKitError` also true.
+ */
+export declare class StorageError extends AppKitError {
+    readonly code: string;
+    constructor(message: string, options?: {
+        code?: string;
+        cause?: unknown;
+    });
+}
 export interface Storage {
     put(key: string, data: Buffer | Uint8Array | string, options?: PutOptions): Promise<string>;
     get(key: string): Promise<Buffer>;
@@ -43,12 +55,6 @@ export interface PutOptions {
  * @llm-rule NOTE: Typical flow - get() → storage.put() → storage.url() → file served
  */
 declare function get(overrides?: Partial<StorageConfig>): Storage;
-/**
- * Clear storage instance and disconnect - essential for testing
- * @llm-rule WHEN: Testing storage logic with different configurations or app shutdown
- * @llm-rule AVOID: Using in production except for graceful shutdown
- */
-declare function clear(): Promise<void>;
 /**
  * Reset storage configuration (useful for testing)
  * @llm-rule WHEN: Testing storage logic with different environment configurations
@@ -137,7 +143,6 @@ declare function download(key: string): Promise<{
  */
 export declare const storageClass: {
     readonly get: typeof get;
-    readonly clear: typeof clear;
     readonly reset: typeof reset;
     readonly getStrategy: typeof getStrategy;
     readonly getConfig: typeof getConfig;

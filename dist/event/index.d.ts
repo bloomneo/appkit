@@ -8,7 +8,19 @@
  * @llm-rule NOTE: Uses eventClass.get() pattern like auth - get() → event.emit() → distributed
  * @llm-rule NOTE: Common pattern - eventClass.get(namespace) → event.on() → event.emit() → handled
  */
+import { AppKitError } from '../util/errors.js';
 import { type EventConfig } from './defaults.js';
+/**
+ * Thrown by event operations (emit validation, invalid handlers, serialization
+ * failures). `instanceof AppKitError` also true.
+ */
+export declare class EventError extends AppKitError {
+    readonly code: string;
+    constructor(message: string, options?: {
+        code?: string;
+        cause?: unknown;
+    });
+}
 export interface Event {
     emit(event: string, data?: any): Promise<boolean>;
     on(event: string, handler: EventHandler | WildcardHandler): void;
@@ -45,12 +57,6 @@ export interface EventHistoryEntry {
  * @llm-rule NOTE: Typical flow - get(namespace) → event.on() → event.emit() → distributed handling
  */
 declare function get(namespace?: string): Event;
-/**
- * Clear all event instances and disconnect - essential for testing
- * @llm-rule WHEN: Testing event logic with different configurations or app shutdown
- * @llm-rule AVOID: Using in production except for graceful shutdown
- */
-declare function clear(): Promise<void>;
 /**
  * Reset event configuration (useful for testing)
  * @llm-rule WHEN: Testing event logic with different environment configurations
@@ -160,7 +166,6 @@ declare function disconnectAll(): Promise<void>;
  */
 export declare const eventClass: {
     readonly get: typeof get;
-    readonly clear: typeof clear;
     readonly reset: typeof reset;
     readonly getStrategy: typeof getStrategy;
     readonly getActiveNamespaces: typeof getActiveNamespaces;

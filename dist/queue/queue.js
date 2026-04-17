@@ -95,11 +95,13 @@ export class QueueClass {
      * @llm-rule WHEN: Setting up job handlers for background processing
      * @llm-rule AVOID: Multiple processors for same job type - causes conflicts
      */
-    process(jobType, handler) {
+    process(jobType, handler, options = {}) {
         this.validateJobType(jobType);
         this.validateHandler(handler);
-        // Wrap handler with error handling and retry logic
-        const wrappedHandler = this.wrapHandler(handler);
+        // Timeout default: 30 seconds. Pass 0 to opt out.
+        const timeoutMs = options.timeout ?? 30_000;
+        // Wrap handler with timeout + error handling + retry logic
+        const wrappedHandler = this.wrapHandler(handler, timeoutMs, jobType);
         try {
             this.transport.process(jobType, wrappedHandler);
         }
@@ -291,15 +293,27 @@ export class QueueClass {
     /**
      * Wrap job handler with error handling and retry logic
      */
-    wrapHandler(handler) {
+    wrapHandler(handler, timeoutMs = 30_000, jobType = 'unknown') {
         return async (data) => {
-            try {
-                const result = await handler(data);
-                return result;
+            // Race the handler against a timeout. 0 = opt-out; no timeout applied.
+            if (timeoutMs <= 0) {
+                return await handler(data);
             }
-            catch (error) {
-                // Re-throw error for transport to handle retry logic
-                throw error;
+            let timer;
+            const timeoutPromise = new Promise((_resolve, reject) => {
+                timer = setTimeout(() => {
+                    reject(new Error(`[@bloomneo/appkit/queue] Handler for "${jobType}" exceeded ` +
+                        `${timeoutMs}ms timeout. Job will be retried per attempts config. ` +
+                        `Set process(type, handler, { timeout }) to override. ` +
+                        `See: ${DOCS_URL}#handler-timeout`));
+                }, timeoutMs);
+            });
+            try {
+                return await Promise.race([handler(data), timeoutPromise]);
+            }
+            finally {
+                if (timer !== undefined)
+                    clearTimeout(timer);
             }
         };
     }

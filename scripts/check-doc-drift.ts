@@ -43,6 +43,15 @@ const BANNED: Banned[] = [
   { pattern: /\beventClass\.shutdown\s*\(/,   now: 'eventClass.disconnectAll()' },
   { pattern: /\bstorageClass\.shutdown\s*\(/, now: 'storageClass.disconnectAll()' },
 
+  // email / event / storage / logger — 4.0.0 removes redundant class-level clear()
+  { pattern: /\bemailClass\.clear\s*\(/,   now: 'emailClass.disconnectAll()' },
+  { pattern: /\beventClass\.clear\s*\(/,   now: 'eventClass.disconnectAll()' },
+  { pattern: /\bstorageClass\.clear\s*\(/, now: 'storageClass.disconnectAll()' },
+  { pattern: /\bloggerClass\.clear\s*\(/,  now: 'loggerClass.disconnectAll()' },
+
+  // database — 4.0.0 rename for cross-module teardown consistency
+  { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },
+
   // logger — 1.5.x hallucinations
   { pattern: /\bgethasTransport\b/,        now: 'hasTransport' },
   { pattern: /\bgetclear\b/,               now: 'clear' },

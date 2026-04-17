@@ -8,6 +8,20 @@
  * @llm-rule NOTE: Uses loggerClass.get() pattern like auth - get() → log.info() → done
  * @llm-rule NOTE: Enhanced error() method now provides automatic visual formatting in development
  */
+import { AppKitError } from '../util/errors.js';
+/**
+ * Thrown by logger bootstrap / transport setup. Regular log emit paths do NOT
+ * throw (a failed transport is swallowed and reported on console) so consumers
+ * don't lose app flow over log-delivery problems. `instanceof AppKitError`
+ * also true.
+ */
+export declare class LoggerError extends AppKitError {
+    readonly code: string;
+    constructor(message: string, options?: {
+        code?: string;
+        cause?: unknown;
+    });
+}
 export interface LogMeta {
     [key: string]: any;
 }
@@ -30,11 +44,16 @@ export interface Logger {
  */
 declare function get(component?: string): Logger;
 /**
- * Clear all loggers and close transports - essential for testing
- * @llm-rule WHEN: Testing logging logic with different configurations
- * @llm-rule AVOID: Using in production - only for tests and cleanup
+ * Close every logger + transport and reset internal state — the canonical
+ * teardown call. Named to match cache/queue/email/event/storage/database per
+ * NAMING.md §Bulk-and-Lifecycle-Ops so agents see one teardown verb across
+ * every appkit module.
+ *
+ * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
+ * @llm-rule AVOID: Abrupt process exit — graceful drain prevents log loss
+ *   for batched transports (HTTP, webhook, database)
  */
-declare function clear(): Promise<void>;
+declare function disconnectAll(): Promise<void>;
 /**
  * Get active transport names for debugging
  * @llm-rule WHEN: Need to see which transports are running (console, file, database, etc)
@@ -74,7 +93,7 @@ declare function getConfig(): {
  */
 export declare const loggerClass: {
     readonly get: typeof get;
-    readonly clear: typeof clear;
+    readonly disconnectAll: typeof disconnectAll;
     readonly getActiveTransports: typeof getActiveTransports;
     readonly hasTransport: typeof hasTransport;
     readonly getConfig: typeof getConfig;

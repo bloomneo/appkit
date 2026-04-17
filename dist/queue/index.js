@@ -10,7 +10,24 @@
  * @llm-rule NOTE: Common pattern - queueClass.get() → queue.add() → queue.process() → automatic retry + dead letter queue
  */
 import { QueueClass } from './queue.js';
+import { AppKitError } from '../util/errors.js';
 import { getSmartDefaults } from './defaults.js';
+/**
+ * Thrown by queue operations (invalid job type, serialization errors, handler
+ * timeout, transport failures). `instanceof AppKitError` also true.
+ */
+export class QueueError extends AppKitError {
+    code;
+    constructor(message, options) {
+        super(message, {
+            module: 'queue',
+            code: options?.code ?? 'QUEUE_ERROR',
+            cause: options?.cause,
+        });
+        this.name = 'QueueError';
+        this.code = options?.code ?? 'QUEUE_ERROR';
+    }
+}
 // Global queuing instance for performance (like auth module)
 let globalQueuing = null;
 /**

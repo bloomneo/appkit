@@ -168,7 +168,7 @@ eventClass.hasRedis(); // Check if Redis available
 await eventClass.broadcast('system.shutdown');
 
 // Cleanup for testing
-await eventClass.clear();
+await eventClass.disconnectAll();
 await eventClass.reset(newConfig);
 ```
 
@@ -321,7 +321,7 @@ await jobEvents.emit('job.email.welcome', {
 import { eventClass } from '@bloomneo/appkit/event';
 
 describe('Events', () => {
-  afterEach(() => eventClass.clear()); // Essential cleanup
+  afterEach(() => eventClass.disconnectAll()); // Essential cleanup
 
   test('basic event flow', async () => {
     const events = eventClass.get('test');
@@ -357,11 +357,11 @@ events.on('order.payment.failed', handler);
 // ❌ Memory leaks in tests
 test('my test', () => {
   const events = eventClass.get('test');
-  // Missing: await eventClass.clear();
+  // Missing: await eventClass.disconnectAll();
 });
 
 // ✅ Always clean up
-afterEach(() => eventClass.clear());
+afterEach(() => eventClass.disconnectAll());
 ```
 
 ### **3. Memory Strategy in Production**
@@ -640,7 +640,7 @@ events.on('created', handler); // Too generic
 // ❌ DON'T forget cleanup in tests
 test('my test', () => {
   // ... test code
-  // Missing: await eventClass.clear();
+  // Missing: await eventClass.disconnectAll();
 });
 
 // ❌ DON'T emit events without data structure

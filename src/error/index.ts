@@ -10,13 +10,11 @@
  * @llm-rule NOTE: COMPLETE SETUP: const error = errorClass.get(); app.use(error.handleErrors()); // Done!
  */
 
-import { ErrorClass } from './error.js';
+import { ErrorClass, AppError } from './error.js';
 import { getSmartDefaults, type ErrorConfig } from './defaults.js';
 
-export interface AppError extends Error {
-  statusCode: number;
-  type: string;
-}
+// Re-export the AppError class (value export — AppError is a class as of 4.0.0).
+export { AppError };
 
 export interface ExpressRequest {
   [key: string]: any;

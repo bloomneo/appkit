@@ -9,7 +9,7 @@
  * @llm-rule NOTE: Use middleware first: forms() for CSRF, requests() for rate limiting, then input() for sanitization
  */
 import { SecurityClass } from './security.js';
-import { getSmartDefaults } from './defaults.js';
+import { getSmartDefaults, SecurityError } from './defaults.js';
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
 // Global security instance for performance
 let globalSecurity = null;
@@ -120,8 +120,8 @@ function validateRequired(checks = {}) {
         missing.push('BLOOM_SECURITY_ENCRYPTION_KEY');
     }
     if (missing.length > 0) {
-        throw new Error(`[@bloomneo/appkit/security] Missing required security configuration: ${missing.join(', ')}. ` +
-            `Set environment variables for production security. See: ${DOCS_URL}#environment-variables`);
+        throw new SecurityError(`[@bloomneo/appkit/security] Missing required security configuration: ${missing.join(', ')}. ` +
+            `Set environment variables for production security. See: ${DOCS_URL}#environment-variables`, 500, { code: 'SECURITY_MISSING_CONFIG' });
     }
 }
 /**
@@ -157,6 +157,8 @@ export const securityClass = {
     validateRequired,
     getStatus,
 };
+// Re-export typed error (value export — SecurityError is a class as of 4.0.0)
+export { SecurityError } from './defaults.js';
 export { SecurityClass } from './security.js';
 // Default export
 export default securityClass;

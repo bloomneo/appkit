@@ -9,8 +9,10 @@
  * @llm-rule NOTE: Common pattern - errorClass.get() → throw error.badRequest() → app.use(error.handleErrors())
  * @llm-rule NOTE: COMPLETE SETUP: const error = errorClass.get(); app.use(error.handleErrors()); // Done!
  */
-import { ErrorClass } from './error.js';
+import { ErrorClass, AppError } from './error.js';
 import { getSmartDefaults } from './defaults.js';
+// Re-export the AppError class (value export — AppError is a class as of 4.0.0).
+export { AppError };
 // Global error instance for performance
 let globalError = null;
 /**

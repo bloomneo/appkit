@@ -10,6 +10,7 @@
  */
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { AppKitError } from '../util/errors.js';
 import { validateRounds, validateRoleLevel, validatePermission, } from './defaults.js';
 /**
  * Canonical doc URL appended to runtime errors so devs (and AI agents)
@@ -28,10 +29,10 @@ const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/auth/README.m
  * @llm-rule WHEN: Catching verifyToken() failures to branch on failure type
  * @llm-rule AVOID: Comparing error.message strings — use error.code instead
  */
-export class TokenError extends Error {
+export class TokenError extends AppKitError {
     code;
     constructor(code, message) {
-        super(message);
+        super(message, { module: 'auth', code });
         this.name = 'TokenError';
         this.code = code;
     }

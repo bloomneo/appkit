@@ -82,6 +82,12 @@ security.forms(); // Prevents cross-site request forgery
 // Traffic Protection (Rate Limiting)
 security.requests(); // Prevents abuse and brute force
 
+// ⚠️ In-memory only — NOT distributed across replicas. If your app runs
+// behind a load balancer with multiple processes/pods, this counts requests
+// per process. For multi-process rate limiting, put a shared rate limiter in
+// front of your app (nginx limit_req, Cloudflare Rate Limiting, envoy). See
+// "Rate limiting — in-memory caveat" below.
+
 // Input Protection (XSS Prevention)
 security.input(text); // Cleans user text input
 security.html(content); // Sanitizes HTML content
@@ -482,6 +488,29 @@ BLOOM_SECURITY_RATE_MESSAGE=Too many requests, please try again later  # Rate-li
 - Optional Associated Additional Data (AAD)
 
 ## 🛡️ Production Deployment
+
+### **🚨 Rate limiting — in-memory caveat**
+
+`security.requests()` uses an in-process `Map` to count requests per IP within
+the configured window. That means:
+
+- **Single-process apps:** works as expected.
+- **Multi-process / multi-replica apps:** each process counts independently.
+  A request that hits replica A doesn't count toward replica B's window.
+  Effective rate limit = `BLOOM_SECURITY_RATE_LIMIT × number of replicas`.
+- **Clustered / PM2 / forever / Kubernetes replicas:** same concern.
+
+If you run more than one process, put a distributed rate limiter **in front of**
+your app instead of (or in addition to) this one:
+
+- **nginx:** `limit_req_zone` / `limit_req`
+- **Cloudflare:** Rate Limiting rules
+- **Envoy / Istio:** rate limit filter with a global Redis backend
+- **API Gateway:** AWS API Gateway throttling, Kong rate-limit plugin, etc.
+
+This module's rate limiter is designed for single-process apps and for a
+cheap-and-nasty second layer of defence. It is intentionally **not** a
+distributed rate limiter — that would couple the security module to Redis.
 
 ### **Environment Setup**
 
