@@ -583,9 +583,43 @@ Every message is prefixed `[@bloomneo/appkit/<module>]` and ends with
 
 ---
 
-## Migration — 1.5.x → 2.0.0
+## Migration → 4.0.0
 
-Compatibility break. 2.0.0 is stable; no aliases kept. Project-wide find-and-replace:
+Full table: [`CHANGELOG.md`](./CHANGELOG.md#400---2026-04-17).
+
+### From 2.0.0 → 4.0.0
+
+Teardown verb unified across every stateful module:
+
+```
+cacheClass.flushAll(      → cacheClass.clearAll(
+cacheClass.shutdown(      → cacheClass.disconnectAll(
+queueClass.clear(         → queueClass.disconnectAll(
+emailClass.shutdown(      → emailClass.disconnectAll(
+emailClass.clear(         → emailClass.disconnectAll(
+eventClass.shutdown(      → eventClass.disconnectAll(
+eventClass.clear(         → eventClass.disconnectAll(
+storageClass.shutdown(    → storageClass.disconnectAll(
+storageClass.clear(       → storageClass.disconnectAll(
+loggerClass.clear(        → loggerClass.disconnectAll(
+databaseClass.disconnect( → databaseClass.disconnectAll(
+```
+
+Error types unified under `AppKitError`:
+
+```
+catch (err) { if (err instanceof AppKitError) { log(err.module, err.code) } }
+```
+
+Library no longer auto-registers `process.on('SIGTERM', ...)`. Wire it
+yourself (scaffolded backend template does this).
+
+Email/storage/database/security throw in `NODE_ENV=production` when
+required env vars are missing. No silent fallback.
+
+### From 1.5.x → 4.0.0
+
+Apply the 2.0.0 → 4.0.0 list above plus:
 
 - `auth.user(req)` → `auth.getUser(req)`
 - `auth.can(user, perm)` → `auth.hasPermission(user, perm)`
@@ -595,9 +629,7 @@ Compatibility break. 2.0.0 is stable; no aliases kept. Project-wide find-and-rep
 Removed (never actually existed — docs were wrong): `auth.requireLogin()`,
 `auth.requireRole()`, `logger.gethasTransport()`, `logger.getclear()`. Use
 `auth.requireLoginToken()`, `auth.requireUserRoles([...])`,
-`loggerClass.hasTransport()`, `loggerClass.clear()`.
-
-See [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full list.
+`loggerClass.hasTransport()`, `loggerClass.disconnectAll()`.
 
 ---
 

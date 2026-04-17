@@ -200,7 +200,20 @@ backend, no frontend.
 
 ## Migration notes
 
-**BREAKING in 2.0.0:** compatibility break — see [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full rename list. Key renames with no aliases: `auth.getUser()` (was `auth.user`), `auth.hasPermission()` (was `auth.can`), `security.forms()` (was `security.csrf`). 2.0.0 is stable; any further rename requires a new major.
+**Current release: 4.0.0.** Jumping from any pre-4 version involves breaking
+renames with no aliases. See [`CHANGELOG.md`](./CHANGELOG.md#400---2026-04-17)
+for the complete migration table.
+
+Headline renames you will hit:
+- **From 1.5.x or earlier:** `auth.user()` → `auth.getUser(req)`,
+  `auth.can()` → `auth.hasPermission()`, `security.csrf()` → `security.forms()`.
+- **Also in 4.0.0:** every stateful module's teardown is now
+  `xxxClass.disconnectAll()` — the old `shutdown()` and class-level `clear()`
+  are removed. `databaseClass.disconnect()` → `databaseClass.disconnectAll()`.
+- **Error handling:** every typed error now extends `AppKitError`
+  (`import { AppKitError } from '@bloomneo/appkit'`) so `catch (err) { if (err instanceof AppKitError) ... }` matches every module.
+
+After 4.0.0 the API is stable. Any further breaking rename requires a new major.
 
 ## Where to look next
 

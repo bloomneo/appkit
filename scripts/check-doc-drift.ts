@@ -120,7 +120,14 @@ for (const file of SCAN) {
   lines.forEach((line, i) => {
     // Strip inline code spans — quoted references like `auth.user()` in
     // prose or score-block history are discussing past drift, not introducing it.
-    const clean = line.replace(/`[^`]*`/g, '');
+    let clean = line.replace(/`[^`]*`/g, '');
+
+    // Migration arrow: on `<old> → <new>` lines, the left side is SUPPOSED
+    // to contain the banned name (that's the point of a migration table).
+    // Only scan the right side so we catch drift introduced in the new
+    // canonical call without false-positiving the migration reference itself.
+    const arrowMatch = clean.match(/^(.*?)(?:→|->)(.*)$/);
+    if (arrowMatch) clean = arrowMatch[2];
     for (const { pattern, now } of BANNED) {
       if (pattern.test(clean)) {
         console.error(

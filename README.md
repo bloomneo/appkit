@@ -256,11 +256,42 @@ myproject/
 
 ## 🏗️ Migration
 
-### From `@bloomneo/appkit@1.5.x` → `2.0.0`
+**Current release: 4.0.0.** The full, canonical migration table lives in
+[`CHANGELOG.md`](./CHANGELOG.md#400---2026-04-17) — run that project-wide
+find-and-replace and your code works.
 
-2.0.0 is the stable API reference after a compatibility break. Renames are
-final, no aliases kept. Any further breaking change requires a new major.
-Project-wide find-and-replace:
+### From `@bloomneo/appkit@2.0.0` → `4.0.0`
+
+Teardown and error handling changed. Nothing else in the 2.0.0 public API
+was renamed.
+
+```
+cacheClass.flushAll(      → cacheClass.clearAll(
+cacheClass.shutdown(      → cacheClass.disconnectAll(
+queueClass.clear(         → queueClass.disconnectAll(
+emailClass.shutdown(      → emailClass.disconnectAll(
+emailClass.clear(         → emailClass.disconnectAll(
+eventClass.shutdown(      → eventClass.disconnectAll(
+eventClass.clear(         → eventClass.disconnectAll(
+storageClass.shutdown(    → storageClass.disconnectAll(
+storageClass.clear(       → storageClass.disconnectAll(
+loggerClass.clear(        → loggerClass.disconnectAll(
+databaseClass.disconnect( → databaseClass.disconnectAll(
+```
+
+Then:
+- Error handling: every typed error now extends `AppKitError`. Prefer
+  `catch (err) { if (err instanceof AppKitError) ... }` over
+  module-specific `instanceof` checks.
+- Production: email/storage/database/security refuse to silently fall back.
+  Confirm required env vars are set before deploy.
+- Library no longer auto-registers `process.on('SIGTERM', ...)` — wire
+  `xxxClass.disconnectAll()` from your own signal handler (the scaffolded
+  backend template does this).
+
+### From `@bloomneo/appkit@1.5.x` (or earlier) → `4.0.0`
+
+Apply everything above PLUS the pre-2.0 renames:
 
 - `auth.user(req)` → `auth.getUser(req)`
 - `auth.can(user, perm)` → `auth.hasPermission(user, perm)`
@@ -270,8 +301,6 @@ Project-wide find-and-replace:
 If your code called `auth.requireLogin()` or `auth.requireRole(...)`, it
 was already broken — those methods never existed. Use
 `auth.requireLoginToken()` and `auth.requireUserRoles([...])`.
-
-See [`CHANGELOG.md`](./CHANGELOG.md#200---2026-04-15) for the full list.
 
 ---
 
