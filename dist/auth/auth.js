@@ -98,7 +98,20 @@ export class AuthenticationClass {
         }
         // Validate role.level exists
         const roleLevel = `${payload.role}.${payload.level}`;
-        if (!validateRoleLevel(roleLevel, this.config.roles)) {
+        if (this.config.matrix) {
+            // Matrix mode: any pair from the cross-product is valid, so validate the
+            // two halves independently rather than against a registered pair list.
+            const parts = this.roleParts(roleLevel);
+            if (!parts) {
+                const { tiers, scopes } = this.config.matrix;
+                throw new Error(`[@bloomneo/appkit/auth] Invalid role.level: "${roleLevel}". In matrix mode role must be one of [${tiers.join(', ')}] ` +
+                    `and level one of [${scopes.join(', ')}] (BLOOM_AUTH_TIERS / BLOOM_AUTH_SCOPES). See: ${DOCS_URL}#role-level-permission-architecture`);
+            }
+            // Carry the split so consumers don't have to re-derive it, per the RFC.
+            payload.tier = parts.tier;
+            payload.scope = parts.scope;
+        }
+        else if (!validateRoleLevel(roleLevel, this.config.roles)) {
             throw new Error(`[@bloomneo/appkit/auth] Invalid role.level: "${roleLevel}". The default hierarchy ships with user.basic, user.pro, user.max, moderator.review, moderator.approve, moderator.manage, admin.tenant, admin.org, admin.system. To register custom roles, set BLOOM_AUTH_ROLES env var. See: ${DOCS_URL}#role-level-permission-architecture`);
         }
         const jwtSecret = this.config.jwt.secret;
@@ -244,6 +257,16 @@ export class AuthenticationClass {
         if (!userRoleLevel || !requiredRoleLevel) {
             return false;
         }
+        // MATRIX MODE: inheritance is the product of two independent chains, so a
+        // role must be high enough on BOTH axes. This is what stops
+        // moderator.system from inheriting admin.tenant's delete.
+        if (this.config.matrix) {
+            const user = this.roleParts(userRoleLevel);
+            const required = this.roleParts(requiredRoleLevel);
+            if (!user || !required)
+                return false;
+            return user.scopeRank >= required.scopeRank && user.tierRank >= required.tierRank;
+        }
         if (!validateRoleLevel(userRoleLevel, this.config.roles)) {
             return false;
         }
@@ -257,6 +280,110 @@ export class AuthenticationClass {
         }
         // Higher numeric levels include lower levels
         return userLevel >= requiredLevel;
+    }
+    /**
+     * Split a `tier.scope` identifier into its two axes and their ranks.
+     *
+     * @llm-rule WHEN: You need the capability or reach of a role separately
+     * @llm-rule AVOID: Splitting role.level by hand - ranks come from the configured axes
+     * @llm-rule NOTE: Returns null in linear mode, or when either half isn't a configured axis value
+     */
+    roleParts(roleLevel) {
+        const matrix = this.config.matrix;
+        if (!matrix || !roleLevel || typeof roleLevel !== 'string')
+            return null;
+        const parts = roleLevel.split('.');
+        if (parts.length !== 2)
+            return null;
+        const [tier, scope] = parts;
+        const tierRank = matrix.tierRank[tier];
+        const scopeRank = matrix.scopeRank[scope];
+        if (tierRank === undefined || scopeRank === undefined)
+            return null;
+        return { tier, scope, tierRank, scopeRank };
+    }
+    /**
+     * Capability check, any reach. `requireTier('admin')` admits admin.client
+     * through admin.system but never a moderator.
+     *
+     * @llm-rule WHEN: A route is about what the caller may DO, regardless of scope
+     * @llm-rule AVOID: Using in linear mode - there are no tiers, so it always denies
+     * @llm-rule NOTE: Chain AFTER requireLoginToken(), same as requireUserRoles()
+     */
+    requireTier(minimumTier) {
+        return (req, res, next) => {
+            const user = this.getUser(req);
+            if (!user) {
+                res.status(401).json({ error: 'Authentication required', message: this.config.middleware.errorMessages.noToken });
+                return;
+            }
+            const parts = this.roleParts(`${user.role}.${user.level}`);
+            const required = this.config.matrix?.tierRank[minimumTier];
+            if (!parts || required === undefined || parts.tierRank < required) {
+                res.status(403).json({
+                    error: 'Insufficient tier',
+                    message: this.config.middleware.errorMessages.insufficientRole,
+                });
+                return;
+            }
+            next();
+        };
+    }
+    /**
+     * Reach check, any capability. `requireScope('tenant')` admits any role at
+     * tenant reach or above, whatever its tier.
+     *
+     * @llm-rule WHEN: A route is about WHERE the caller operates, not what they may do
+     * @llm-rule AVOID: Using it as a data filter - that's scopedWhere(), a separate concern
+     * @llm-rule NOTE: Chain AFTER requireLoginToken(), same as requireUserRoles()
+     */
+    requireScope(minimumScope) {
+        return (req, res, next) => {
+            const user = this.getUser(req);
+            if (!user) {
+                res.status(401).json({ error: 'Authentication required', message: this.config.middleware.errorMessages.noToken });
+                return;
+            }
+            const parts = this.roleParts(`${user.role}.${user.level}`);
+            const required = this.config.matrix?.scopeRank[minimumScope];
+            if (!parts || required === undefined || parts.scopeRank < required) {
+                res.status(403).json({
+                    error: 'Insufficient scope',
+                    message: this.config.middleware.errorMessages.insufficientRole,
+                });
+                return;
+            }
+            next();
+        };
+    }
+    /**
+     * Data scope for the caller, ready to spread into a query filter.
+     *
+     * This is deliberately NOT a role check. "May they do this?" is the role
+     * (tier x scope); "on whose data?" is tenantId/clientId. Conflating them is
+     * how apps end up with a firm admin who can read another firm.
+     *
+     * ```ts
+     * const rows = await db.invoice.findMany({ where: { ...auth.scopedWhere(req), status } });
+     * ```
+     *
+     * A platform account carries null and gets `{}` — no filter, cross-tenant by
+     * design. Anything narrower gets the columns it is bound to.
+     *
+     * @llm-rule WHEN: Filtering a query by the caller's tenant/client binding
+     * @llm-rule AVOID: Trusting it alone for authorization - pair it with requireUserRoles()
+     * @llm-rule NOTE: Returns {} for platform scopes, so it is safe to always spread
+     */
+    scopedWhere(req) {
+        const user = this.getUser(req);
+        if (!user)
+            return {};
+        const where = {};
+        if (user.tenantId)
+            where.tenantId = user.tenantId;
+        if (user.clientId)
+            where.clientId = user.clientId;
+        return where;
     }
     /**
      * Checks if user has specific permission with automatic action inheritance.

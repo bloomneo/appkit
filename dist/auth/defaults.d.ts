@@ -17,6 +17,30 @@ export interface RoleHierarchy {
 export interface PermissionDefaults {
     [roleLevel: string]: string[];
 }
+/**
+ * Two-axis ("matrix") role model.
+ *
+ * A linear ladder conflates two orthogonal things: how far a role *reaches*
+ * (scope) and what it may *do* (tier). That's why `moderator.system` outranks
+ * `admin.tenant` on a single list and silently inherits delete — the bug every
+ * app then works around with ad-hoc `role === 'admin'` checks.
+ *
+ * Here inheritance is the product of two chains: a role satisfies a
+ * requirement only when its scope AND its tier are both high enough. Some
+ * roles are deliberately incomparable, which is the point.
+ *
+ * Populated only when BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS are set;
+ * otherwise appkit stays in linear mode and nothing changes.
+ */
+export interface RoleMatrix {
+    /** scope name → rank, low to high (client:0, tenant:1, org:2, system:3). */
+    scopeRank: Record<string, number>;
+    /** tier name → rank, low to high (user:0, moderator:1, admin:2). */
+    tierRank: Record<string, number>;
+    /** Ordered axis values as configured, for error messages. */
+    scopes: string[];
+    tiers: string[];
+}
 export interface AuthConfig {
     jwt: {
         secret: string;
@@ -27,6 +51,8 @@ export interface AuthConfig {
         saltRounds: number;
     };
     roles: RoleHierarchy;
+    /** Non-null only in matrix mode. Null means linear mode (the default). */
+    matrix: RoleMatrix | null;
     permissions: {
         coreActions: string[];
         coreScopes: string[];

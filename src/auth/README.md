@@ -140,6 +140,82 @@ auth.hasRole('admin.system', 'user.basic'); // system > basic
 auth.hasRole('user.basic', 'admin.tenant'); // basic < tenant
 ```
 
+## 🧮 Matrix mode — two-axis roles (opt-in)
+
+A single ladder conflates two orthogonal things: how far a role **reaches**
+and what it may **do**. On one list `moderator.system` outranks `admin.tenant`
+and therefore inherits delete — which is wrong, and is why apps end up
+sprinkling ad-hoc `role === 'admin'` checks to compensate.
+
+Set both axes, low → high, and inheritance becomes the **product** of two
+chains instead of a single line:
+
+```bash
+BLOOM_AUTH_SCOPES="client,tenant,org,system"   # reach
+BLOOM_AUTH_TIERS="user,moderator,admin"        # capability
+```
+
+A role satisfies a requirement only when **both** are high enough:
+
+```
+scope(user) >= scope(required)  AND  tier(user) >= tier(required)
+```
+
+| Caller | Gate requires | Granted? | Why |
+|---|---|:--:|---|
+| `admin.system` | `admin.tenant` | ✅ | higher on both axes |
+| `moderator.system` | `moderator.tenant` | ✅ | same tier, greater reach |
+| `moderator.system` | `admin.tenant` | ❌ | **platform moderator can't delete firm data** |
+| `admin.tenant` | `admin.client` | ✅ | firm admin manages its clients |
+| `moderator.tenant` | `admin.client` | ❌ | firm moderator can't client-admin |
+| `admin.tenant` | `admin.system` | ❌ | firm admin is not platform |
+
+Some roles are deliberately **incomparable** — that's the feature. The two
+invariants apps keep re-implementing ("moderators never delete", "lower scope
+can't reach higher") now fall out of the model: gate delete at `admin.<scope>`
+and inheritance does the rest.
+
+Any pair from the cross-product is valid — no per-pair registration:
+
+```ts
+auth.generateLoginToken({ userId, role: 'admin', level: 'tenant', tenantId: 'firm-1' });
+```
+
+New helpers (matrix mode only):
+
+```ts
+auth.roleParts('admin.tenant')   // { tier, scope, tierRank, scopeRank } — null in linear mode
+auth.requireTier('admin')        // capability, any reach
+auth.requireScope('tenant')      // reach, any capability
+```
+
+**Backward compatible.** Leave both unset and appkit stays in linear mode with
+the 9-level ladder — nothing changes. Setting only one axis throws rather than
+guessing the other, because a half-configured lattice would silently give you a
+different authorization model than you asked for.
+
+### Capability vs data scope — keep them separate
+
+Two different questions, two different mechanisms:
+
+- **"May they do this?"** → the role (tier × scope), via `requireUserRoles()`.
+- **"On whose data?"** → `tenantId` / `clientId`, carried in the token.
+
+`admin.tenant` grants firm-admin *capability*; the token's `tenantId` binds it
+to *one* firm. Conflating the two is how you end up with a firm admin who can
+read another firm.
+
+```ts
+const invoices = await db.invoice.findMany({
+  where: { ...auth.scopedWhere(req), status: 'open' },
+});
+```
+
+`scopedWhere()` returns `{}` for a platform account (null bindings), so it is
+always safe to spread. Carrying the binding in the token also removes a
+per-request lookup, and lets an offline or mobile client know its own reach
+without a round trip.
+
 ## 🧭 Which case is your app? (Decision tree)
 
 The 9-level default hierarchy is **scaffolding, not a requirement**. Most apps

@@ -2,6 +2,68 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [4.2.0] - 2026-08-16
+
+Implements steps 1 and 2 of the scoped-roles RFC. **Not breaking** — matrix
+mode is opt-in and linear-mode apps are untouched, which is why this is a
+minor and not 5.0.
+
+### Added — matrix mode: roles as (tier × scope)
+
+```bash
+BLOOM_AUTH_SCOPES="client,tenant,org,system"   # reach,      low → high
+BLOOM_AUTH_TIERS="user,moderator,admin"        # capability, low → high
+```
+
+Set both and inheritance becomes the **product** of two chains rather than a
+single line: a role satisfies a requirement only when its scope AND its tier
+are both high enough.
+
+The bug this fixes: on a linear ladder `moderator.system` outranks
+`admin.tenant` and therefore **inherits delete**. A platform moderator could
+delete firm data. Every app then re-implemented "moderators never delete" as
+an ad-hoc `role === 'admin'` check — and the benchmark confirmed the cost:
+adding a read-only reviewer role took an *identical* hand-rolled deny set
+with the framework and without it. The linear ladder was worth zero on the
+most common change type in a multi-tenant app.
+
+Under the product order those two roles are deliberately **incomparable**,
+so gating delete at `admin.<scope>` is enough and the workaround disappears.
+
+Any pair from the cross-product is valid without per-pair registration.
+Setting only one axis throws rather than guessing the other — a
+half-configured lattice would silently hand the app a different
+authorization model than it asked for.
+
+### Added — data scope in the token
+
+`tenantId` and `clientId` are now first-class claims, plus `tier`/`scope` as
+the derived split. Capability ("may they do this?") stays the role;
+data scope ("on whose data?") is these claims:
+
+```ts
+const rows = await db.invoice.findMany({
+  where: { ...auth.scopedWhere(req), status: 'open' },
+});
+```
+
+Carrying the binding removes the per-request lookup two production apps had
+to write by hand, and it is the prerequisite for cross-platform: an offline
+or mobile client can know its own reach without a round trip, which a
+server-side lookup can never give it.
+
+### Added — helpers
+
+- `auth.roleParts(roleLevel)` → `{ tier, scope, tierRank, scopeRank }` (null in linear mode)
+- `auth.requireTier('admin')` — capability, any reach
+- `auth.requireScope('tenant')` — reach, any capability
+- `auth.scopedWhere(req)` — `{ tenantId?, clientId? }`, `{}` for platform accounts
+
+### Tests
+
++19, including the RFC's full truth table as executable cases. Suite:
+703 → 722 passing.
+
 ## [4.1.0] - 2026-08-16
 
 ### Added — `mcpClass`, a 13th module: your app as an MCP server

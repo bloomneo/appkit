@@ -92,6 +92,7 @@ export function getSmartDefaults() {
             saltRounds: parseInt(process.env.BLOOM_AUTH_BCRYPT_ROUNDS || '10'),
         },
         roles: parseRoleHierarchy(),
+        matrix: parseRoleMatrix(),
         permissions: {
             coreActions: CORE_ACTIONS,
             coreScopes: CORE_SCOPES,
@@ -240,6 +241,51 @@ export function validatePermission(permission) {
 /**
  * Validates role.level format
  */
+/**
+ * Build the two-axis role model from BLOOM_AUTH_SCOPES / BLOOM_AUTH_TIERS.
+ *
+ * @llm-rule WHEN: App startup - both axes set means matrix mode
+ * @llm-rule AVOID: Setting only one axis - a half-configured lattice is ambiguous, so it throws
+ * @llm-rule NOTE: Format is low→high, e.g. BLOOM_AUTH_SCOPES="client,tenant,org,system"
+ *
+ * Returns null (linear mode) when neither is set — existing apps are untouched.
+ */
+function parseRoleMatrix() {
+    const rawScopes = process.env.BLOOM_AUTH_SCOPES?.trim();
+    const rawTiers = process.env.BLOOM_AUTH_TIERS?.trim();
+    if (!rawScopes && !rawTiers)
+        return null;
+    // One axis alone can't express a lattice, and guessing the other would give
+    // an app a silently different authorization model than it asked for.
+    if (!rawScopes || !rawTiers) {
+        throw new Error(`[@bloomneo/appkit/auth] Matrix mode needs BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS. ` +
+            `Got ${rawScopes ? 'SCOPES only' : 'TIERS only'}. Set both, or neither for linear mode. ` +
+            `See: ${DOCS_URL}#role-level-permission-architecture`);
+    }
+    const parseAxis = (raw, name) => {
+        const values = raw.split(',').map((v) => v.trim()).filter(Boolean);
+        if (values.length < 2) {
+            throw new Error(`[@bloomneo/appkit/auth] ${name} needs at least 2 comma-separated values, low to high. ` +
+                `Got: "${raw}". See: ${DOCS_URL}#role-level-permission-architecture`);
+        }
+        for (const value of values) {
+            // Axis values become half of a `tier.scope` identifier, so a dot would
+            // make the pair unparseable.
+            if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+                throw new Error(`[@bloomneo/appkit/auth] Invalid ${name} value: "${value}". ` +
+                    `Letters, numbers, underscore and hyphen only. See: ${DOCS_URL}#role-level-permission-architecture`);
+            }
+        }
+        if (new Set(values).size !== values.length) {
+            throw new Error(`[@bloomneo/appkit/auth] ${name} has duplicate values: "${raw}". See: ${DOCS_URL}#role-level-permission-architecture`);
+        }
+        return values;
+    };
+    const scopes = parseAxis(rawScopes, 'BLOOM_AUTH_SCOPES');
+    const tiers = parseAxis(rawTiers, 'BLOOM_AUTH_TIERS');
+    const rank = (values) => values.reduce((acc, value, i) => ((acc[value] = i), acc), {});
+    return { scopeRank: rank(scopes), tierRank: rank(tiers), scopes, tiers };
+}
 function validateRoleLevelFormat(roleLevel) {
     if (!roleLevel || typeof roleLevel !== 'string') {
         return false;

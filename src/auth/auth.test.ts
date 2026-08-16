@@ -430,3 +430,136 @@ describe('Public API surface — drift check', () => {
     });
   }
 });
+
+describe('matrix mode — two-axis roles (scoped-roles RFC)', () => {
+  // A linear ladder conflates reach with capability, so moderator.system
+  // outranks admin.tenant and silently inherits delete. The product order
+  // makes those two roles incomparable, which is the whole point.
+  const withMatrix = <T>(fn: () => T, scopes = 'client,tenant,org,system', tiers = 'user,moderator,admin'): T => {
+    const savedScopes = process.env.BLOOM_AUTH_SCOPES;
+    const savedTiers = process.env.BLOOM_AUTH_TIERS;
+    process.env.BLOOM_AUTH_SCOPES = scopes;
+    process.env.BLOOM_AUTH_TIERS = tiers;
+    authClass.reset();
+    try {
+      return fn();
+    } finally {
+      if (savedScopes === undefined) delete process.env.BLOOM_AUTH_SCOPES;
+      else process.env.BLOOM_AUTH_SCOPES = savedScopes;
+      if (savedTiers === undefined) delete process.env.BLOOM_AUTH_TIERS;
+      else process.env.BLOOM_AUTH_TIERS = savedTiers;
+      authClass.reset();
+    }
+  };
+
+  // Straight from the RFC truth table.
+  const TRUTH_TABLE: Array<[string, string, boolean, string]> = [
+    ['admin.system', 'admin.tenant', true, 'platform admin reaches firm admin'],
+    ['admin.system', 'moderator.client', true, 'higher on both axes'],
+    ['moderator.system', 'moderator.tenant', true, 'same tier, greater reach'],
+    ['moderator.system', 'admin.tenant', false, 'platform mod must NOT inherit firm delete'],
+    ['admin.tenant', 'admin.client', true, 'firm admin manages its clients'],
+    ['moderator.tenant', 'admin.client', false, 'firm mod cannot client-admin'],
+    ['admin.tenant', 'admin.system', false, 'firm admin is not platform'],
+    ['user.client', 'user.client', true, 'identity'],
+    ['user.system', 'moderator.client', false, 'reach without capability'],
+  ];
+
+  for (const [user, required, expected, why] of TRUTH_TABLE) {
+    it(`${user} vs ${required} → ${expected} (${why})`, () => {
+      withMatrix(() => {
+        expect(authClass.get().hasRole(user, required)).toBe(expected);
+      });
+    });
+  }
+
+  it('the same comparison is TRUE on the linear ladder — this is the bug being fixed', () => {
+    // moderator.manage (6) > admin.tenant (7)? No — but the shape of the
+    // problem is that a single list forces an ordering between roles that
+    // should be incomparable. Verified here against the shipped hierarchy.
+    expect(authClass.get().hasRole('admin.org', 'admin.tenant')).toBe(true);
+    expect(authClass.get().hasRole('admin.tenant', 'admin.org')).toBe(false);
+  });
+
+  it('roleParts splits both axes with ranks', () => {
+    withMatrix(() => {
+      expect(authClass.get().roleParts('admin.tenant')).toEqual({
+        tier: 'admin', scope: 'tenant', tierRank: 2, scopeRank: 1,
+      });
+    });
+  });
+
+  it('roleParts returns null in linear mode', () => {
+    expect(authClass.get().roleParts('admin.tenant')).toBeNull();
+  });
+
+  it('roleParts returns null for a value outside the configured axes', () => {
+    withMatrix(() => {
+      expect(authClass.get().roleParts('wizard.tenant')).toBeNull();
+      expect(authClass.get().roleParts('admin.galaxy')).toBeNull();
+      expect(authClass.get().roleParts('nodot')).toBeNull();
+    });
+  });
+
+  it('accepts any pair from the cross-product without registration', () => {
+    withMatrix(() => {
+      const token = authClass.get().generateLoginToken({ userId: 'u1', role: 'moderator', level: 'org' });
+      const decoded = authClass.get().verifyToken(token);
+      expect(decoded.role).toBe('moderator');
+      expect(decoded.level).toBe('org');
+      // Split carried for convenience, per the RFC.
+      expect(decoded.tier).toBe('moderator');
+      expect(decoded.scope).toBe('org');
+    });
+  });
+
+  it('rejects a pair outside the axes with an actionable message', () => {
+    withMatrix(() => {
+      expect(() =>
+        authClass.get().generateLoginToken({ userId: 'u1', role: 'wizard', level: 'tenant' })
+      ).toThrow(/must be one of \[user, moderator, admin\]/);
+    });
+  });
+
+  it('carries tenantId and clientId as data scope', () => {
+    withMatrix(() => {
+      const token = authClass.get().generateLoginToken({
+        userId: 'u1', role: 'admin', level: 'tenant', tenantId: 'firm-1', clientId: null,
+      });
+      const decoded = authClass.get().verifyToken(token);
+      expect(decoded.tenantId).toBe('firm-1');
+      expect(decoded.clientId).toBeNull();
+    });
+  });
+
+  it('requires BOTH axes — one alone throws rather than guessing', () => {
+    const saved = process.env.BLOOM_AUTH_SCOPES;
+    process.env.BLOOM_AUTH_SCOPES = 'client,tenant';
+    delete process.env.BLOOM_AUTH_TIERS;
+        try {
+      expect(() => authClass.reset()).toThrow(/BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS/);
+    } finally {
+      if (saved === undefined) delete process.env.BLOOM_AUTH_SCOPES;
+      else process.env.BLOOM_AUTH_SCOPES = saved;
+      authClass.reset();
+    }
+  });
+
+  it('rejects a single-value axis and duplicates', () => {
+    const restore = () => { delete process.env.BLOOM_AUTH_SCOPES; delete process.env.BLOOM_AUTH_TIERS; authClass.reset(); };
+    process.env.BLOOM_AUTH_TIERS = 'user,admin';
+    process.env.BLOOM_AUTH_SCOPES = 'tenant';
+        expect(() => authClass.reset()).toThrow(/at least 2 comma-separated/);
+    process.env.BLOOM_AUTH_SCOPES = 'tenant,tenant,system';
+        expect(() => authClass.reset()).toThrow(/duplicate/);
+    restore();
+  });
+
+  it('scopedWhere returns the caller binding, and {} for platform', () => {
+    const auth = authClass.get();
+    expect(auth.scopedWhere({ headers: {}, user: { userId: 'u1', tenantId: 'firm-1', clientId: 'c-9' } } as any))
+      .toEqual({ tenantId: 'firm-1', clientId: 'c-9' });
+    expect(auth.scopedWhere({ headers: {}, user: { userId: 'u1', tenantId: null, clientId: null } } as any)).toEqual({});
+    expect(auth.scopedWhere({ headers: {} } as any)).toEqual({});
+  });
+});

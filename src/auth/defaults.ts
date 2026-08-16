@@ -23,6 +23,31 @@ export interface PermissionDefaults {
   [roleLevel: string]: string[];
 }
 
+/**
+ * Two-axis ("matrix") role model.
+ *
+ * A linear ladder conflates two orthogonal things: how far a role *reaches*
+ * (scope) and what it may *do* (tier). That's why `moderator.system` outranks
+ * `admin.tenant` on a single list and silently inherits delete — the bug every
+ * app then works around with ad-hoc `role === 'admin'` checks.
+ *
+ * Here inheritance is the product of two chains: a role satisfies a
+ * requirement only when its scope AND its tier are both high enough. Some
+ * roles are deliberately incomparable, which is the point.
+ *
+ * Populated only when BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS are set;
+ * otherwise appkit stays in linear mode and nothing changes.
+ */
+export interface RoleMatrix {
+  /** scope name → rank, low to high (client:0, tenant:1, org:2, system:3). */
+  scopeRank: Record<string, number>;
+  /** tier name → rank, low to high (user:0, moderator:1, admin:2). */
+  tierRank: Record<string, number>;
+  /** Ordered axis values as configured, for error messages. */
+  scopes: string[];
+  tiers: string[];
+}
+
 export interface AuthConfig {
   jwt: {
     secret: string;
@@ -33,6 +58,8 @@ export interface AuthConfig {
     saltRounds: number;
   };
   roles: RoleHierarchy;
+  /** Non-null only in matrix mode. Null means linear mode (the default). */
+  matrix: RoleMatrix | null;
   permissions: {
     coreActions: string[];
     coreScopes: string[];
@@ -144,6 +171,7 @@ export function getSmartDefaults(): AuthConfig {
       saltRounds: parseInt(process.env.BLOOM_AUTH_BCRYPT_ROUNDS || '10'),
     },
     roles: parseRoleHierarchy(),
+    matrix: parseRoleMatrix(),
     permissions: {
       coreActions: CORE_ACTIONS,
       coreScopes: CORE_SCOPES,
@@ -346,6 +374,66 @@ export function validatePermission(permission: string): boolean {
 /**
  * Validates role.level format
  */
+/**
+ * Build the two-axis role model from BLOOM_AUTH_SCOPES / BLOOM_AUTH_TIERS.
+ *
+ * @llm-rule WHEN: App startup - both axes set means matrix mode
+ * @llm-rule AVOID: Setting only one axis - a half-configured lattice is ambiguous, so it throws
+ * @llm-rule NOTE: Format is low→high, e.g. BLOOM_AUTH_SCOPES="client,tenant,org,system"
+ *
+ * Returns null (linear mode) when neither is set — existing apps are untouched.
+ */
+function parseRoleMatrix(): RoleMatrix | null {
+  const rawScopes = process.env.BLOOM_AUTH_SCOPES?.trim();
+  const rawTiers = process.env.BLOOM_AUTH_TIERS?.trim();
+
+  if (!rawScopes && !rawTiers) return null;
+
+  // One axis alone can't express a lattice, and guessing the other would give
+  // an app a silently different authorization model than it asked for.
+  if (!rawScopes || !rawTiers) {
+    throw new Error(
+      `[@bloomneo/appkit/auth] Matrix mode needs BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS. ` +
+        `Got ${rawScopes ? 'SCOPES only' : 'TIERS only'}. Set both, or neither for linear mode. ` +
+        `See: ${DOCS_URL}#role-level-permission-architecture`
+    );
+  }
+
+  const parseAxis = (raw: string, name: string): string[] => {
+    const values = raw.split(',').map((v) => v.trim()).filter(Boolean);
+    if (values.length < 2) {
+      throw new Error(
+        `[@bloomneo/appkit/auth] ${name} needs at least 2 comma-separated values, low to high. ` +
+          `Got: "${raw}". See: ${DOCS_URL}#role-level-permission-architecture`
+      );
+    }
+    for (const value of values) {
+      // Axis values become half of a `tier.scope` identifier, so a dot would
+      // make the pair unparseable.
+      if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+        throw new Error(
+          `[@bloomneo/appkit/auth] Invalid ${name} value: "${value}". ` +
+            `Letters, numbers, underscore and hyphen only. See: ${DOCS_URL}#role-level-permission-architecture`
+        );
+      }
+    }
+    if (new Set(values).size !== values.length) {
+      throw new Error(
+        `[@bloomneo/appkit/auth] ${name} has duplicate values: "${raw}". See: ${DOCS_URL}#role-level-permission-architecture`
+      );
+    }
+    return values;
+  };
+
+  const scopes = parseAxis(rawScopes, 'BLOOM_AUTH_SCOPES');
+  const tiers = parseAxis(rawTiers, 'BLOOM_AUTH_TIERS');
+
+  const rank = (values: string[]) =>
+    values.reduce<Record<string, number>>((acc, value, i) => ((acc[value] = i), acc), {});
+
+  return { scopeRank: rank(scopes), tierRank: rank(tiers), scopes, tiers };
+}
+
 function validateRoleLevelFormat(roleLevel: string): boolean {
   if (!roleLevel || typeof roleLevel !== 'string') {
     return false;
