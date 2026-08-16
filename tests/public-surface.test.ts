@@ -52,6 +52,7 @@ const EXPECTED_FLAT_EXPORTS = [
   'errorClass',
   'eventClass',
   'loggerClass',
+  'mcpClass',
   'queueClass',
   'securityClass',
   'storageClass',

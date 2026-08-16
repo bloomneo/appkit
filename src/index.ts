@@ -76,6 +76,9 @@ export { storageClass } from './storage/index.js';
 // Utilities
 export { utilClass } from './util/index.js';
 
+/** MCP server — exposes your app's features to AI agents as callable tools. */
+export { mcpClass } from './mcp/index.js';
+
 // Unified error types — every typed error below extends AppKitError, so
 // consumers can `catch (err) { if (err instanceof AppKitError) ... }` once
 // and match anything thrown from any module.
@@ -90,6 +93,7 @@ export { EventError } from './event/index.js';
 export { QueueError } from './queue/index.js';
 export { LoggerError } from './logger/index.js';
 export { StorageError } from './storage/index.js';
+export { McpError } from './mcp/index.js';
 
 /**
  * Quick health check for the library

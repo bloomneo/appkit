@@ -1,6 +1,6 @@
 {
   "name": "@bloomneo/appkit",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "Minimal and framework agnostic Node.js toolkit designed for AI agentic backend development.",
   "main": "dist/index.js",
   "type": "module",
@@ -61,6 +61,10 @@
     "./util": {
       "types": "./dist/util/index.d.ts",
       "default": "./dist/util/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "default": "./dist/mcp/index.js"
     }
   },
   "files": [
@@ -77,6 +81,7 @@
     "src/error/README.md",
     "src/event/README.md",
     "src/logger/README.md",
+    "src/mcp/README.md",
     "src/queue/README.md",
     "src/security/README.md",
     "src/storage/README.md",
@@ -171,7 +176,8 @@
     "express": "^4.0.0 || ^5.0.0",
     "express-session": "^1.18.2",
     "fastify": "^5.6.0",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "@fastify/cookie": {
@@ -196,6 +202,9 @@
       "optional": true
     },
     "multer": {
+      "optional": true
+    },
+    "@modelcontextprotocol/sdk": {
       "optional": true
     }
   },

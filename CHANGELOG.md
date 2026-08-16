@@ -2,6 +2,55 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [4.1.0] - 2026-08-16
+
+### Added — `mcpClass`, a 13th module: your app as an MCP server
+
+```ts
+const mcp = mcpClass.get();
+await mcp.discover(join(__dirname, 'features'));
+app.use('/mcp', await mcp.router({ serviceName: 'My App', authenticate }));
+```
+
+Three lines turn a Bloom backend into a claude.ai custom connector. What
+ships:
+
+- **OAuth 2.1 authorization server** — RFC 9728 protected-resource metadata,
+  RFC 8414 authorization-server metadata, RFC 7591 dynamic client
+  registration, and an authorization-code + PKCE (S256) grant. This is the
+  part that matters: a connector client cannot attach to a bare bearer-token
+  endpoint, so without it there is no connector.
+- **Stateless by construction.** Every artefact — client id, auth code,
+  access and refresh token — is a signed JWT, and the transport builds a
+  fresh server per request. An app running N workers in cluster mode needs no
+  shared store and no sticky sessions.
+- **FBCA tool discovery.** `features/<name>/<name>.mcp.ts` is auto-registered,
+  mirroring `<name>.route.ts`. Tool names are namespaced by feature, so two
+  features can both expose `list`.
+- **Per-tool roles.** With a `resolveRoles` hook, `roles: ['admin.tenant']`
+  uses the same inheritance as `auth.requireUserRoles()` — and a caller
+  without the role never sees the tool in `tools/list` at all, rather than
+  being refused on call.
+
+The OAuth and transport layers are extracted from a production deployment
+already serving a live claude.ai connector.
+
+### Added — two optional peer dependencies
+
+`express` and `@modelcontextprotocol/sdk`, both `optional: true`. The other
+twelve modules stay importable with neither installed; only apps that mount
+MCP pay for them. A missing peer throws at `mcp.router()` — at boot, with the
+install command in the message — not on the first agent request.
+
+The SDK owns the wire format deliberately: the protocol is still moving, and
+tracking spec revisions by hand is a bad trade.
+
+### Added — `src/mcp/README.md` + 38 tests
+
+Covering tool validation, role visibility and inheritance, server building,
+and the full OAuth flow including PKCE-verifier mismatch, unregistered
+redirect_uri, and sub-S256 challenge rejection. Suite: 656 → 696 passing.
+
 ## [4.0.1] - 2026-08-16
 
 Two bug fixes. Together they were blocking **appkit + Prisma + SQLite
