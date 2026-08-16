@@ -50,7 +50,7 @@ already serving a live claude.ai connector.
 
 `express` and `@modelcontextprotocol/sdk`, both `optional: true`. The other
 twelve modules stay importable with neither installed; only apps that mount
-MCP pay for them. A missing peer throws at `mcp.router()` — at boot, with the
+MCP pay for them. A missing peer throws at `mcp.routers()` — at boot, with the
 install command in the message — not on the first agent request.
 
 The SDK owns the wire format deliberately: the protocol is still moving, and
