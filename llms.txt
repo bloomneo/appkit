@@ -1,4 +1,4 @@
-# @bloomneo/appkit — full reference
+# @bloomneo/appkit v4.2.0 — full reference
 
 > Machine-readable API reference for AI coding agents.
 > For **rules** (what to always/never do), read [`AGENTS.md`](./AGENTS.md) in this directory first.
@@ -28,6 +28,7 @@ import {
   configClass,
   securityClass,
   utilClass,
+  mcpClass,
 } from '@bloomneo/appkit';
 
 // 4. Get instances at module scope (NEVER inside route handlers)
@@ -98,6 +99,72 @@ auth.hasPermission(user: JwtPayload, permission: string): boolean   // permissio
   Never use them standalone, never on API token routes (API tokens don't have user roles).
 - `requireApiToken()` is for SERVICE routes only. Use it alone — never chain `requireUserRoles`
   after it.
+
+### Matrix mode — roles as (tier × scope), opt-in (4.2.0+)
+
+A single ladder conflates two orthogonal things: how far a role **reaches** and
+what it may **do**. On one list `moderator.system` outranks `admin.tenant` and
+therefore inherits delete — a platform moderator could delete firm data.
+
+Set both axes, low → high, and inheritance becomes the **product** of two chains:
+
+```bash
+BLOOM_AUTH_SCOPES="client,tenant,org,system"   # reach
+BLOOM_AUTH_TIERS="user,moderator,admin"        # capability
+```
+
+```
+granted  ⟺  scope(user) >= scope(required)  AND  tier(user) >= tier(required)
+```
+
+| Caller | Gate requires | Granted? |
+|---|---|:--:|
+| `admin.system` | `admin.tenant` | ✅ |
+| `moderator.system` | `moderator.tenant` | ✅ |
+| `moderator.system` | `admin.tenant` | **❌** platform mod can't delete firm data |
+| `admin.tenant` | `admin.client` | ✅ |
+| `moderator.tenant` | `admin.client` | ❌ |
+| `admin.tenant` | `admin.system` | ❌ |
+
+`role` IS the tier; `level` IS the scope. Same wire format — only the
+comparison changes. Any pair from the cross-product is valid with no per-pair
+registration. Setting only one axis throws rather than guessing the other.
+
+**Backward compatible:** leave both unset and appkit stays in linear mode with
+the 9-level ladder. Nothing changes for existing apps.
+
+```ts
+auth.roleParts('admin.tenant')  // { tier, scope, tierRank, scopeRank } | null in linear mode
+auth.requireTier('admin')       // capability, any reach
+auth.requireScope('tenant')     // reach, any capability
+```
+
+### Capability vs data scope — never conflate them
+
+- **"May they do this?"** → the role (tier × scope), via `requireUserRoles()`.
+- **"On whose data?"** → `tenantId` / `clientId`, carried in the token.
+
+```ts
+auth.generateLoginToken({ userId, role: 'admin', level: 'tenant', tenantId: 'firm-1' });
+
+const rows = await db.invoice.findMany({
+  where: { ...auth.scopedWhere(req), status: 'open' },   // {} for platform accounts
+});
+```
+
+Two users can both be `admin.tenant` with different `tenantId` — identical
+capability, disjoint data. Gating data access on the role alone is how a firm
+admin ends up reading another firm.
+
+### PII masking
+
+```ts
+auth.canSeePII(user): boolean                       // admin tier only
+auth.maskPII(value, { as: 'email' | 'phone' | 'name' | 'id' }): string
+```
+
+Mask at the serialization edge when `canSeePII()` is false. Lossy and one-way —
+for rendering, never for storage or comparison.
 
 ### Role hierarchy (9 levels, automatic inheritance)
 
@@ -502,6 +569,97 @@ logger.fatal(message: string, meta?)
 
 ---
 
+## Module 13 — MCP (`@bloomneo/appkit/mcp`)
+
+Turns the app into an MCP server — a claude.ai custom connector or Claude
+Desktop tool source. Ships the OAuth 2.1 authorization server the connector
+flow requires, a Streamable-HTTP transport, and FBCA tool discovery.
+
+**Optional peers:** `express` and `@modelcontextprotocol/sdk`. Every other
+module stays importable without them.
+
+### Setup
+
+```ts
+import { mcpClass } from '@bloomneo/appkit/mcp';
+
+const mcp = mcpClass.get();
+await mcp.discover(join(__dirname, 'features'));      // features/<n>/<n>.mcp.ts
+
+const { wellKnown, mcp: mcpRouter } = await mcp.routers({
+  serviceName: 'My App',
+  authenticate: async (email, password) => {
+    const user = await verify(email, password);
+    return user ? { sub: user.id, label: user.email } : null;   // null rejects
+  },
+  resolveRoles: async (sub) => `${(await getUser(sub)).role}.${(await getUser(sub)).level}`,
+});
+
+app.use(wellKnown);            // ROOT — MUST be before any SPA catch-all
+app.use('/mcp', mcpRouter);
+```
+
+**Two mounts, not one.** RFC 8414/9728 clients probe the discovery documents at
+the ROOT with the mount path inserted — `/.well-known/oauth-authorization-server/mcp`
+— not under `/mcp`. Serve them only under the mount and those paths fall through
+to your SPA; the client gets HTML and reports "couldn't register" even though
+`/mcp/register` works when called directly. Behind a reverse proxy, route
+`/.well-known/oauth-*` to the app too.
+
+### Declaring tools
+
+```ts
+// src/api/features/invoice/invoice.mcp.ts
+import { z } from 'zod';
+import type { McpTool } from '@bloomneo/appkit/mcp';
+
+export const tools: McpTool[] = [
+  {
+    name: 'list',                      // exposed as `invoice_list`
+    description: "List invoices for the caller's firm, newest first.",
+    inputSchema: { status: z.enum(['open', 'paid']).optional() },   // Zod raw shape, NOT JSON Schema
+    roles: ['user.basic'],
+    handler: async (args, ctx) => listInvoices(ctx.sub, args),
+  },
+];
+```
+
+Names are namespaced by feature automatically. `export default [...]` and
+`export default { tools: [...] }` also work.
+
+### Methods
+
+```ts
+mcp.register(tool)                     // add one
+mcp.registerAll([tool, tool])
+await mcp.discover(featuresPath)       // FBCA auto-discovery
+mcp.list()                             // { name, description }[]
+mcp.getTools()
+mcp.has(name)
+await mcp.routers(options)             // { wellKnown, mcp }
+mcp.getConfig()
+
+mcpClass.getToolCount()
+mcpClass.disconnectAll()
+```
+
+### Authorization
+
+Two layers. `authenticate()` gates the **connection** — it runs at OAuth consent
+and the connection is exactly as privileged as what it returns, so reject
+non-admins there if that's your model. `roles` on a tool gates the **tool**, and
+needs `resolveRoles`; a caller without the role never sees the tool in
+`tools/list` at all rather than being refused on call.
+
+### Note on tenancy
+
+MCP tools run outside the HTTP request path, so any middleware that establishes
+tenant context never ran. Under Postgres `FORCE ROW LEVEL SECURITY` a write is
+refused; a non-forcing dev database silently passes. Establish the context
+explicitly inside the tool.
+
+---
+
 ## Environment variable reference
 
 | Variable | Purpose | Required? |
@@ -518,6 +676,11 @@ logger.fatal(message: string, meta?)
 | `BLOOM_LOGGER_FILE_PATH` | File transport for logger | optional |
 | `BLOOM_LOGGER_HTTP_URL` | HTTP transport for logger | optional |
 | `ORG_<NAME>` | Per-org database (multi-org SaaS) | optional |
+| `BLOOM_AUTH_SCOPES` | Reach axis, low→high — enables matrix mode | optional |
+| `BLOOM_AUTH_TIERS` | Capability axis, low→high — enables matrix mode | optional |
+| `BLOOM_MCP_OAUTH_SECRET` | Signs MCP OAuth JWTs (falls back to `BLOOM_AUTH_SECRET`) | optional |
+| `BLOOM_MCP_NAME` / `BLOOM_MCP_VERSION` | Reported by MCP `initialize` | optional |
+| `BLOOM_MCP_PROTOCOL_VERSION` | Fallback MCP protocol version | optional |
 
 All environment variables use the `BLOOM_*` prefix. No legacy fallbacks.
 

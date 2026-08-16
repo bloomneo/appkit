@@ -158,12 +158,23 @@ function disconnectAll() {
     registry = null;
     globalConfig = null;
 }
+/**
+ * Rebuild configuration from the environment, dropping registered tools
+ * @llm-rule WHEN: Testing MCP behaviour across different environment configurations
+ * @llm-rule AVOID: Using in production - only for tests and development
+ * @llm-rule NOTE: Same contract as cacheClass.reset() / eventClass.reset()
+ */
+function reset() {
+    disconnectAll();
+    return get();
+}
 /** Number of registered tools, for health checks. */
 function getToolCount() {
     return registry ? registry.count() : 0;
 }
 export const mcpClass = {
     get,
+    reset,
     disconnectAll,
     getToolCount,
 };

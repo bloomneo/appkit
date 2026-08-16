@@ -2,6 +2,56 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [4.2.1] - 2026-08-16
+
+A full-module review before the 5.0 work. Found the 4.0.1 SQLite fix was
+incomplete, plus the same env-coupling defect in two more modules.
+
+### Fixed — queue was unusable on SQLite
+
+`queue/defaults.ts` rejected Prisma's `file:./dev.db` scheme, and
+`getTransport()` auto-selects the **database** transport whenever
+`DATABASE_URL` is set with no `REDIS_URL`. So any SQLite app that touched
+`queueClass` crashed at import — the same defect fixed in `logger` for 4.0.1,
+in a module the original fix didn't reach.
+
+### Fixed — shared env vars are now validated only by the module that uses them
+
+`REDIS_URL` and `DATABASE_URL` belong to no single module. Validating one a
+module will never open turns another module's configuration into an
+import-time crash:
+
+- `queue` validates `DATABASE_URL` only on the database transport, `REDIS_URL`
+  only on the redis transport
+- `cache` and `event` validate `REDIS_URL` only when their resolved strategy
+  is redis
+
+An app running events in memory while cache uses Redis no longer dies on a
+URL it never opens.
+
+### Fixed — `mcpClass.reset()`
+
+Every other stateful module exposes `get` / `reset` / `disconnectAll`. The new
+MCP module shipped with only two of the three. "One pattern, no exceptions" is
+the whole value proposition, so the gap was drift rather than a shortcut.
+
+### Added — the doc-drift check is now bidirectional
+
+`scripts/check-doc-drift.ts` only scanned for names that were **removed** and
+came back. It could not catch the opposite failure — a whole module shipping
+with no mention in `llms.txt` or `AGENTS.md` — which is worse, because an
+agent never calls what it cannot find. It now fails when any exported
+`xxxClass` is absent from either file. It caught `mcpClass` on the first run.
+
+### Docs
+
+`llms.txt` gains Module 13 (MCP), the matrix-mode section, capability-vs-data-
+scope, PII masking, and the new env vars. `AGENTS.md` gains the MCP rules, the
+multi-tenant matrix-mode section, and a "never gate data access on the role
+alone" rule. README module table 12 → 13.
+
+Suite: 722 → 738 passing.
+
 ## [4.2.0] - 2026-08-16
 
 Implements steps 1 and 2 of the scoped-roles RFC. **Not breaking** — matrix

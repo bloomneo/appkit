@@ -491,6 +491,82 @@ export class AuthenticationClass {
    * @llm-rule AVOID: Trusting it alone for authorization - pair it with requireUserRoles()
    * @llm-rule NOTE: Returns {} for platform scopes, so it is safe to always spread
    */
+  /**
+   * May this caller see unmasked personal data?
+   *
+   * Default rule: admin tier only. Moderators routinely need to review records
+   * without reading the person's identity, and every app was re-inventing that
+   * check at the serialization edge.
+   *
+   * @llm-rule WHEN: Deciding whether to mask PII before serialising a response
+   * @llm-rule AVOID: Using it as an access gate - it decides presentation, not permission
+   * @llm-rule NOTE: Matrix mode reads the tier; linear mode falls back to the role half
+   */
+  canSeePII(user: JwtPayload | null | undefined): boolean {
+    if (!user || typeof user !== 'object') return false;
+    const roleLevel = `${(user as any).role}.${(user as any).level}`;
+    const parts = this.roleParts(roleLevel);
+    // Matrix mode: the tier axis is the capability question. Linear mode has no
+    // tier, so the role half is the closest equivalent.
+    const tier = parts ? parts.tier : (user as any).role;
+    return tier === 'admin';
+  }
+
+  /**
+   * Mask a personal value for display.
+   *
+   * Deliberately lossy and one-way — this is for rendering, never for storage
+   * or comparison. Enough of the value survives that a human can recognise a
+   * record they already know without learning one they don't.
+   *
+   * @llm-rule WHEN: Serialising a record for a caller where canSeePII() is false
+   * @llm-rule AVOID: Masking then persisting - the original is unrecoverable
+   * @llm-rule NOTE: Pair with canSeePII(): mask only when it returns false
+   */
+  maskPII(value: unknown, options: { as: 'email' | 'phone' | 'name' | 'id' }): string {
+    if (value === null || value === undefined) return '';
+    const raw = String(value).trim();
+    if (!raw) return '';
+
+    const stars = (n: number) => '*'.repeat(Math.max(n, 1));
+
+    switch (options?.as) {
+      case 'email': {
+        const at = raw.lastIndexOf('@');
+        // Not an address — fall back to id masking rather than leaking it whole.
+        if (at <= 0) return this.maskPII(raw, { as: 'id' });
+        const local = raw.slice(0, at);
+        const domain = raw.slice(at);
+        // Domain is kept: it's rarely identifying on its own and it's what makes
+        // a masked address recognisable to staff reviewing records.
+        return `${local[0]}${stars(Math.min(local.length - 1, 6))}${domain}`;
+      }
+
+      case 'phone': {
+        const digits = raw.replace(/\D/g, '');
+        if (digits.length <= 4) return stars(digits.length || 4);
+        return `${stars(Math.min(digits.length - 4, 8))}${digits.slice(-4)}`;
+      }
+
+      case 'name': {
+        return raw
+          .split(/\s+/)
+          .map((word) => (word.length <= 1 ? word : `${word[0]}${stars(Math.min(word.length - 1, 5))}`))
+          .join(' ');
+      }
+
+      case 'id': {
+        if (raw.length <= 4) return stars(raw.length);
+        return `${stars(Math.min(raw.length - 4, 8))}${raw.slice(-4)}`;
+      }
+
+      default:
+        throw new Error(
+          `[@bloomneo/appkit/auth] maskPII needs { as: 'email' | 'phone' | 'name' | 'id' }. See: ${DOCS_URL}#role-level-permission-architecture`
+        );
+    }
+  }
+
   scopedWhere(req: ExpressRequest): { tenantId?: string; clientId?: string } {
     const user = this.getUser(req) as ({ tenantId?: string | null; clientId?: string | null } | null);
     if (!user) return {};

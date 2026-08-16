@@ -95,9 +95,11 @@ function validateEnvironment() {
     if (strategy && !['redis', 'memory'].includes(strategy.toLowerCase())) {
         throw new Error(`[@bloomneo/appkit/event] Invalid BLOOM_EVENT_STRATEGY: "${strategy}". Must be "redis" or "memory". See: ${DOCS_URL}#environment-variables`);
     }
-    // Validate Redis URL if provided
+    // Validate REDIS_URL only when this module will actually use it. REDIS_URL
+    // is shared across modules, so an app that runs events in memory while
+    // another module uses Redis should not crash on a URL it never opens.
     const redisUrl = process.env.REDIS_URL;
-    if (redisUrl && !isValidRedisUrl(redisUrl)) {
+    if (detectEventStrategy() === 'redis' && redisUrl && !isValidRedisUrl(redisUrl)) {
         throw new Error(`[@bloomneo/appkit/event] Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate namespace

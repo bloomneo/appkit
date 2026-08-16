@@ -144,3 +144,40 @@ if (violations > 0) {
   process.exit(1);
 }
 console.log(`OK: scanned ${SCAN.length} files, no drift.`);
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Coverage: every public module must appear in the agent-facing docs.
+ *
+ * The scan above is one-directional — it catches names that were REMOVED and
+ * came back. It cannot catch the opposite failure: a whole module shipping
+ * with no mention in llms.txt or AGENTS.md, which is worse. An agent never
+ * calls what it cannot find, so an undocumented module is an unused one —
+ * exactly how a shipped component ends up hand-rolled three times downstream.
+ *
+ * Rule: every `xxxClass` exported from src/index.ts must be named in both
+ * llms.txt and AGENTS.md.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const indexSource = readFileSync(join(ROOT, 'src/index.ts'), 'utf8');
+const exportedClasses = [...indexSource.matchAll(/export\s*\{\s*(\w+Class)\s*\}/g)].map((m) => m[1]);
+
+const AGENT_DOCS = ['llms.txt', 'AGENTS.md'] as const;
+const missing: string[] = [];
+
+for (const doc of AGENT_DOCS) {
+  const content = readFileSync(join(ROOT, doc), 'utf8');
+  for (const cls of exportedClasses) {
+    if (!content.includes(cls)) missing.push(`${doc} is missing ${cls}`);
+  }
+}
+
+if (missing.length > 0) {
+  console.error('\nFAIL: public API missing from the agent-facing docs:\n');
+  for (const m of missing) console.error(`  ${m}`);
+  console.error(
+    '\nAn agent only calls what it can find. Document the module in llms.txt' +
+      ' (API reference) and AGENTS.md (rules) before shipping it.\n',
+  );
+  process.exit(1);
+}
+console.log(`OK: all ${exportedClasses.length} modules documented in ${AGENT_DOCS.join(' + ')}.`);

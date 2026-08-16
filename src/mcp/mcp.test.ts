@@ -67,7 +67,7 @@ const baseReq = (over: any = {}) => ({
 });
 
 describe('Public API surface — drift check', () => {
-  const CLASS_METHODS = ['get', 'disconnectAll', 'getToolCount'];
+  const CLASS_METHODS = ['get', 'reset', 'disconnectAll', 'getToolCount'];
   const HALLUCINATED_CLASS = ['register', 'call', 'list', 'tools', 'connect', 'shutdown', 'clear', 'router'];
 
   for (const m of CLASS_METHODS) {
@@ -457,5 +457,20 @@ describe('root well-known discovery (regression — the claude.ai connector bug)
     });
     expect(res.status).toBe(201);
     expect((await res.json()).client_id).toBeTruthy();
+  });
+});
+
+describe('module convention parity', () => {
+  // Every stateful module exposes get / reset / disconnectAll. "One pattern,
+  // no exceptions" is the whole value proposition, so a 13th module that only
+  // has two of the three is drift, not a shortcut.
+  it('reset() rebuilds config and drops registered tools', () => {
+    mcpClass.disconnectAll();
+    mcpClass.get().register(tool());
+    expect(mcpClass.getToolCount()).toBe(1);
+    const fresh = mcpClass.reset();
+    expect(mcpClass.getToolCount()).toBe(0);
+    expect(typeof fresh.register).toBe('function');
+    mcpClass.disconnectAll();
   });
 });

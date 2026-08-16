@@ -133,7 +133,7 @@ function detectCacheStrategy(): 'redis' | 'memory' {
 function validateEnvironment(): void {
   // Validate Redis URL if provided
   const redisUrl = process.env.REDIS_URL;
-  if (redisUrl && !isValidRedisUrl(redisUrl)) {
+  if (detectCacheStrategy() === 'redis' && redisUrl && !isValidRedisUrl(redisUrl)) {
     throw new Error(
       `[@bloomneo/appkit/cache] Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://. See: ${DOCS_URL}#environment-variables`
     );

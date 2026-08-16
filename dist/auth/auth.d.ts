@@ -210,6 +210,32 @@ export declare class AuthenticationClass {
      * @llm-rule AVOID: Trusting it alone for authorization - pair it with requireUserRoles()
      * @llm-rule NOTE: Returns {} for platform scopes, so it is safe to always spread
      */
+    /**
+     * May this caller see unmasked personal data?
+     *
+     * Default rule: admin tier only. Moderators routinely need to review records
+     * without reading the person's identity, and every app was re-inventing that
+     * check at the serialization edge.
+     *
+     * @llm-rule WHEN: Deciding whether to mask PII before serialising a response
+     * @llm-rule AVOID: Using it as an access gate - it decides presentation, not permission
+     * @llm-rule NOTE: Matrix mode reads the tier; linear mode falls back to the role half
+     */
+    canSeePII(user: JwtPayload | null | undefined): boolean;
+    /**
+     * Mask a personal value for display.
+     *
+     * Deliberately lossy and one-way — this is for rendering, never for storage
+     * or comparison. Enough of the value survives that a human can recognise a
+     * record they already know without learning one they don't.
+     *
+     * @llm-rule WHEN: Serialising a record for a caller where canSeePII() is false
+     * @llm-rule AVOID: Masking then persisting - the original is unrecoverable
+     * @llm-rule NOTE: Pair with canSeePII(): mask only when it returns false
+     */
+    maskPII(value: unknown, options: {
+        as: 'email' | 'phone' | 'name' | 'id';
+    }): string;
     scopedWhere(req: ExpressRequest): {
         tenantId?: string;
         clientId?: string;

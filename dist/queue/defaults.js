@@ -137,14 +137,16 @@ export function validateEnvironment() {
     if (transport && !['memory', 'redis', 'database'].includes(transport)) {
         throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_TRANSPORT: "${transport}". Must be: memory, redis, database. See: ${DOCS_URL}#environment-variables`);
     }
-    // Validate Redis URL if provided
+    // Validate ONLY the URL this queue will actually use. REDIS_URL and
+    // DATABASE_URL are shared across modules, so validating one the queue never
+    // touches turns an unrelated app's config into an import-time crash.
+    const resolvedTransport = getTransport();
     const redisUrl = process.env.REDIS_URL;
-    if (redisUrl && !isValidRedisUrl(redisUrl)) {
+    if (resolvedTransport === 'redis' && redisUrl && !isValidRedisUrl(redisUrl)) {
         throw new Error(`[@bloomneo/appkit/queue] Invalid REDIS_URL: "${redisUrl}". Must be valid Redis connection string. See: ${DOCS_URL}#environment-variables`);
     }
-    // Validate Database URL if provided
     const dbUrl = process.env.DATABASE_URL;
-    if (dbUrl && !isValidDatabaseUrl(dbUrl)) {
+    if (resolvedTransport === 'database' && dbUrl && !isValidDatabaseUrl(dbUrl)) {
         throw new Error(`[@bloomneo/appkit/queue] Invalid DATABASE_URL: "${dbUrl}". Must be valid database connection string. See: ${DOCS_URL}#environment-variables`);
     }
     // Validate worker setting
@@ -188,7 +190,10 @@ function isValidRedisUrl(url) {
 function isValidDatabaseUrl(url) {
     try {
         const parsed = new URL(url);
-        const validProtocols = ['postgres:', 'postgresql:', 'mysql:', 'sqlite:'];
+        // `file:` is Prisma's SQLite scheme (`file:./dev.db`). Rejecting it made
+        // the queue unusable on SQLite, since getTransport() auto-selects the
+        // database transport whenever DATABASE_URL is set.
+        const validProtocols = ['postgres:', 'postgresql:', 'mysql:', 'sqlite:', 'file:'];
         return validProtocols.includes(parsed.protocol);
     }
     catch {

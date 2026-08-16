@@ -7,7 +7,7 @@
 
 ## What this package is
 
-`@bloomneo/appkit` is a Node.js backend toolkit with **12 integrated modules**
+`@bloomneo/appkit` is a Node.js backend toolkit with **13 integrated modules**
 that share one canonical pattern: every module exports a `xxxClass` namespace
 object with a `.get()` factory. There is exactly one way to obtain each module
 and exactly one way to use it.
@@ -42,7 +42,7 @@ Both work. The subpath form is unusual for AppKit (most users want
 multiple modules in the same file) but it tree-shakes slightly better.
 **Don't mix the two styles in the same file.**
 
-## The 12 modules at a glance
+## The 13 modules at a glance
 
 | Module | Import | Purpose |
 |---|---|---|
@@ -58,6 +58,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | `loggerClass` | `from '@bloomneo/appkit/logger'` | Multi-transport, auto-scaling |
 | `configClass` | `from '@bloomneo/appkit/config'` | Environment-driven config |
 | `utilClass` | `from '@bloomneo/appkit/util'` | Safe property access, debounce, chunk |
+| `mcpClass` | `from '@bloomneo/appkit/mcp'` | Your app as an MCP server for AI agents |
 
 For full method signatures and examples, read `llms.txt` in this same directory.
 
@@ -139,6 +140,54 @@ BLOOM_DB_TENANT=auto                   # → multi-tenant mode
   `config.get('section.key')` so the value is validated and typed.
 - **Never `throw new Error(...)` in a route handler.** Use `error.badRequest(...)`,
   `error.unauthorized(...)`, etc. — they include the right HTTP status code.
+- **Never gate data access on the role alone.** The role answers "may they do
+  this?"; `tenantId`/`clientId` answer "on whose data?". Two users can both be
+  `admin.tenant` and must not see each other's rows — spread
+  `auth.scopedWhere(req)` into the query.
+
+## Multi-tenant apps — matrix mode (4.2.0+)
+
+If the app has more than one level of tenancy, set both axes and get a lattice
+instead of a ladder:
+
+```bash
+BLOOM_AUTH_SCOPES="client,tenant,org,system"   # reach,      low → high
+BLOOM_AUTH_TIERS="user,moderator,admin"        # capability, low → high
+```
+
+`role` IS the tier, `level` IS the scope — same wire format. A role satisfies a
+requirement only when **both** axes are high enough, so `moderator.system` no
+longer inherits `admin.tenant`'s delete. Gate destructive routes at
+`admin.<scope>` and the "moderators never delete" rule stops needing a
+per-route workaround.
+
+- Set **both** vars or neither. One alone throws.
+- Leave both unset → linear mode, the 9-level ladder, nothing changes.
+- `auth.roleParts()` / `requireTier()` / `requireScope()` only work in matrix mode.
+- Put `tenantId` in the token at login; read it back with `auth.scopedWhere(req)`.
+- Mask personal data for non-admins: `if (!auth.canSeePII(user)) auth.maskPII(v, { as: 'email' })`.
+
+## MCP — exposing your app to AI agents
+
+```ts
+const mcp = mcpClass.get();
+await mcp.discover(join(__dirname, 'features'));   // features/<n>/<n>.mcp.ts
+
+const { wellKnown, mcp: mcpRouter } = await mcp.routers({ serviceName, authenticate });
+app.use(wellKnown);            // ROOT — before any SPA catch-all
+app.use('/mcp', mcpRouter);
+```
+
+- **Always mount `wellKnown` at the root**, before the SPA. Connector clients
+  probe `/.well-known/oauth-authorization-server/mcp` at the root; if that path
+  returns your SPA's HTML the client reports "couldn't register" even though
+  `/mcp/register` works.
+- `inputSchema` on a tool is a **Zod raw shape**, not JSON Schema.
+- `authenticate()` decides how privileged the whole connection is — reject
+  there, not per tool, unless you also pass `resolveRoles`.
+- MCP tools run outside the HTTP request path, so tenant-context middleware
+  never ran. Establish it inside the tool or writes fail under `FORCE ROW LEVEL
+  SECURITY` in production while passing locally.
 
 ## Canonical pattern — protected endpoint with database + logger
 

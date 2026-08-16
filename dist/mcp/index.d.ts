@@ -68,10 +68,18 @@ declare function get(): Mcp;
  * @llm-rule AVOID: Using in production - only for tests and development
  */
 declare function disconnectAll(): void;
+/**
+ * Rebuild configuration from the environment, dropping registered tools
+ * @llm-rule WHEN: Testing MCP behaviour across different environment configurations
+ * @llm-rule AVOID: Using in production - only for tests and development
+ * @llm-rule NOTE: Same contract as cacheClass.reset() / eventClass.reset()
+ */
+declare function reset(): Mcp;
 /** Number of registered tools, for health checks. */
 declare function getToolCount(): number;
 export declare const mcpClass: {
     get: typeof get;
+    reset: typeof reset;
     disconnectAll: typeof disconnectAll;
     getToolCount: typeof getToolCount;
 };

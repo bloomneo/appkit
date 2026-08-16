@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
+import { getSmartDefaults } from './defaults.js';
 
 // Worker mode is off by default when NODE_ENV=test. The handler-processing
 // test below needs the in-memory processing loop running, so force-enable
@@ -135,5 +136,60 @@ describe('Public API surface — drift check', () => {
     const q = queueClass.get();
     const id = await q.add('check-options', {}, { attempts: 5 });
     expect(typeof id).toBe('string');
+  });
+});
+
+describe('shared env vars are validated only when used (regression — 4.2.1)', () => {
+  // REDIS_URL and DATABASE_URL belong to no single module. Validating one the
+  // queue will never open turns another module's config into an import-time
+  // crash. Worse: getTransport() auto-selects 'database' whenever DATABASE_URL
+  // is set, so rejecting Prisma's SQLite scheme made the queue unusable on
+  // SQLite entirely — the same defect fixed in logger for 4.0.1.
+  const withEnv = (env: Record<string, string | undefined>, fn: () => void) => {
+    const saved: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(env)) {
+      saved[k] = process.env[k];
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    try {
+      fn();
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  };
+
+  it('accepts Prisma SQLite on the database transport', () => {
+    withEnv({ DATABASE_URL: 'file:./dev.db', REDIS_URL: undefined, BLOOM_QUEUE_TRANSPORT: undefined }, () => {
+      expect(() => getSmartDefaults()).not.toThrow();
+      expect(getSmartDefaults().transport).toBe('database');
+    });
+  });
+
+  it('ignores a malformed DATABASE_URL when the queue runs in memory', () => {
+    withEnv({ DATABASE_URL: 'not-a-url', BLOOM_QUEUE_TRANSPORT: 'memory', REDIS_URL: undefined }, () => {
+      expect(() => getSmartDefaults()).not.toThrow();
+    });
+  });
+
+  it('still rejects a malformed DATABASE_URL when the queue uses it', () => {
+    withEnv({ DATABASE_URL: 'not-a-url', BLOOM_QUEUE_TRANSPORT: 'database', REDIS_URL: undefined }, () => {
+      expect(() => getSmartDefaults()).toThrow(/Invalid DATABASE_URL/);
+    });
+  });
+
+  it('ignores a malformed REDIS_URL when the queue is not on Redis', () => {
+    withEnv({ REDIS_URL: 'http://nope', BLOOM_QUEUE_TRANSPORT: 'memory', DATABASE_URL: undefined }, () => {
+      expect(() => getSmartDefaults()).not.toThrow();
+    });
+  });
+
+  it('still rejects a malformed REDIS_URL when the queue uses it', () => {
+    withEnv({ REDIS_URL: 'http://nope', BLOOM_QUEUE_TRANSPORT: 'redis', DATABASE_URL: undefined }, () => {
+      expect(() => getSmartDefaults()).toThrow(/Invalid REDIS_URL/);
+    });
   });
 });

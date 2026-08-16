@@ -175,7 +175,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 
 ---
 
-## 🎭 The 12 modules
+## 🎭 The 13 modules
 
 | # | Module | Purpose | Auto-scales |
 |---|---|---|---|
@@ -191,6 +191,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 10 | **Logger** | Console → File → HTTP | `BLOOM_LOGGER_*` |
 | 11 | **Config** | Type-safe env var access | — |
 | 12 | **Util** | Safe property access, debounce, chunk, uuid, slugify | — |
+| 13 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery | optional peers |
 
 For full method signatures and per-module examples, read [`llms.txt`](./llms.txt).
 

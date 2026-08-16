@@ -563,3 +563,65 @@ describe('matrix mode — two-axis roles (scoped-roles RFC)', () => {
     expect(auth.scopedWhere({ headers: {} } as any)).toEqual({});
   });
 });
+
+describe('PII masking (scoped-roles RFC §6)', () => {
+  const auth = () => authClass.get();
+
+  it('canSeePII is admin-only in linear mode', () => {
+    expect(auth().canSeePII({ userId: 'u', role: 'admin', level: 'tenant' } as any)).toBe(true);
+    expect(auth().canSeePII({ userId: 'u', role: 'moderator', level: 'manage' } as any)).toBe(false);
+    expect(auth().canSeePII({ userId: 'u', role: 'user', level: 'basic' } as any)).toBe(false);
+    expect(auth().canSeePII(null)).toBe(false);
+    expect(auth().canSeePII(undefined)).toBe(false);
+  });
+
+  it('canSeePII reads the tier axis in matrix mode', () => {
+    process.env.BLOOM_AUTH_SCOPES = 'client,tenant,system';
+    process.env.BLOOM_AUTH_TIERS = 'user,moderator,admin';
+    authClass.reset();
+    try {
+      // A platform moderator has maximum reach and still cannot read PII —
+      // reach and capability are different questions.
+      expect(auth().canSeePII({ userId: 'u', role: 'moderator', level: 'system' } as any)).toBe(false);
+      expect(auth().canSeePII({ userId: 'u', role: 'admin', level: 'client' } as any)).toBe(true);
+    } finally {
+      delete process.env.BLOOM_AUTH_SCOPES;
+      delete process.env.BLOOM_AUTH_TIERS;
+      authClass.reset();
+    }
+  });
+
+  it('masks emails but keeps the domain recognisable', () => {
+    expect(auth().maskPII('krishna@voilacode.com', { as: 'email' })).toBe('k******@voilacode.com');
+    expect(auth().maskPII('a@b.com', { as: 'email' })).toBe('a*@b.com');
+  });
+
+  it('falls back to id masking for a non-address', () => {
+    expect(auth().maskPII('notanemail', { as: 'email' })).toBe('******mail');
+  });
+
+  it('masks phones to the last four digits', () => {
+    expect(auth().maskPII('+91 98765 43210', { as: 'phone' })).toBe('********3210');
+    expect(auth().maskPII('123', { as: 'phone' })).toBe('***');
+  });
+
+  it('masks names to initials', () => {
+    expect(auth().maskPII('Krishna Teja', { as: 'name' })).toBe('K***** T***');
+    expect(auth().maskPII('A', { as: 'name' })).toBe('A');
+  });
+
+  it('masks ids to the last four characters', () => {
+    expect(auth().maskPII('cmsvzv9zl0003yc2lwbao2zj0', { as: 'id' })).toBe('********2zj0');
+    expect(auth().maskPII('ab', { as: 'id' })).toBe('**');
+  });
+
+  it('returns an empty string for empty input rather than leaking "null"', () => {
+    expect(auth().maskPII(null, { as: 'email' })).toBe('');
+    expect(auth().maskPII(undefined, { as: 'name' })).toBe('');
+    expect(auth().maskPII('   ', { as: 'id' })).toBe('');
+  });
+
+  it('rejects an unknown mask kind', () => {
+    expect(() => auth().maskPII('x', { as: 'ssn' } as any)).toThrow(/email' \| 'phone' \| 'name' \| 'id'/);
+  });
+});
