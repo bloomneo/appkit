@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { databaseClass } from './index.js';
+import { getSmartDefaults } from './defaults.js';
 
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
@@ -173,5 +174,55 @@ describe('BLOOM_DB_TENANT detection', () => {
       if (saved !== undefined) process.env.BLOOM_DB_TENANT = saved;
       else delete process.env.BLOOM_DB_TENANT;
     }
+  });
+});
+
+describe('SQLite via Prisma (regression — 4.0.1)', () => {
+  // Prisma's SQLite datasource format is `file:./dev.db`, not `sqlite://`.
+  // Before 4.0.1 the validator required a `://` authority and rejected `..`,
+  // so no valid Prisma SQLite URL could pass and appkit + Prisma + SQLite was
+  // impossible — despite the docs advertising SQLite support.
+  const withUrl = <T>(url: string, fn: () => T): T => {
+    const saved = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = url;
+    try {
+      return fn();
+    } finally {
+      if (saved !== undefined) process.env.DATABASE_URL = saved;
+      else delete process.env.DATABASE_URL;
+    }
+  };
+
+  const ACCEPTED = [
+    'file:./dev.db',
+    'file:/absolute/path/app.db',
+    'file:../../app.db', // relative parents are legitimate in a local path
+    'postgresql://user:pass@localhost:5432/db',
+    'mysql://user:pass@localhost:3306/db',
+    'mongodb+srv://user:pass@cluster.mongodb.net/db',
+  ];
+
+  for (const url of ACCEPTED) {
+    it(`accepts ${url}`, () => {
+      expect(() => withUrl(url, () => getSmartDefaults())).not.toThrow();
+    });
+  }
+
+  const REJECTED = ['', 'not-a-url', 'file:', 'postgresql://host/<script>'];
+
+  for (const url of REJECTED) {
+    it(`rejects ${url || '(empty)'}`, () => {
+      expect(() => withUrl(url, () => getSmartDefaults())).toThrow();
+    });
+  }
+
+  it('detects sqlite from a file: URL', () => {
+    const cfg = withUrl('file:./dev.db', () => getSmartDefaults());
+    expect(cfg.database.provider).toBe('sqlite');
+    expect(cfg.database.adapter).toBe('prisma');
+  });
+
+  it('still rejects path traversal in network URLs', () => {
+    expect(() => withUrl('postgresql://host/../etc', () => getSmartDefaults())).toThrow();
   });
 });

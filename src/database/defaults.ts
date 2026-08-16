@@ -25,8 +25,15 @@ function validateOrgId(orgId: string): boolean {
 
 function validateDatabaseUrl(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
+  if (url.includes('<') || url.includes('>')) return false;
+
+  // SQLite through Prisma is `file:./dev.db` — a local path, not a network URL.
+  // It has no `://` authority, and `..` is a legitimate relative segment here
+  // (`file:../../app.db`), so the traversal guard below must not apply to it.
+  if (url.startsWith('file:')) return url.length > 'file:'.length;
+
   if (!url.includes('://')) return false;
-  if (url.includes('..') || url.includes('<') || url.includes('>')) return false;
+  if (url.includes('..')) return false;
   return [
     'postgresql://', 'postgres://', 'mysql://',
     'mongodb://', 'mongodb+srv://', 'sqlite://'
@@ -64,7 +71,7 @@ function detectProvider(url: string): string {
   if (url.includes('postgresql://') || url.includes('postgres://')) return 'postgresql';
   if (url.includes('mysql://')) return 'mysql';
   if (url.includes('mongodb://') || url.includes('mongodb+srv://')) return 'mongodb';
-  if (url.includes('sqlite://')) return 'sqlite';
+  if (url.includes('sqlite://') || url.startsWith('file:')) return 'sqlite';
   return 'unknown';
 }
 

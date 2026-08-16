@@ -2,6 +2,41 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [4.0.1] - 2026-08-16
+
+Two bug fixes. Together they were blocking **appkit + Prisma + SQLite
+entirely** — which is the data layer for the desktop templates. Found by a
+controlled two-arm benchmark (`bloom-bench`) that built the same multi-tenant
+spec with and without appkit; the framework arm could not boot.
+
+### Fixed — logger no longer validates `DATABASE_URL` it doesn't use
+
+`validateEnvironment()` checked `DATABASE_URL`'s format unconditionally, so
+merely *setting* the var to something the logger didn't recognise threw at
+import time and killed the process before a single route loaded — even with
+`BLOOM_LOGGER_DATABASE` unset. The check is now guarded by `dbEnabled`, which
+is what the adjacent "missing URL" check already did.
+
+### Fixed — Prisma's SQLite URL (`file:./dev.db`) is now accepted
+
+Both validators required a `sqlite://` scheme. Prisma's SQLite datasource
+format is `file:./dev.db` — it has no `://` authority, and the database
+module additionally rejected any URL containing `..`, which is a legitimate
+relative segment in a local path (`file:../../app.db`). The two formats were
+mutually exclusive, so the SQLite support advertised in the database docs
+could never have worked.
+
+- `file:` is accepted by `database/defaults.ts` and `logger/defaults.ts`
+- `detectProvider()` maps `file:` → `sqlite` (adapter `prisma`)
+- Path-traversal rejection still applies to network URLs, where it belongs
+- `sqlite://` is still accepted for anyone who took the old docs literally
+
+### Tests
+
++17 regression tests across `database.test.ts` and `logger.test.ts` covering
+every accepted and rejected URL shape, and both sides of the `dbEnabled`
+guard. Suite: 639 → 656 passing.
+
 ## [4.0.0] - 2026-04-17
 
 First public release since 2.0.0. Rolls up the unpublished 3.0.x internal

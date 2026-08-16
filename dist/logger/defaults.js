@@ -167,7 +167,11 @@ export function validateEnvironment() {
     if (dbEnabled && !dbUrl) {
         throw new Error(`[@bloomneo/appkit/logger] BLOOM_LOGGER_DATABASE=true but DATABASE_URL not provided. See: ${DOCS_URL}#environment-variables`);
     }
-    if (dbUrl && !isValidDatabaseUrl(dbUrl)) {
+    // Only the logger's OWN use of DATABASE_URL is the logger's business. Validating
+    // it unconditionally made merely *setting* the var a fatal import-time error for
+    // every app whose URL the logger happened not to recognise — even with database
+    // logging switched off.
+    if (dbEnabled && dbUrl && !isValidDatabaseUrl(dbUrl)) {
         throw new Error(`[@bloomneo/appkit/logger] Invalid DATABASE_URL: "${dbUrl}". See: ${DOCS_URL}#environment-variables`);
     }
     // Validate numeric values
@@ -205,7 +209,9 @@ function isValidUrl(url) {
 function isValidDatabaseUrl(url) {
     try {
         const parsed = new URL(url);
-        const validProtocols = ['postgres:', 'postgresql:', 'mysql:', 'sqlite:'];
+        // `file:` is Prisma's SQLite scheme (`file:./dev.db`). `sqlite:` is accepted
+        // too because older AppKit docs advertised it, but Prisma itself never emits it.
+        const validProtocols = ['postgres:', 'postgresql:', 'mysql:', 'sqlite:', 'file:'];
         return validProtocols.includes(parsed.protocol);
     }
     catch {
