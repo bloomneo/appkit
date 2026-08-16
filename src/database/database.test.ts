@@ -11,7 +11,7 @@ import { getSmartDefaults } from './defaults.js';
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
     'get', 'getTenants', 'org', 'health', 'list', 'exists',
-    'create', 'delete', 'disconnectAll',
+    'create', 'delete', 'disconnectAll', 'tenant', 'bypass',
   ];
 
   // Class-level methods that MUST NOT exist. Drift trap for docs that assume
@@ -224,5 +224,134 @@ describe('SQLite via Prisma (regression — 4.0.1)', () => {
 
   it('still rejects path traversal in network URLs', () => {
     expect(() => withUrl('postgresql://host/../etc', () => getSmartDefaults())).toThrow();
+  });
+});
+
+describe('scoped access — fail closed (5.0)', () => {
+  // Pre-5.0, a call that failed to resolve a tenant returned EVERY row and
+  // looked like it worked. A production audit found 4 of 44 route files in
+  // exactly that state. These guards run before any connection is opened, so
+  // they are testable without a database — which is also why they are the
+  // right place to enforce the invariant.
+  const withEnv = (env: Record<string, string | undefined>, fn: () => Promise<void>) => {
+    const saved: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(env)) {
+      saved[k] = process.env[k];
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    return fn().finally(() => {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    });
+  };
+
+  const TENANT_ON = { BLOOM_DB_TENANT: 'auto', DATABASE_URL: 'postgresql://u:p@localhost:5432/db' };
+
+  it('tenant() refuses a request with no resolvable tenant', async () => {
+    await withEnv(TENANT_ON, async () => {
+      await expect(databaseClass.tenant({ headers: {} }, async () => 'nope')).rejects.toThrow(
+        /No tenant resolved/,
+      );
+    });
+  });
+
+  it('tenant() reads tenantId from the login token claim (4.2.0 shape)', async () => {
+    await withEnv(TENANT_ON, async () => {
+      // Resolution succeeds, so it proceeds past the guard and fails later on
+      // the connection instead — proving the claim was picked up.
+      await expect(
+        databaseClass.tenant({ headers: {}, user: { userId: 'u1', tenantId: 'firm-1' } }, async () => 'ok'),
+      ).rejects.not.toThrow(/No tenant resolved/);
+    });
+  });
+
+  it('tenant() still honours the pre-4.2 tenant_id shape', async () => {
+    await withEnv(TENANT_ON, async () => {
+      await expect(
+        databaseClass.tenant({ headers: {}, user: { userId: 'u1', tenant_id: 'firm-1' } }, async () => 'ok'),
+      ).rejects.not.toThrow(/No tenant resolved/);
+    });
+  });
+
+  it('tenant() requires a callback', async () => {
+    await withEnv(TENANT_ON, async () => {
+      await expect(databaseClass.tenant({ headers: {} }, undefined as any)).rejects.toThrow(/needs a callback/);
+    });
+  });
+
+  it('bypass() demands a specific reason — an unexplained bypass is a forgotten scope', async () => {
+    await withEnv(TENANT_ON, async () => {
+      await expect(databaseClass.bypass('', async () => 'x')).rejects.toThrow(/needs a specific reason/);
+      await expect(databaseClass.bypass('  ', async () => 'x')).rejects.toThrow(/needs a specific reason/);
+      await expect(databaseClass.bypass('ok', async () => 'x')).rejects.toThrow(/needs a specific reason/);
+    });
+  });
+
+  it('bypass() requires a callback', async () => {
+    await withEnv(TENANT_ON, async () => {
+      await expect(databaseClass.bypass('platform admin report', undefined as any)).rejects.toThrow(
+        /needs a callback/,
+      );
+    });
+  });
+
+  it('get() with no context throws in tenant mode instead of returning everything', async () => {
+    await withEnv(TENANT_ON, async () => {
+      await expect(databaseClass.get()).rejects.toThrow(/no tenant resolved for this call/i);
+    });
+  });
+
+  it('get() is unchanged when tenant mode is off', async () => {
+    await withEnv({ BLOOM_DB_TENANT: 'false', DATABASE_URL: 'postgresql://u:p@localhost:5432/db' }, async () => {
+      // No tenant guard — it gets as far as the connection attempt.
+      await expect(databaseClass.get()).rejects.not.toThrow(/no tenant resolved/i);
+    });
+  });
+});
+
+describe('single-tenant apps are unaffected (5.0)', () => {
+  // The 5.0 guard is opt-in breakage: it only bites apps that asked for
+  // multi-tenancy. An app that never sets BLOOM_DB_TENANT keeps the pre-5.0
+  // behaviour exactly.
+  const withEnv = (env: Record<string, string | undefined>, fn: () => Promise<void>) => {
+    const saved: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(env)) {
+      saved[k] = process.env[k];
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    return fn().finally(() => {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    });
+  };
+
+  const DB = 'postgresql://u:p@localhost:5432/db';
+
+  for (const mode of [undefined, 'false']) {
+    it(`get() has no tenant guard when BLOOM_DB_TENANT is ${mode ?? 'unset'}`, async () => {
+      await withEnv({ BLOOM_DB_TENANT: mode, DATABASE_URL: DB }, async () => {
+        await expect(databaseClass.get()).rejects.not.toThrow(/tenant/i);
+      });
+    });
+  }
+
+  it('tenant() tells a single-tenant app to use get() instead of hunting for a missing claim', async () => {
+    await withEnv({ BLOOM_DB_TENANT: undefined, DATABASE_URL: DB }, async () => {
+      await expect(
+        databaseClass.tenant({ headers: {}, user: { userId: 'u1' } }, async () => 'x'),
+      ).rejects.toThrow(/Single-tenant apps should use databaseClass.get\(\)/);
+    });
+  });
+
+  it('bypass() works without tenant mode and stays silent about it', async () => {
+    await withEnv({ BLOOM_DB_TENANT: undefined, DATABASE_URL: DB }, async () => {
+      await expect(databaseClass.bypass('nightly export', async () => 'x')).rejects.not.toThrow(/reason/);
+    });
   });
 });

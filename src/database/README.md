@@ -112,6 +112,61 @@ const techDbTenants = await databaseClass.org('tech').getTenants();
 
 **That's it!** Your code never changes, only your environment evolves.
 
+## 🔒 Multi-tenant mode (5.0)
+
+**Single-tenant apps: nothing here applies.** Leave `BLOOM_DB_TENANT` unset (or
+`false`) and `databaseClass.get()` behaves exactly as it always has. Everything
+below is opt-in and only affects apps that asked for multi-tenancy.
+
+### The problem this replaces
+
+Before 5.0, a call that failed to resolve a tenant returned **every row** and
+looked like it worked. A missing `req`, a token without the claim — the query
+succeeded, the page rendered, and the leak was invisible. A production audit
+found 4 of 44 route files in exactly that state.
+
+So in tenant mode the unscoped call is no longer available by accident:
+
+```ts
+// ✅ Scoped. The tenant comes from req.user.tenantId (the login-token claim),
+//    x-tenant-id, a :tenantId param, or the subdomain.
+const clients = await database.tenant(req, (db) => db.client.findMany());
+
+// ✅ Cross-tenant, on purpose. The reason is mandatory and logged.
+const firms = await database.bypass('platform admin firm list', (db) => db.firm.findMany());
+
+// ❌ Throws in tenant mode — it cannot prove a tenant was applied.
+const db = await databaseClass.get();
+```
+
+`grep -rn "bypass(" src/` is therefore the **complete** list of places your app
+reads across tenants. That is the property worth having: not that scoping is
+applied, but that its absence is enumerable.
+
+### Which one to use
+
+| Situation | Call |
+|---|---|
+| Any request-scoped query in a multi-tenant app | `database.tenant(req, fn)` |
+| Platform/admin route that is cross-tenant by design | `database.bypass(reason, fn)` |
+| Pre-login lookup (no user yet) | `database.bypass(reason, fn)` |
+| Single-tenant app | `databaseClass.get()` |
+
+### Failure modes, and what each one means
+
+| Error code | Meaning |
+|---|---|
+| `DATABASE_UNSCOPED_IN_TENANT_MODE` | `get()` called with no resolvable tenant. Usually a call site that forgot to pass `req`. |
+| `DATABASE_NO_TENANT` | `tenant()` ran but nothing resolved — most often the login token has no `tenantId` claim. |
+| `DATABASE_TENANT_MODE_OFF` | `tenant()` called in a single-tenant app. Use `get()`. |
+| `DATABASE_BYPASS_NO_REASON` | `bypass()` without a specific reason. An unexplained bypass is indistinguishable from a forgotten scope. |
+
+Put the claim in the token at login and the whole thing composes:
+
+```ts
+auth.generateLoginToken({ userId: user.id, role: user.role, level: user.level, tenantId: user.firmId });
+```
+
 ## 🎯 Core API
 
 ### **One Function Rule: `databaseClass.get()`**

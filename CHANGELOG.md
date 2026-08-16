@@ -2,6 +2,75 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [5.0.0] - 2026-08-16
+
+One breaking change, and it is the whole release: **in multi-tenant mode the
+database can no longer be read unscoped by accident.**
+
+> **Single-tenant apps are unaffected.** If `BLOOM_DB_TENANT` is unset or
+> `false`, `databaseClass.get()` behaves exactly as in 4.x. Everything below
+> applies only to apps that opted into multi-tenancy.
+
+### Breaking — `databaseClass.get()` fails closed in tenant mode
+
+Before 5.0, a call that failed to resolve a tenant returned **every row** and
+looked like it worked. A forgotten `req`, a token without the claim — the
+query succeeded, the page rendered, and the leak was invisible. A production
+audit found **4 of 44 route files** in exactly that state, and the LedgerLite
+benchmark reproduced the same class of gap from scratch in an afternoon.
+
+`get()` now throws `DATABASE_UNSCOPED_IN_TENANT_MODE` rather than returning
+an unscoped client. **The upgrade will surface every call site that was
+silently unscoped** — that is the point of the major, not a side effect.
+
+### Added — `database.tenant(req, fn)` and `database.bypass(reason, fn)`
+
+```ts
+// Scoped. Tenant from req.user.tenantId, x-tenant-id, :tenantId, or subdomain.
+const clients = await database.tenant(req, (db) => db.client.findMany());
+
+// Cross-tenant, on purpose. The reason is mandatory and logged.
+const firms = await database.bypass('platform admin firm list', (db) => db.firm.findMany());
+```
+
+`grep -rn "bypass(" src/` is now the **complete** list of places an app reads
+across tenants. The valuable property is not that scoping is applied — it is
+that its absence is enumerable. The shape is lifted from a production app that
+proved it at 372 call sites.
+
+`bypass()` refuses an empty or trivial reason: an unexplained bypass is
+indistinguishable from a forgotten scope.
+
+### Fixed — the token claim the database reads
+
+`detectTenant()` looked for `req.user.tenant_id` while 4.2.0's login token
+carries `tenantId`, so the new claim was never picked up. Both shapes are read
+now, `tenantId` first.
+
+### Error codes
+
+| Code | Meaning |
+|---|---|
+| `DATABASE_UNSCOPED_IN_TENANT_MODE` | `get()` with no tenant — usually a missing `req` |
+| `DATABASE_NO_TENANT` | `tenant()` resolved nothing — usually no `tenantId` claim |
+| `DATABASE_TENANT_MODE_OFF` | `tenant()` in a single-tenant app — use `get()` |
+| `DATABASE_BYPASS_NO_REASON` | `bypass()` without a specific reason |
+
+### Migration
+
+1. Single-tenant? Nothing to do.
+2. Multi-tenant: put the claim in the token —
+   `auth.generateLoginToken({ userId, role, level, tenantId: user.firmId })`.
+3. Replace request-scoped `await databaseClass.get(req)` with
+   `await database.tenant(req, db => ...)`.
+4. Replace deliberate cross-tenant reads with
+   `await database.bypass('why', db => ...)`.
+5. Run the app. Every `DATABASE_UNSCOPED_IN_TENANT_MODE` is a call site that
+   was reading unscoped before — triage each one rather than reaching for
+   `bypass()` reflexively.
+
+Suite: 738 → 752 passing.
+
 ## [4.2.1] - 2026-08-16
 
 A full-module review before the 5.0 work. Found the 4.0.1 SQLite fix was

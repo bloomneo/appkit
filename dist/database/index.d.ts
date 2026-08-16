@@ -69,6 +69,41 @@ export declare const databaseClass: {
      */
     get(req?: any): Promise<DatabaseClientUnion>;
     /**
+     * Run a callback against a tenant-scoped client.
+     *
+     * This is the safe path, and in tenant mode it is the ONLY ergonomic one.
+     * The tenant is resolved from the request — `req.user.tenantId` (the claim
+     * auth puts in the login token), `x-tenant-id`, route params, or subdomain —
+     * and a caller with no resolvable tenant is refused rather than silently
+     * handed every row.
+     *
+     * ```ts
+     * const clients = await database.tenant(req, (db) => db.client.findMany());
+     * ```
+     *
+     * @llm-rule WHEN: Any request-scoped query in a multi-tenant app
+     * @llm-rule AVOID: databaseClass.get() for tenant data - it cannot prove a tenant was applied
+     * @llm-rule NOTE: Throws when no tenant resolves; use bypass() for deliberate cross-tenant work
+     */
+    tenant<T>(req: any, fn: (db: DatabaseClientUnion) => Promise<T> | T): Promise<T>;
+    /**
+     * Run a callback against an UNSCOPED client, on purpose.
+     *
+     * Every cross-tenant read in the codebase goes through here, so
+     * `grep -rn "bypass(" src/` is the complete audit surface. The reason string
+     * is required and logged for exactly that: a bypass with no stated reason is
+     * indistinguishable from a forgotten scope.
+     *
+     * ```ts
+     * const firms = await database.bypass('platform admin firm list', (db) => db.firm.findMany());
+     * ```
+     *
+     * @llm-rule WHEN: Platform/admin routes that are cross-tenant by design, or pre-login lookups
+     * @llm-rule AVOID: Using it because tenant() threw - that throw is usually a real missing claim
+     * @llm-rule NOTE: The reason is mandatory and appears in logs; keep it specific
+     */
+    bypass<T>(reason: string, fn: (db: DatabaseClientUnion) => Promise<T> | T): Promise<T>;
+    /**
      * Get all tenants data (admin access - no tenant filtering)
      * @param {Object} [req] - Request object for org context
      * @returns {Promise<DatabaseClientUnion>} Database client with no tenant filtering

@@ -133,6 +133,10 @@ BLOOM_DB_TENANT=auto                   # → multi-tenant mode
   (`signToken` is a private internal — don't reach for it.)
 - **Never instantiate Prisma directly.** `databaseClass.get()` returns the
   shared, tenant-aware client.
+- **Never call `databaseClass.get()` for tenant data in a multi-tenant app.**
+  It throws in tenant mode because it cannot prove a tenant was applied. Use
+  `database.tenant(req, db => ...)`, or `database.bypass('reason', db => ...)`
+  when crossing tenants deliberately. Single-tenant apps keep using `get()`.
 - **Never hand-roll rate limiting.** Use `security.requests(maxRequests, windowMs)`.
 - **Never write a custom file-upload-to-S3 wrapper.** `storage.put()` /
   `storage.get()` / `storage.url()` handle local + S3 + R2 with the same API.

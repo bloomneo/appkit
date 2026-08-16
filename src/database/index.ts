@@ -130,6 +130,9 @@ function detectTenant(req?: any): string | null {
   
   return (
     req.headers?.['x-tenant-id'] ||
+    // The auth module puts `tenantId` in the login token (4.2.0+). `tenant_id`
+    // is the pre-4.2 shape and is still read so existing apps keep working.
+    req.user?.tenantId ||
     req.user?.tenant_id ||
     req.params?.tenantId ||
     req.query?.tenant ||
@@ -309,6 +312,26 @@ export const databaseClass = {
     const orgId = detectOrg(req);
     const tenantId = detectTenant(req);
 
+    // 5.0: in tenant mode, get() may no longer hand back an unscoped client.
+    //
+    // Pre-5.0 this returned every row whenever a tenant failed to resolve —
+    // a call site that forgot to pass `req`, or a token missing the claim,
+    // leaked the whole table and looked like it worked. A production audit
+    // found 4 of 44 route files in exactly that state. Failing closed turns a
+    // silent leak into a loud error at the one call site responsible.
+    //
+    // Deliberate cross-tenant work goes through bypass(), which is greppable.
+    const tenantModeOn = process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false';
+    if (tenantModeOn && !tenantId) {
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] BLOOM_DB_TENANT is enabled but no tenant resolved for this call. ` +
+          `Use database.tenant(req, db => ...) for request-scoped queries, or ` +
+          `database.bypass('reason', db => ...) for deliberate cross-tenant access. ` +
+          `Passing no request at all is the usual cause. See: ${DOCS_URL}#multi-tenant-mode`,
+        { code: 'DATABASE_UNSCOPED_IN_TENANT_MODE' },
+      );
+    }
+
     // Get appropriate URL
     const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
 
@@ -322,6 +345,120 @@ export const databaseClass = {
     return await createClient(url, tenantId, orgId);
   },
   
+  /**
+   * Run a callback against a tenant-scoped client.
+   *
+   * This is the safe path, and in tenant mode it is the ONLY ergonomic one.
+   * The tenant is resolved from the request — `req.user.tenantId` (the claim
+   * auth puts in the login token), `x-tenant-id`, route params, or subdomain —
+   * and a caller with no resolvable tenant is refused rather than silently
+   * handed every row.
+   *
+   * ```ts
+   * const clients = await database.tenant(req, (db) => db.client.findMany());
+   * ```
+   *
+   * @llm-rule WHEN: Any request-scoped query in a multi-tenant app
+   * @llm-rule AVOID: databaseClass.get() for tenant data - it cannot prove a tenant was applied
+   * @llm-rule NOTE: Throws when no tenant resolves; use bypass() for deliberate cross-tenant work
+   */
+  async tenant<T>(req: any, fn: (db: DatabaseClientUnion) => Promise<T> | T): Promise<T> {
+    if (typeof fn !== 'function') {
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] database.tenant(req, fn) needs a callback. See: ${DOCS_URL}#multi-tenant-mode`,
+        { code: 'DATABASE_TENANT_NO_CALLBACK' },
+      );
+    }
+
+    const tenantModeOn = process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false';
+
+    // Two different mistakes, two different messages. Telling a single-tenant
+    // app "no tenant resolved" sends them hunting for a missing claim when the
+    // real answer is that they never needed this method.
+    if (!tenantModeOn) {
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] database.tenant() requires multi-tenant mode, but BLOOM_DB_TENANT ` +
+          `is not enabled. Single-tenant apps should use databaseClass.get() — it is unrestricted ` +
+          `when tenant mode is off. To enable multi-tenancy set BLOOM_DB_TENANT=auto. ` +
+          `See: ${DOCS_URL}#multi-tenant-mode`,
+        { code: 'DATABASE_TENANT_MODE_OFF' },
+      );
+    }
+
+    const tenantId = detectTenant(req);
+    if (!tenantId) {
+      // Failing closed is the entire point. A request with no tenant that
+      // silently reads every row is the leak this API exists to prevent.
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] No tenant resolved for this request. ` +
+          `Expected req.user.tenantId (set it in the login token), an x-tenant-id header, ` +
+          `a :tenantId route param, or a subdomain. For deliberate cross-tenant access use ` +
+          `database.bypass('reason', fn). See: ${DOCS_URL}#multi-tenant-mode`,
+        { code: 'DATABASE_NO_TENANT' },
+      );
+    }
+
+    const orgId = detectOrg(req);
+    const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
+    if (!url) {
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`,
+        { code: 'DATABASE_MISSING_URL' },
+      );
+    }
+
+    const client = await createClient(url, tenantId, orgId);
+    return await fn(client);
+  },
+
+  /**
+   * Run a callback against an UNSCOPED client, on purpose.
+   *
+   * Every cross-tenant read in the codebase goes through here, so
+   * `grep -rn "bypass(" src/` is the complete audit surface. The reason string
+   * is required and logged for exactly that: a bypass with no stated reason is
+   * indistinguishable from a forgotten scope.
+   *
+   * ```ts
+   * const firms = await database.bypass('platform admin firm list', (db) => db.firm.findMany());
+   * ```
+   *
+   * @llm-rule WHEN: Platform/admin routes that are cross-tenant by design, or pre-login lookups
+   * @llm-rule AVOID: Using it because tenant() threw - that throw is usually a real missing claim
+   * @llm-rule NOTE: The reason is mandatory and appears in logs; keep it specific
+   */
+  async bypass<T>(reason: string, fn: (db: DatabaseClientUnion) => Promise<T> | T): Promise<T> {
+    if (!reason || typeof reason !== 'string' || reason.trim().length < 3) {
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] database.bypass(reason, fn) needs a specific reason string — ` +
+          `it is what makes cross-tenant access auditable. See: ${DOCS_URL}#multi-tenant-mode`,
+        { code: 'DATABASE_BYPASS_NO_REASON' },
+      );
+    }
+    if (typeof fn !== 'function') {
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] database.bypass(reason, fn) needs a callback. See: ${DOCS_URL}#multi-tenant-mode`,
+        { code: 'DATABASE_BYPASS_NO_CALLBACK' },
+      );
+    }
+
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new DatabaseError(
+        `[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`,
+        { code: 'DATABASE_MISSING_URL' },
+      );
+    }
+
+    if (process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false') {
+      // Deliberately not the logger module — database must not depend on it.
+      console.warn(`[@bloomneo/appkit/database] tenant bypass: ${reason}`);
+    }
+
+    const client = await createClient(url, null, null);
+    return await fn(client);
+  },
+
   /**
    * Get all tenants data (admin access - no tenant filtering)
    * @param {Object} [req] - Request object for org context

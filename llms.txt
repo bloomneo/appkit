@@ -242,6 +242,33 @@ app.delete(
 
 Multi-tenant Prisma/Mongoose with automatic tenant filtering.
 
+### Scoped access (5.0) — only when BLOOM_DB_TENANT is enabled
+
+**Single-tenant apps: leave `BLOOM_DB_TENANT` unset and use `databaseClass.get()`
+exactly as before. Nothing below applies.**
+
+```ts
+// Scoped — tenant from req.user.tenantId / x-tenant-id / :tenantId / subdomain
+await database.tenant(req, (db) => db.client.findMany());
+
+// Cross-tenant on purpose — reason is mandatory and logged
+await database.bypass('platform admin firm list', (db) => db.firm.findMany());
+
+// Throws in tenant mode: it cannot prove a tenant was applied
+await databaseClass.get();
+```
+
+Pre-5.0, a call that failed to resolve a tenant returned EVERY row and looked
+like it worked. Now it fails closed. `grep -rn "bypass(" src/` is the complete
+audit surface for cross-tenant reads.
+
+| Error code | Meaning |
+|---|---|
+| `DATABASE_UNSCOPED_IN_TENANT_MODE` | `get()` with no tenant — usually a missing `req` |
+| `DATABASE_NO_TENANT` | `tenant()` resolved nothing — usually no `tenantId` claim in the token |
+| `DATABASE_TENANT_MODE_OFF` | `tenant()` in a single-tenant app — use `get()` |
+| `DATABASE_BYPASS_NO_REASON` | `bypass()` without a specific reason |
+
 ### Methods
 
 ```ts

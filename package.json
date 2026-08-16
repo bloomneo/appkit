@@ -1,6 +1,6 @@
 {
   "name": "@bloomneo/appkit",
-  "version": "4.2.1",
+  "version": "5.0.0",
   "description": "Minimal and framework agnostic Node.js toolkit designed for AI agentic backend development.",
   "main": "dist/index.js",
   "type": "module",
