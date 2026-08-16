@@ -33,9 +33,17 @@ export interface McpOAuthConfig {
   /** HMAC secret for signing every JWT this module issues. Minimum 32 chars. */
   secret: string;
   /**
-   * Absolute base URL this OAuth server is mounted at, e.g.
-   * https://example.com/mcp — used to build the metadata endpoints.
-   * When omitted, derived per-request from forwarded headers.
+   * Path the MCP endpoints live under, e.g. "/mcp".
+   *
+   * Metadata always references `{origin}{mountPath}` rather than the request's
+   * own baseUrl, so the SAME handlers produce correct documents whether they
+   * are served from under the mount or from the ROOT well-known paths — which
+   * is where RFC 8414/9728 clients actually look. See wellKnownRouter().
+   */
+  mountPath: string;
+  /**
+   * Absolute base URL override, e.g. https://example.com/mcp.
+   * When omitted, derived per-request as `{origin}{mountPath}`.
    */
   issuer?: string;
   /** Absolute URL of the protected MCP endpoint (the resource). */
@@ -59,6 +67,10 @@ export interface McpOAuth {
   router: any;
   verifyAccessToken: (token: string) => { sub: string; scope: string } | null;
   resourceUrl: (req: any) => string;
+  /** RFC 8414 document. Also mounted at the root well-known paths. */
+  authServerMetadata: (req: any, res: any) => void;
+  /** RFC 9728 document. Also mounted at the root well-known paths. */
+  protectedResourceMetadata: (req: any, res: any) => void;
 }
 
 const b64url = (b: Buffer) => b.toString('base64url');
@@ -94,10 +106,14 @@ export function createMcpOAuth(config: McpOAuthConfig, Router: () => any): McpOA
   }
 
   const scope = config.scope ?? 'mcp';
+  const mountPath = config.mountPath || '/mcp';
 
-  // Resolve the mount base ({origin}{baseUrl}) at request time so the metadata
-  // is correct behind a reverse proxy and in local dev alike. issuer overrides.
-  const baseUrl = (req: any) => config.issuer ?? `${originOf(req)}${req.baseUrl ?? ''}`;
+  // Metadata references {origin}{mountPath}, NOT req.baseUrl — the same
+  // handlers are also mounted at the ROOT well-known paths, where baseUrl is
+  // '' and would otherwise advertise the wrong endpoints. issuer overrides for
+  // a fixed absolute base. Resolved per request so it stays correct behind a
+  // reverse proxy and in local dev alike.
+  const baseUrl = (req: any) => config.issuer ?? `${originOf(req)}${mountPath}`;
   const resourceUrl = (req: any) => config.resource ?? `${baseUrl(req)}/`;
 
   const sign = (payload: object, expiresIn: string | number) =>
@@ -119,18 +135,19 @@ export function createMcpOAuth(config: McpOAuthConfig, Router: () => any): McpOA
 
   const router = Router();
 
-  // ── RFC 9728: protected-resource metadata ────────────────────────────────
-  router.get('/.well-known/oauth-protected-resource', (req: any, res: any) => {
+  // ── Metadata handlers ─────────────────────────────────────────────────────
+  // Extracted rather than inlined because they are mounted TWICE: here under
+  // the mount path, and again at the root well-known paths by wellKnownRouter().
+  const protectedResourceMetadata = (req: any, res: any) => {
     res.json({
       resource: resourceUrl(req),
       authorization_servers: [baseUrl(req)],
       scopes_supported: [scope],
       bearer_methods_supported: ['header'],
     });
-  });
+  };
 
-  // ── RFC 8414: authorization-server metadata ──────────────────────────────
-  router.get('/.well-known/oauth-authorization-server', (req: any, res: any) => {
+  const authServerMetadata = (req: any, res: any) => {
     const base = baseUrl(req);
     res.json({
       issuer: base,
@@ -143,7 +160,10 @@ export function createMcpOAuth(config: McpOAuthConfig, Router: () => any): McpOA
       token_endpoint_auth_methods_supported: ['none'],
       scopes_supported: [scope],
     });
-  });
+  };
+
+  router.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+  router.get('/.well-known/oauth-authorization-server', authServerMetadata);
 
   // ── RFC 7591: dynamic client registration ────────────────────────────────
   // Stateless: the returned client_id is a signed JWT carrying the client's
@@ -328,7 +348,7 @@ export function createMcpOAuth(config: McpOAuthConfig, Router: () => any): McpOA
     };
   }
 
-  return { router, verifyAccessToken, resourceUrl };
+  return { router, verifyAccessToken, resourceUrl, authServerMetadata, protectedResourceMetadata };
 }
 
 // ── Consent / login page ────────────────────────────────────────────────────

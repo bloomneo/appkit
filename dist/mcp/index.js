@@ -68,23 +68,31 @@ function get() {
         getTools: () => reg.getTools(),
         has: (name) => reg.has(name),
         /**
-         * The whole /mcp surface: OAuth authorization server + guarded transport.
+         * Both routers the MCP surface needs, built from one config so they can
+         * never drift apart.
          *
          * ```ts
-         * app.use('/mcp', await mcp.router({
+         * const { wellKnown, mcp: mcpRouter } = await mcp.routers({
          *   serviceName: 'My App',
          *   authenticate: async (email, password) => { ... },
-         * }));
+         * });
+         *
+         * app.use(wellKnown);          // ROOT, before the SPA catch-all
+         * app.use('/mcp', mcpRouter);
          * ```
+         *
+         * Two mounts rather than one because RFC 8414/9728 clients probe the
+         * metadata at the root, not under the mount — see McpRouters.wellKnown.
          *
          * Async because express and the MCP SDK are optional peers — a missing one
          * fails here, at boot, rather than on the first agent request.
          */
-        router: async (options) => {
+        routers: async (options) => {
             const secret = options.secret ?? process.env.BLOOM_MCP_OAUTH_SECRET ?? process.env.BLOOM_AUTH_SECRET ?? '';
+            const mountPath = options.mountPath ?? '/mcp';
             const [express, sdk] = await Promise.all([loadExpress(), loadMcpSdk()]);
             const Router = () => (express.Router ?? express.default?.Router)();
-            const oauth = createMcpOAuth({ ...options, secret }, Router);
+            const oauth = createMcpOAuth({ ...options, secret, mountPath }, Router);
             // Roles are resolved by middleware before the transport runs, because
             // the SDK needs the server built synchronously but resolveRoles is async.
             // Keyed by subject and overwritten on every request, so a role change
@@ -122,11 +130,19 @@ function get() {
                 }
                 next();
             };
-            const router = Router();
-            router.use(oauth.router);
-            router.use(resolveMiddleware);
-            router.use(transport);
-            return router;
+            const mcpRouter = Router();
+            mcpRouter.use(oauth.router);
+            mcpRouter.use(resolveMiddleware);
+            mcpRouter.use(transport);
+            // Root discovery. Both the bare path and the mount-suffixed variant,
+            // because clients differ on which they probe.
+            const wellKnown = Router();
+            const suffix = mountPath.startsWith('/') ? mountPath : `/${mountPath}`;
+            for (const s of ['', suffix]) {
+                wellKnown.get(`/.well-known/oauth-authorization-server${s}`, oauth.authServerMetadata);
+                wellKnown.get(`/.well-known/oauth-protected-resource${s}`, oauth.protectedResourceMetadata);
+            }
+            return { wellKnown, mcp: mcpRouter };
         },
         getConfig: () => ({ ...config }),
         clear: () => reg.clear(),

@@ -10,18 +10,39 @@ import { mcpClass } from '@bloomneo/appkit/mcp';
 const mcp = mcpClass.get();
 await mcp.discover(join(__dirname, 'features'));
 
-app.use('/mcp', await mcp.router({
+const { wellKnown, mcp: mcpRouter } = await mcp.routers({
   serviceName: 'My App',
   authenticate: async (email, password) => {
     const user = await verify(email, password);
     return user ? { sub: user.id, label: user.email } : null;   // null rejects
   },
-}));
+});
+
+app.use(wellKnown);          // ROOT — must come BEFORE any SPA catch-all
+app.use('/mcp', mcpRouter);
 ```
 
 That's the whole integration. You get the OAuth 2.1 authorization server the
 connector flow requires, a Streamable-HTTP transport, and every feature's tools
 registered automatically.
+
+### Why two mounts
+
+RFC 8414/9728 clients — claude.ai among them — probe the discovery documents at
+the **root** with the mount path inserted:
+
+```
+/.well-known/oauth-authorization-server/mcp     ← where the client looks
+/mcp/.well-known/oauth-authorization-server     ← NOT where the client looks
+```
+
+Serve them only under the mount and those root paths fall through to your SPA.
+The client gets HTML back and reports *"couldn't register with your sign-in
+service"* — even though `/mcp/register` works perfectly when called directly.
+That failure is confusing enough to cost an afternoon, so `routers()` returns
+both and builds them from one config, which is why they can't drift apart.
+
+Behind a reverse proxy, route `/.well-known/oauth-*` to the app as well.
 
 ## Installation
 
@@ -32,7 +53,7 @@ and you only pay for these if you actually expose MCP:
 npm install express @modelcontextprotocol/sdk
 ```
 
-A missing peer throws at `mcp.router()` — at boot, with the install command in
+A missing peer throws at `mcp.routers()` — at boot, with the install command in
 the message — rather than on the first agent request.
 
 ## Declaring tools
@@ -91,14 +112,14 @@ how you stop an agent inheriting more reach than you intended.
 **The tool.** Pass `resolveRoles` to enable per-tool `roles`:
 
 ```ts
-app.use('/mcp', await mcp.router({
+const { wellKnown, mcp: mcpRouter } = await mcp.routers({
   serviceName: 'My App',
   authenticate,
   resolveRoles: async (sub) => {
     const user = await db.user.findUnique({ where: { id: sub } });
     return user ? `${user.role}.${user.level}` : null;
   },
-}));
+});
 ```
 
 `roles` is OR-ed and uses the same inheritance as `auth.requireUserRoles()`, so
@@ -153,7 +174,7 @@ await mcp.discover(featuresPath)       // FBCA auto-discovery
 mcp.list()                             // name + description pairs
 mcp.getTools()
 mcp.has(name)
-await mcp.router({ serviceName, authenticate, resolveRoles?, secret? })
+await mcp.routers({ serviceName, authenticate, resolveRoles?, mountPath?, secret? })
 mcp.getConfig()
 
 mcpClass.getToolCount()
@@ -182,3 +203,14 @@ satisfy its `roles`, or `resolveRoles` returned null. Without `resolveRoles`,
 
 **OAuth secret rejected.** It must be at least 32 characters. Set
 `BLOOM_MCP_OAUTH_SECRET`, or let it fall back to `BLOOM_AUTH_SECRET`.
+
+**The connector says "couldn't register" but `/mcp/register` works.** The
+client is probing the root well-known paths and getting your SPA. Mount
+`wellKnown` at the root before the catch-all, and route `/.well-known/oauth-*`
+to the app in your reverse proxy. See [Why two mounts](#why-two-mounts).
+
+**A tool writes fine locally and is refused in production.** If you use
+Postgres row-level security, note that MCP tools run outside your normal
+request path, so any middleware that establishes tenant context never ran.
+Under `FORCE ROW LEVEL SECURITY` the insert is refused; a non-forcing dev
+database silently passes. Establish the context explicitly inside the tool.

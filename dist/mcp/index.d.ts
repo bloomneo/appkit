@@ -14,18 +14,35 @@ import { createMcpTransport } from './transport.js';
 import { type DiscoveryResult } from './discovery.js';
 import { type McpConfig } from './defaults.js';
 import type { McpContext, McpInputSchema, McpTool, McpToolDescriptor } from './types.js';
-export interface McpRouterOptions extends Omit<McpOAuthConfig, 'secret'> {
+export interface McpRouterOptions extends Omit<McpOAuthConfig, 'secret' | 'mountPath'> {
     /**
      * JWT signing secret for the OAuth artefacts (min 32 chars).
      * Defaults to BLOOM_MCP_OAUTH_SECRET, then BLOOM_AUTH_SECRET.
      */
     secret?: string;
+    /** Path you will mount the MCP router at. Default '/mcp'. */
+    mountPath?: string;
     /**
      * Resolve the caller's `role.level` from the OAuth subject. Supply it to
      * enable per-tool `roles`; without it every registered tool is offered to
      * every authorised connection (gate entirely at authenticate()).
      */
     resolveRoles?: (sub: string) => Promise<string | null> | string | null;
+}
+export interface McpRouters {
+    /**
+     * Mount at the ROOT, **before** any SPA/catch-all route.
+     *
+     * RFC 8414/9728 clients — claude.ai among them — probe the metadata at the
+     * root with the mount path inserted (`/.well-known/oauth-authorization-server/mcp`),
+     * NOT under the mount. If those paths fall through to an SPA the client gets
+     * HTML and reports "couldn't register", even though `/mcp/register` works
+     * when called directly. Behind a reverse proxy, route `/.well-known/oauth-*`
+     * to the app too.
+     */
+    wellKnown: any;
+    /** Mount at `mountPath` (default '/mcp'). OAuth endpoints + guarded transport. */
+    mcp: any;
 }
 export interface Mcp {
     register(tool: McpTool): void;
@@ -34,7 +51,7 @@ export interface Mcp {
     list(): McpToolDescriptor[];
     getTools(): McpTool[];
     has(name: string): boolean;
-    router(options: McpRouterOptions): Promise<any>;
+    routers(options: McpRouterOptions): Promise<McpRouters>;
     getConfig(): McpConfig;
     clear(): void;
 }

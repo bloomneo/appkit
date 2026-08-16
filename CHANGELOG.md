@@ -9,17 +9,28 @@ All notable changes to AppKit will be documented in this file.
 ```ts
 const mcp = mcpClass.get();
 await mcp.discover(join(__dirname, 'features'));
-app.use('/mcp', await mcp.router({ serviceName: 'My App', authenticate }));
+
+const { wellKnown, mcp: mcpRouter } = await mcp.routers({ serviceName, authenticate });
+app.use(wellKnown);          // ROOT, before any SPA catch-all
+app.use('/mcp', mcpRouter);
 ```
 
-Three lines turn a Bloom backend into a claude.ai custom connector. What
-ships:
+Turns a Bloom backend into a claude.ai custom connector. What ships:
 
 - **OAuth 2.1 authorization server** — RFC 9728 protected-resource metadata,
   RFC 8414 authorization-server metadata, RFC 7591 dynamic client
   registration, and an authorization-code + PKCE (S256) grant. This is the
   part that matters: a connector client cannot attach to a bare bearer-token
   endpoint, so without it there is no connector.
+- **Discovery served where clients actually look.** `routers()` returns a
+  `wellKnown` router for the ROOT alongside the mounted one, because RFC
+  8414/9728 clients probe `/.well-known/oauth-authorization-server/mcp` at the
+  root — not under the mount. Served only under the mount, those paths fall
+  through to the app's SPA, the client receives HTML, and it reports
+  "couldn't register" while `/mcp/register` works perfectly when called
+  directly. Metadata references `{origin}{mountPath}` rather than
+  `req.baseUrl`, so one set of handlers is correct from either mount. Both
+  routers come from one config so they cannot drift apart.
 - **Stateless by construction.** Every artefact — client id, auth code,
   access and refresh token — is a signed JWT, and the transport builds a
   fresh server per request. An app running N workers in cluster mode needs no
@@ -49,7 +60,10 @@ tracking spec revisions by hand is a bad trade.
 
 Covering tool validation, role visibility and inheritance, server building,
 and the full OAuth flow including PKCE-verifier mismatch, unregistered
-redirect_uri, and sub-S256 challenge rejection. Suite: 656 → 696 passing.
+redirect_uri, and sub-S256 challenge rejection — plus a root-discovery
+regression test that mounts a real express app WITH an SPA catch-all and
+asserts the metadata is JSON pointing at {origin}/mcp. Suite: 656 → 703
+passing.
 
 ## [4.0.1] - 2026-08-16
 

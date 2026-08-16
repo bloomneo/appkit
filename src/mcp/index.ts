@@ -21,18 +21,36 @@ import type { McpContext, McpInputSchema, McpTool, McpToolDescriptor } from './t
 let globalConfig: McpConfig | null = null;
 let registry: McpRegistryClass | null = null;
 
-export interface McpRouterOptions extends Omit<McpOAuthConfig, 'secret'> {
+export interface McpRouterOptions extends Omit<McpOAuthConfig, 'secret' | 'mountPath'> {
   /**
    * JWT signing secret for the OAuth artefacts (min 32 chars).
    * Defaults to BLOOM_MCP_OAUTH_SECRET, then BLOOM_AUTH_SECRET.
    */
   secret?: string;
+  /** Path you will mount the MCP router at. Default '/mcp'. */
+  mountPath?: string;
   /**
    * Resolve the caller's `role.level` from the OAuth subject. Supply it to
    * enable per-tool `roles`; without it every registered tool is offered to
    * every authorised connection (gate entirely at authenticate()).
    */
   resolveRoles?: (sub: string) => Promise<string | null> | string | null;
+}
+
+export interface McpRouters {
+  /**
+   * Mount at the ROOT, **before** any SPA/catch-all route.
+   *
+   * RFC 8414/9728 clients — claude.ai among them — probe the metadata at the
+   * root with the mount path inserted (`/.well-known/oauth-authorization-server/mcp`),
+   * NOT under the mount. If those paths fall through to an SPA the client gets
+   * HTML and reports "couldn't register", even though `/mcp/register` works
+   * when called directly. Behind a reverse proxy, route `/.well-known/oauth-*`
+   * to the app too.
+   */
+  wellKnown: any;
+  /** Mount at `mountPath` (default '/mcp'). OAuth endpoints + guarded transport. */
+  mcp: any;
 }
 
 export interface Mcp {
@@ -42,7 +60,7 @@ export interface Mcp {
   list(): McpToolDescriptor[];
   getTools(): McpTool[];
   has(name: string): boolean;
-  router(options: McpRouterOptions): Promise<any>;
+  routers(options: McpRouterOptions): Promise<McpRouters>;
   getConfig(): McpConfig;
   clear(): void;
 }
@@ -106,26 +124,34 @@ function get(): Mcp {
     has: (name) => reg.has(name),
 
     /**
-     * The whole /mcp surface: OAuth authorization server + guarded transport.
+     * Both routers the MCP surface needs, built from one config so they can
+     * never drift apart.
      *
      * ```ts
-     * app.use('/mcp', await mcp.router({
+     * const { wellKnown, mcp: mcpRouter } = await mcp.routers({
      *   serviceName: 'My App',
      *   authenticate: async (email, password) => { ... },
-     * }));
+     * });
+     *
+     * app.use(wellKnown);          // ROOT, before the SPA catch-all
+     * app.use('/mcp', mcpRouter);
      * ```
+     *
+     * Two mounts rather than one because RFC 8414/9728 clients probe the
+     * metadata at the root, not under the mount — see McpRouters.wellKnown.
      *
      * Async because express and the MCP SDK are optional peers — a missing one
      * fails here, at boot, rather than on the first agent request.
      */
-    router: async (options: McpRouterOptions) => {
+    routers: async (options: McpRouterOptions): Promise<McpRouters> => {
       const secret =
         options.secret ?? process.env.BLOOM_MCP_OAUTH_SECRET ?? process.env.BLOOM_AUTH_SECRET ?? '';
+      const mountPath = options.mountPath ?? '/mcp';
 
       const [express, sdk] = await Promise.all([loadExpress(), loadMcpSdk()]);
       const Router = () => (express.Router ?? express.default?.Router)();
 
-      const oauth = createMcpOAuth({ ...options, secret }, Router);
+      const oauth = createMcpOAuth({ ...options, secret, mountPath }, Router);
 
       // Roles are resolved by middleware before the transport runs, because
       // the SDK needs the server built synchronously but resolveRoles is async.
@@ -168,11 +194,21 @@ function get(): Mcp {
         next();
       };
 
-      const router = Router();
-      router.use(oauth.router);
-      router.use(resolveMiddleware);
-      router.use(transport);
-      return router;
+      const mcpRouter = Router();
+      mcpRouter.use(oauth.router);
+      mcpRouter.use(resolveMiddleware);
+      mcpRouter.use(transport);
+
+      // Root discovery. Both the bare path and the mount-suffixed variant,
+      // because clients differ on which they probe.
+      const wellKnown = Router();
+      const suffix = mountPath.startsWith('/') ? mountPath : `/${mountPath}`;
+      for (const s of ['', suffix]) {
+        wellKnown.get(`/.well-known/oauth-authorization-server${s}`, oauth.authServerMetadata);
+        wellKnown.get(`/.well-known/oauth-protected-resource${s}`, oauth.protectedResourceMetadata);
+      }
+
+      return { wellKnown, mcp: mcpRouter };
     },
 
     getConfig: () => ({ ...config }),

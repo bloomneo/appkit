@@ -26,9 +26,17 @@ export interface McpOAuthConfig {
     /** HMAC secret for signing every JWT this module issues. Minimum 32 chars. */
     secret: string;
     /**
-     * Absolute base URL this OAuth server is mounted at, e.g.
-     * https://example.com/mcp — used to build the metadata endpoints.
-     * When omitted, derived per-request from forwarded headers.
+     * Path the MCP endpoints live under, e.g. "/mcp".
+     *
+     * Metadata always references `{origin}{mountPath}` rather than the request's
+     * own baseUrl, so the SAME handlers produce correct documents whether they
+     * are served from under the mount or from the ROOT well-known paths — which
+     * is where RFC 8414/9728 clients actually look. See wellKnownRouter().
+     */
+    mountPath: string;
+    /**
+     * Absolute base URL override, e.g. https://example.com/mcp.
+     * When omitted, derived per-request as `{origin}{mountPath}`.
      */
     issuer?: string;
     /** Absolute URL of the protected MCP endpoint (the resource). */
@@ -57,6 +65,10 @@ export interface McpOAuth {
         scope: string;
     } | null;
     resourceUrl: (req: any) => string;
+    /** RFC 8414 document. Also mounted at the root well-known paths. */
+    authServerMetadata: (req: any, res: any) => void;
+    /** RFC 9728 document. Also mounted at the root well-known paths. */
+    protectedResourceMetadata: (req: any, res: any) => void;
 }
 /**
  * Build the OAuth router. `Router` is injected rather than imported so this

@@ -216,17 +216,17 @@ describe('buildServer', () => {
 
 describe('OAuth authorization server', () => {
   const build = (authenticate = async () => ({ sub: 'u1', label: 'a@b.test' })) =>
-    createMcpOAuth({ secret: OAUTH_SECRET, serviceName: 'Test App', authenticate }, fakeRouter);
+    createMcpOAuth({ secret: OAUTH_SECRET, mountPath: '/mcp', serviceName: 'Test App', authenticate }, fakeRouter);
 
   it('rejects a weak secret', () => {
     expect(() =>
-      createMcpOAuth({ secret: 'short', serviceName: 'x', authenticate: async () => null }, fakeRouter)
+      createMcpOAuth({ secret: 'short', mountPath: '/mcp', serviceName: 'x', authenticate: async () => null }, fakeRouter)
     ).toThrow(/at least 32 characters/);
   });
 
   it('rejects a missing authenticate hook', () => {
     expect(() =>
-      createMcpOAuth({ secret: OAUTH_SECRET, serviceName: 'x' } as any, fakeRouter)
+      createMcpOAuth({ secret: OAUTH_SECRET, mountPath: '/mcp', serviceName: 'x' } as any, fakeRouter)
     ).toThrow(/authenticate/);
   });
 
@@ -322,7 +322,7 @@ describe('OAuth authorization server', () => {
 
   it('re-renders the consent page with an error when credentials are rejected', async () => {
     const oauth = createMcpOAuth(
-      { secret: OAUTH_SECRET, serviceName: 'Test App', authenticate: async () => null },
+      { secret: OAUTH_SECRET, mountPath: '/mcp', serviceName: 'Test App', authenticate: async () => null },
       fakeRouter
     );
     const reg = await call(oauth.router, 'post', '/register', baseReq({ body: { redirect_uris: ['https://c/cb'] } }));
@@ -359,5 +359,103 @@ describe('config', () => {
   it('exposes the resolved config', () => {
     mcpClass.disconnectAll();
     expect(typeof mcpClass.get().getConfig().name).toBe('string');
+  });
+});
+
+describe('root well-known discovery (regression — the claude.ai connector bug)', () => {
+  // RFC 8414/9728 clients probe the metadata at the ROOT with the mount path
+  // inserted — /.well-known/oauth-authorization-server/mcp — NOT under /mcp.
+  // Serving them only under the mount means those paths fall through to the
+  // app's SPA, the client gets HTML, and it reports "couldn't register" even
+  // though /mcp/register works when called directly.
+  //
+  // Uses the real express + SDK (devDependencies) rather than fakes, because
+  // the bug is precisely about how express computes req.baseUrl per mount.
+  let server: any;
+  let base: string;
+
+  beforeEach(async () => {
+    mcpClass.disconnectAll();
+    const express = (await import('express')).default;
+    const mcp = mcpClass.get();
+    mcp.register(tool({ name: 'ping', description: 'Health probe' }));
+
+    const { wellKnown, mcp: mcpRouter } = await mcp.routers({
+      secret: OAUTH_SECRET,
+      serviceName: 'Regression App',
+      authenticate: async () => ({ sub: 'u1' }),
+    });
+
+    const app = express();
+    app.use(express.json());
+    app.use(wellKnown);
+    app.use('/mcp', mcpRouter);
+    // Stand-in for the SPA catch-all that swallowed these paths in production.
+    app.use((_req: any, res: any) => res.status(200).type('html').send('<!doctype html><title>SPA</title>'));
+
+    await new Promise<void>((resolve) => {
+      server = app.listen(0, resolve);
+    });
+    base = `http://localhost:${server.address().port}`;
+  });
+
+  afterEach(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    mcpClass.disconnectAll();
+  });
+
+  for (const path of [
+    '/.well-known/oauth-authorization-server',
+    '/.well-known/oauth-authorization-server/mcp',
+  ]) {
+    it(`serves AS metadata as JSON at ${path} (not the SPA)`, async () => {
+      const res = await fetch(base + path);
+      expect(res.headers.get('content-type')).toMatch(/json/);
+      const body = await res.json();
+      // The critical assertion: endpoints point at {origin}/mcp even though
+      // this document is served from the root, where req.baseUrl is ''.
+      expect(body.issuer).toBe(`${base}/mcp`);
+      expect(body.registration_endpoint).toBe(`${base}/mcp/register`);
+      expect(body.token_endpoint).toBe(`${base}/mcp/token`);
+      expect(body.code_challenge_methods_supported).toEqual(['S256']);
+    });
+  }
+
+  for (const path of [
+    '/.well-known/oauth-protected-resource',
+    '/.well-known/oauth-protected-resource/mcp',
+  ]) {
+    it(`serves protected-resource metadata as JSON at ${path}`, async () => {
+      const res = await fetch(base + path);
+      expect(res.headers.get('content-type')).toMatch(/json/);
+      const body = await res.json();
+      expect(body.resource).toBe(`${base}/mcp/`);
+      expect(body.authorization_servers).toEqual([`${base}/mcp`]);
+    });
+  }
+
+  it('still serves the same metadata under the mount', async () => {
+    const body = await (await fetch(`${base}/mcp/.well-known/oauth-authorization-server`)).json();
+    expect(body.issuer).toBe(`${base}/mcp`);
+  });
+
+  it('an unauthenticated MCP POST answers 401 with WWW-Authenticate', async () => {
+    const res = await fetch(`${base}/mcp`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    expect(res.status).toBe(401);
+    expect(res.headers.get('www-authenticate')).toContain('resource_metadata=');
+  });
+
+  it('dynamic client registration works through the mounted router', async () => {
+    const res = await fetch(`${base}/mcp/register`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ redirect_uris: ['https://claude.ai/cb'], client_name: 'Claude' }),
+    });
+    expect(res.status).toBe(201);
+    expect((await res.json()).client_id).toBeTruthy();
   });
 });

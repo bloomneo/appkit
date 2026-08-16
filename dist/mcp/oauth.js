@@ -53,9 +53,13 @@ export function createMcpOAuth(config, Router) {
         });
     }
     const scope = config.scope ?? 'mcp';
-    // Resolve the mount base ({origin}{baseUrl}) at request time so the metadata
-    // is correct behind a reverse proxy and in local dev alike. issuer overrides.
-    const baseUrl = (req) => config.issuer ?? `${originOf(req)}${req.baseUrl ?? ''}`;
+    const mountPath = config.mountPath || '/mcp';
+    // Metadata references {origin}{mountPath}, NOT req.baseUrl — the same
+    // handlers are also mounted at the ROOT well-known paths, where baseUrl is
+    // '' and would otherwise advertise the wrong endpoints. issuer overrides for
+    // a fixed absolute base. Resolved per request so it stays correct behind a
+    // reverse proxy and in local dev alike.
+    const baseUrl = (req) => config.issuer ?? `${originOf(req)}${mountPath}`;
     const resourceUrl = (req) => config.resource ?? `${baseUrl(req)}/`;
     const sign = (payload, expiresIn) => jwt.sign(payload, config.secret, { algorithm: 'HS256', expiresIn: expiresIn });
     const verify = (token) => {
@@ -74,17 +78,18 @@ export function createMcpOAuth(config, Router) {
         return { sub: p.sub, scope: p.scope };
     };
     const router = Router();
-    // ── RFC 9728: protected-resource metadata ────────────────────────────────
-    router.get('/.well-known/oauth-protected-resource', (req, res) => {
+    // ── Metadata handlers ─────────────────────────────────────────────────────
+    // Extracted rather than inlined because they are mounted TWICE: here under
+    // the mount path, and again at the root well-known paths by wellKnownRouter().
+    const protectedResourceMetadata = (req, res) => {
         res.json({
             resource: resourceUrl(req),
             authorization_servers: [baseUrl(req)],
             scopes_supported: [scope],
             bearer_methods_supported: ['header'],
         });
-    });
-    // ── RFC 8414: authorization-server metadata ──────────────────────────────
-    router.get('/.well-known/oauth-authorization-server', (req, res) => {
+    };
+    const authServerMetadata = (req, res) => {
         const base = baseUrl(req);
         res.json({
             issuer: base,
@@ -97,7 +102,9 @@ export function createMcpOAuth(config, Router) {
             token_endpoint_auth_methods_supported: ['none'],
             scopes_supported: [scope],
         });
-    });
+    };
+    router.get('/.well-known/oauth-protected-resource', protectedResourceMetadata);
+    router.get('/.well-known/oauth-authorization-server', authServerMetadata);
     // ── RFC 7591: dynamic client registration ────────────────────────────────
     // Stateless: the returned client_id is a signed JWT carrying the client's
     // redirect_uris, so any worker can validate an /authorize or /token call
@@ -255,7 +262,7 @@ export function createMcpOAuth(config, Router) {
             scope: grantedScope,
         };
     }
-    return { router, verifyAccessToken, resourceUrl };
+    return { router, verifyAccessToken, resourceUrl, authServerMetadata, protectedResourceMetadata };
 }
 // ── Consent / login page ────────────────────────────────────────────────────
 function consentPage(opts) {
