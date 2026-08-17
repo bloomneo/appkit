@@ -194,3 +194,38 @@ if (missing.length > 0) {
   process.exit(1);
 }
 console.log(`OK: all ${exportedClasses.length} modules documented in ${AGENT_DOCS.join(' + ')} + skills.`);
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Version claims must match package.json.
+ *
+ * llms.txt shipped claiming v5.1.0 while package.json said 5.1.1, and AGENTS.md
+ * said "Current release: 4.0.0 … after 4.0.0 the API is stable" three releases
+ * and one breaking change later. An agent reading that would conclude nothing
+ * had broken since 4.0 — worse than no version line at all.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const pkgVersion = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version as string;
+const versionClaims: Array<{ file: string; re: RegExp; label: string }> = [
+  { file: 'llms.txt', re: /^# @bloomneo\/appkit v([0-9]+\.[0-9]+\.[0-9]+)/m, label: 'llms.txt header' },
+  { file: 'AGENTS.md', re: /\*\*Current release: ([0-9]+\.[0-9]+\.[0-9]+)\.\*\*/, label: 'AGENTS.md "Current release"' },
+  { file: 'README.md', re: /\*\*Current release: ([0-9]+\.[0-9]+\.[0-9]+)\.\*\*/, label: 'README "Current release"' },
+];
+
+const versionErrors: string[] = [];
+for (const claim of versionClaims) {
+  const content = readFileSync(join(ROOT, claim.file), 'utf8');
+  const found = content.match(claim.re);
+  if (!found) {
+    versionErrors.push(`${claim.label} not found — the version line was removed or reworded`);
+  } else if (found[1] !== pkgVersion) {
+    versionErrors.push(`${claim.label} says ${found[1]}, package.json says ${pkgVersion}`);
+  }
+}
+
+if (versionErrors.length > 0) {
+  console.error('\nFAIL: version claims out of sync:\n');
+  for (const e of versionErrors) console.error(`  ${e}`);
+  console.error('');
+  process.exit(1);
+}
+console.log(`OK: version claims match package.json (${pkgVersion}).`);

@@ -258,9 +258,18 @@ backend, no frontend.
 
 ## Migration notes
 
-**Current release: 4.0.0.** Jumping from any pre-4 version involves breaking
-renames with no aliases. See [`CHANGELOG.md`](./CHANGELOG.md#400---2026-04-17)
-for the complete migration table.
+**Current release: 5.1.1.** See [`CHANGELOG.md`](./CHANGELOG.md) for the
+complete migration tables.
+
+**5.0.0 — the one breaking change that matters.** In multi-tenant mode
+(`BLOOM_DB_TENANT` enabled) `databaseClass.get()` now THROWS rather than
+returning an unscoped client. Use `database.tenant(req, db => ...)` for
+request-scoped queries and `database.bypass('reason', db => ...)` for
+deliberate cross-tenant access. **Single-tenant apps are unaffected** —
+with `BLOOM_DB_TENANT` unset or `false`, `get()` behaves exactly as in 4.x.
+
+Upgrading a multi-tenant app will surface every call site that was silently
+unscoped. That is the point of the major, not a side effect.
 
 Headline renames you will hit:
 - **From 1.5.x or earlier:** `auth.user()` → `auth.getUser(req)`,
@@ -271,7 +280,10 @@ Headline renames you will hit:
 - **Error handling:** every typed error now extends `AppKitError`
   (`import { AppKitError } from '@bloomneo/appkit'`) so `catch (err) { if (err instanceof AppKitError) ... }` matches every module.
 
-After 4.0.0 the API is stable. Any further breaking rename requires a new major.
+Everything added in 4.1 → 5.1 is additive: `mcpClass`, `verifyClass`, matrix
+mode (`BLOOM_AUTH_SCOPES` + `BLOOM_AUTH_TIERS`), `tenantId`/`clientId` token
+claims, `auth.scopedWhere()`, `auth.maskPII()`, and `queue.repeat()`. None
+requires a change to existing code.
 
 ## Where to look next
 

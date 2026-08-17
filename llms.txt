@@ -1,4 +1,4 @@
-# @bloomneo/appkit v5.1.0 — full reference
+# @bloomneo/appkit v5.1.1 — full reference
 
 > Machine-readable API reference for AI coding agents.
 > For **rules** (what to always/never do), read [`AGENTS.md`](./AGENTS.md) in this directory first.

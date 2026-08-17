@@ -93,7 +93,7 @@ the most common first-run stumbles, so do them up front:
 {
   "type": "module",
   "dependencies": {
-    "@bloomneo/appkit": "^5.1.0",
+    "@bloomneo/appkit": "^5.1.1",
     "dotenv": "^16.0.0",
     "express": "^5.0.0"
   }
@@ -258,7 +258,7 @@ myproject/
 
 ## 🏗️ Migration
 
-**Current release: 4.0.0.** The full, canonical migration table lives in
+**Current release: 5.1.1.** The full, canonical migration table lives in
 [`CHANGELOG.md`](./CHANGELOG.md#400---2026-04-17) — run that project-wide
 find-and-replace and your code works.
 
