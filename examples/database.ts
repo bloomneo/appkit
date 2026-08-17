@@ -8,10 +8,16 @@
  *   • mongodb://                    → Mongoose
  *
  * Multi-tenancy (optional):
- *   Set BLOOM_DB_TENANT=auto, then every databaseClass.get(req) call
- *   auto-filters by tenant_id detected from the request:
- *     x-tenant-id header → req.user.tenant_id → req.params.tenantId →
+ *   Set BLOOM_DB_TENANT=auto and the tenant is resolved from the request:
+ *     x-tenant-id header → req.user.tenantId → req.params.tenantId →
  *     req.query.tenant → subdomain.
+ *
+ *   In that mode databaseClass.get() THROWS rather than returning an unscoped
+ *   client (5.0). Use instead:
+ *     await databaseClass.tenant(req, (db) => db.order.findMany())
+ *     await databaseClass.bypass('platform report', (db) => db.firm.findMany())
+ *
+ *   Single-tenant apps leave BLOOM_DB_TENANT unset and keep using get().
  *
  * Multi-org (optional):
  *   Per-org databases via ORG_<NAME> env vars, or a {org} placeholder in

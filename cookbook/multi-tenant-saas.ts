@@ -5,13 +5,22 @@
  * Required:   BLOOM_AUTH_SECRET, DATABASE_URL, BLOOM_DB_TENANT=auto
  * Optional:   REDIS_URL, ORG_<NAME>=... per-org URLs
  *
- * How databaseClass detects tenant/org from the request:
+ * How databaseClass resolves tenant/org from the request:
  *   org:    x-org-id header → req.user.org_id → req.params.orgId → ?org=
- *   tenant: x-tenant-id header → req.user.tenant_id → req.params.tenantId → ?tenant=
+ *   tenant: x-tenant-id header → req.user.tenantId → req.params.tenantId → ?tenant=
  *
- * databaseClass.get(req) applies row-level filtering automatically when
- * BLOOM_DB_TENANT is set. databaseClass.getTenants(req) skips the filter
- * (admin view).
+ * 5.0: with BLOOM_DB_TENANT enabled, databaseClass.get() THROWS when no tenant
+ * resolves rather than returning an unscoped client. Use:
+ *
+ *   database.tenant(req, fn)      — scoped; the normal path
+ *   database.bypass(reason, fn)   — deliberate cross-tenant, mandatory reason
+ *
+ * `grep -rn "bypass(" src/` is then the complete list of cross-tenant reads in
+ * the app. That enumerability is the whole point — before 5.0 a call that
+ * failed to resolve a tenant silently returned every row.
+ *
+ * Put the claim in the token at login so tenant() can resolve it:
+ *   auth.generateLoginToken({ userId, role, level, tenantId: user.firmId })
  *
  * Caches are namespaced per (orgId|tenantId) so keys never cross tenants.
  */
@@ -34,8 +43,8 @@ router.use(auth.requireLoginToken());
 // Derive a cache namespace from the authenticated user context.
 function cacheFor(req: any) {
   const user = auth.getUser(req);
-  const org    = user?.org_id    ?? 'default';
-  const tenant = user?.tenant_id ?? 'shared';
+  const org    = user?.org_id   ?? 'default';
+  const tenant = user?.tenantId ?? 'shared';
   // Namespaces allow only [a-zA-Z0-9_-]
   return cacheClass.get(`app-${org}-${tenant}`);
 }
@@ -47,12 +56,14 @@ router.get(
     const cache = cacheFor(req);
 
     const data = await cache.getOrSet('dashboard:summary', async () => {
-      const db: any = await databaseClass.get(req);                 // tenant-filtered
-      const [users, invoices] = await Promise.all([
-        db.user.count(),
-        db.invoice.aggregate({ _sum: { amountCents: true } }),
-      ]);
-      return { users, revenueCents: invoices._sum.amountCents ?? 0 };
+      // Scoped: every query inside the callback is filtered to this tenant.
+      return databaseClass.tenant(req, async (db: any) => {
+        const [users, invoices] = await Promise.all([
+          db.user.count(),
+          db.invoice.aggregate({ _sum: { amountCents: true } }),
+        ]);
+        return { users, revenueCents: invoices._sum.amountCents ?? 0 };
+      });
     }, 60);
 
     res.json(data);
@@ -67,12 +78,14 @@ router.get(
     const user = auth.getUser(req as any);
     if (!user?.org_id) throw errorClass.forbidden('Missing org context');
 
-    // Org-scoped, no tenant filter — admin sees every tenant's data.
-    const adminDb = await databaseClass.org(user.org_id).getTenants(req);
-    const tenants = await databaseClass.list(req);
+    // Cross-tenant BY DESIGN — so it says so, in a form you can grep for.
+    const tenants = await databaseClass.bypass(
+      `org admin listing tenants for ${user.org_id}`,
+      async () => databaseClass.list(req),
+    );
     logger.info('admin listing tenants', { org: user.org_id, count: tenants.length });
 
-    res.json({ tenants, adminConnected: Boolean(adminDb) });
+    res.json({ tenants });
   }),
 );
 

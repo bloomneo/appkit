@@ -13,7 +13,7 @@
  * the correct replacement for the error message.
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -171,6 +171,19 @@ for (const doc of AGENT_DOCS) {
   }
 }
 
+// Skills are shipped teaching material and are what agents actually reach for,
+// so a module without one is effectively undiscoverable. `mcpClass` and
+// `verifyClass` both shipped before this check existed, and the database skill
+// documented three methods that never existed — the checks below catch the
+// first failure; the second is caught by the per-skill audit in CI.
+for (const cls of exportedClasses) {
+  const moduleName = cls.replace(/Class$/, '');
+  const skillPath = join(ROOT, '.claude/skills', `appkit-${moduleName}`, 'SKILL.md');
+  if (!existsSync(skillPath)) {
+    missing.push(`.claude/skills/appkit-${moduleName}/SKILL.md does not exist`);
+  }
+}
+
 if (missing.length > 0) {
   console.error('\nFAIL: public API missing from the agent-facing docs:\n');
   for (const m of missing) console.error(`  ${m}`);
@@ -180,4 +193,4 @@ if (missing.length > 0) {
   );
   process.exit(1);
 }
-console.log(`OK: all ${exportedClasses.length} modules documented in ${AGENT_DOCS.join(' + ')}.`);
+console.log(`OK: all ${exportedClasses.length} modules documented in ${AGENT_DOCS.join(' + ')} + skills.`);

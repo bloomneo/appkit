@@ -2,6 +2,60 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [5.1.1] - 2026-08-17
+
+A documentation-and-teaching-material audit. The code was already correct;
+what shipped alongside it was not.
+
+### Fixed — the anti-hallucination skill contained hallucinated API
+
+`.claude/skills/appkit-database/SKILL.md` documented three methods in its
+Public API block that **have never existed**: `databaseClass.reset()`,
+`databaseClass.getProvider()` and `databaseClass.getActiveTenantIds()`.
+
+Hallucinated API inside the artefact whose entire job is preventing
+hallucination is the worst possible place for it — an agent trusts a skill
+more than it trusts itself.
+
+### Fixed — teaching material still taught the pre-5.0 database pattern
+
+`cookbook/multi-tenant-saas.ts`, `examples/database.ts` and the database skill
+all showed `databaseClass.get(req)` for tenant data, which now throws, and the
+pre-4.2 `req.user.tenant_id` claim instead of `tenantId`. These are the
+most-read files for exactly the use case 5.0 changed.
+
+### Added — skills and examples for the two newest modules
+
+`appkit-mcp` and `appkit-verify` skills, plus `examples/mcp.ts` and
+`examples/verify.ts`. Both modules shipped with neither. The original uikit
+review established that agents don't use what they can't find, so a module
+without a skill is effectively a module nobody calls.
+
+### Added — `npm run check:skills`, wired into `npm test`
+
+Fails when a skill's Public API block claims a method the built module doesn't
+export. Only fenced code under `## Public API` is scanned: "Common mistakes"
+sections legitimately name removed methods, and flagging those trains people
+to ignore the check.
+
+Verified in both directions — it passes clean, and catches an injected fake.
+
+### Added — doc-coverage gate now requires a skill per module
+
+`check-doc-drift.ts` already required every exported `xxxClass` to appear in
+`llms.txt` and `AGENTS.md`. It now also requires a matching
+`.claude/skills/appkit-<module>/SKILL.md`.
+
+### Docs
+
+`.env.example` gains `BLOOM_AUTH_SCOPES` / `BLOOM_AUTH_TIERS` (matrix mode) and
+the five `BLOOM_MCP_*` vars, plus a note that `BLOOM_DB_TENANT` changes what
+`get()` does. README corrected: 14 examples, 14 skills, `^5.1.0` in the sample
+`package.json`.
+
+Suite: 780 passing, unchanged — this release fixed what ships beside the code,
+not the code.
+
 ## [5.1.0] - 2026-08-17
 
 Closes the last three items on the roadmap. Nothing breaking.

@@ -44,9 +44,9 @@ Five locations at the package root tell agents everything they need to know:
 |---|---|
 | **[`AGENTS.md`](./AGENTS.md)** | Rules: always-do, never-do, canonical patterns. Read first. |
 | **[`llms.txt`](./llms.txt)** | Reference: every export, every method, signatures + examples. |
-| **[`examples/`](./examples)** | 12 minimal `.ts` files, one per module. Copy and modify. |
+| **[`examples/`](./examples)** | 14 minimal `.ts` files, one per module. Copy and modify. |
 | **[`cookbook/`](./cookbook)** | Composed recipes for whole patterns (CRUD, multi-tenant, file upload, real-time). |
-| **[`.claude/skills/`](./.claude/skills)** | Claude Code skills — one `appkit` overview + one per module (`appkit-auth`, `appkit-cache`, `appkit-config`, `appkit-database`, `appkit-email`, `appkit-error`, `appkit-event`, `appkit-logger`, `appkit-queue`, `appkit-security`, `appkit-storage`, `appkit-util`). Auto-trigger when agents work on code that imports this package. Copy the directory into your own repo's `.claude/skills/` to activate. |
+| **[`.claude/skills/`](./.claude/skills)** | Claude Code skills — one `appkit` overview + one per module (`appkit-auth`, `appkit-cache`, `appkit-config`, `appkit-database`, `appkit-email`, `appkit-error`, `appkit-event`, `appkit-logger`, `appkit-mcp`, `appkit-queue`, `appkit-security`, `appkit-storage`, `appkit-util`, `appkit-verify`). Auto-trigger when agents work on code that imports this package. Copy the directory into your own repo's `.claude/skills/` to activate. |
 
 All of the above ship inside the npm tarball. AI agents installing `@bloomneo/appkit`
 can read them directly from `node_modules/@bloomneo/appkit/`.
@@ -93,7 +93,7 @@ the most common first-run stumbles, so do them up front:
 {
   "type": "module",
   "dependencies": {
-    "@bloomneo/appkit": "^4.0.0",
+    "@bloomneo/appkit": "^5.1.0",
     "dotenv": "^16.0.0",
     "express": "^5.0.0"
   }
