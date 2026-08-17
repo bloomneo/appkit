@@ -57,6 +57,7 @@ const EXPECTED_FLAT_EXPORTS = [
   'securityClass',
   'storageClass',
   'utilClass',
+  'verifyClass',
 ] as const;
 
 describe('Flat entry — @bloomneo/appkit', () => {

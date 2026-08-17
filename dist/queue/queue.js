@@ -13,6 +13,12 @@ import { RedisTransport } from './transports/redis.js';
 import { DatabaseTransport } from './transports/database.js';
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 /**
+ * Marker carried in a repeating job's payload. The continuation travels with
+ * the job rather than living in process memory, so on a durable transport the
+ * series survives a restart.
+ */
+const REPEAT_KEY = '__appkitRepeat';
+/**
  * Core queuing class with automatic transport management
  */
 export class QueueClass {
@@ -20,6 +26,8 @@ export class QueueClass {
     transport;
     transportType;
     isClosing = false;
+    /** Job types with an active repeat series. cancelRepeat() removes one. */
+    repeating = new Set();
     constructor(config) {
         this.config = config;
         this.transportType = config.transport;
@@ -108,6 +116,57 @@ export class QueueClass {
         catch (error) {
             throw new Error(`[@bloomneo/appkit/queue] Failed to register processor for ${jobType}: ${error.message}. See: ${DOCS_URL}#common-issues`);
         }
+    }
+    /**
+     * Run a job on a repeating interval.
+     *
+     * Durability equals the transport's durability: on Redis or Database the
+     * next occurrence is a real scheduled job that survives a restart, because
+     * the continuation travels in the payload rather than in process memory.
+     * On the memory transport it dies with the process — the same as
+     * setInterval, which is what this replaces.
+     *
+     * The next occurrence is scheduled **before** the handler runs, not after.
+     * Re-scheduling afterwards means a crash mid-handler silently ends the
+     * series, and a recurring job that quietly stops is worse than one that
+     * never started.
+     *
+     * ```ts
+     * await queue.repeat('nightly-report', { scope: 'all' }, 24 * 60 * 60 * 1000);
+     * queue.process('nightly-report', async (data) => { ... });
+     * ```
+     *
+     * @llm-rule WHEN: Recurring work — digests, cleanups, polling
+     * @llm-rule AVOID: setInterval - it dies with the process and never survives a deploy
+     * @llm-rule NOTE: Use cancelRepeat(jobType) to stop the series
+     */
+    async repeat(jobType, data, everyMs, options = {}) {
+        this.validateJobType(jobType);
+        this.validateJobData(data);
+        if (typeof everyMs !== 'number' || !Number.isFinite(everyMs) || everyMs < 1000) {
+            throw new Error(`[@bloomneo/appkit/queue] repeat() interval must be at least 1000ms, got ${everyMs}. See: ${DOCS_URL}#common-issues`);
+        }
+        this.repeating.add(jobType);
+        const payload = {
+            ...data,
+            [REPEAT_KEY]: { everyMs },
+        };
+        return this.schedule(jobType, payload, options.startDelay ?? everyMs);
+    }
+    /**
+     * Stop a repeating series. The occurrence already scheduled still runs; it
+     * simply doesn't enqueue a successor.
+     *
+     * @llm-rule WHEN: Turning off recurring work without redeploying
+     * @llm-rule AVOID: Assuming it cancels the in-flight occurrence - it does not
+     */
+    cancelRepeat(jobType) {
+        this.validateJobType(jobType);
+        this.repeating.delete(jobType);
+    }
+    /** Job types currently set to repeat, for health checks. */
+    getRepeating() {
+        return [...this.repeating];
     }
     /**
      * Schedule job for future execution
@@ -295,6 +354,23 @@ export class QueueClass {
      */
     wrapHandler(handler, timeoutMs = 30_000, jobType = 'unknown') {
         return async (data) => {
+            // Enqueue the NEXT occurrence before doing any work. Re-scheduling after
+            // the handler means a crash mid-handler silently ends the series, and a
+            // recurring job that quietly stops is worse than one that never started.
+            // A duplicate on crash-after-schedule is recoverable; a stall is not.
+            const repeat = data?.[REPEAT_KEY];
+            if (repeat && this.repeating.has(jobType) && !this.isClosing) {
+                try {
+                    await this.schedule(jobType, data, repeat.everyMs);
+                }
+                catch (error) {
+                    // Never let a scheduling failure swallow the occurrence that is
+                    // already in hand — run it, and let the transport's retry surface
+                    // the problem.
+                    console.warn(`[@bloomneo/appkit/queue] Could not schedule the next "${jobType}" occurrence: ` +
+                        `${error.message}. See: ${DOCS_URL}#common-issues`);
+                }
+            }
             // Race the handler against a timeout. 0 = opt-out; no timeout applied.
             if (timeoutMs <= 0) {
                 return await handler(data);

@@ -1,4 +1,4 @@
-# @bloomneo/appkit v4.2.0 — full reference
+# @bloomneo/appkit v5.1.0 — full reference
 
 > Machine-readable API reference for AI coding agents.
 > For **rules** (what to always/never do), read [`AGENTS.md`](./AGENTS.md) in this directory first.
@@ -29,6 +29,7 @@ import {
   securityClass,
   utilClass,
   mcpClass,
+  verifyClass,
 } from '@bloomneo/appkit';
 
 // 4. Get instances at module scope (NEVER inside route handlers)
@@ -684,6 +685,55 @@ MCP tools run outside the HTTP request path, so any middleware that establishes
 tenant context never ran. Under Postgres `FORCE ROW LEVEL SECURITY` a write is
 refused; a non-forcing dev database silently passes. Establish the context
 explicitly inside the tool.
+
+---
+
+## Module 14 — Verify (`@bloomneo/appkit/verify`)
+
+Proves a multi-tenant app doesn't leak across tenants by generating the
+cross-tenant attack matrix from the app itself. Drives a RUNNING server.
+
+```ts
+import { verifyClass } from '@bloomneo/appkit/verify';
+
+const report = await verifyClass.get().run({
+  baseUrl: 'http://localhost:3000',
+  identities: [
+    { label: 'firm-a', email: 'owner@a.test', password: 'pw' },
+    { label: 'firm-b', email: 'owner@b.test', password: 'pw' },
+    { label: 'platform', email: 'admin@x.test', password: 'pw', crossTenant: true },
+  ],
+});
+
+console.log(verifyClass.get().format(report));
+if (!report.ok) process.exit(1);
+```
+
+Ids are **discovered, not declared**: it logs in as each identity, asks the
+FBCA api-router at `/api` which features exist, harvests the ids each identity
+can legitimately see, then replays every id against every other identity
+(GET / PATCH / DELETE) and flags anything that isn't a 404. No per-app
+manifest of routes or fixtures — add a feature and it is covered next run.
+
+| Finding | Meaning |
+|---|---|
+| `cross-tenant-read` | GET on another tenant's id returned 200 |
+| `cross-tenant-write` | PATCH reached another tenant's row |
+| `cross-tenant-delete` | DELETE removed another tenant's row |
+| `unauthenticated-read` | Endpoint returned 200 with no credentials |
+
+**A skip is never a pass.** `report.ok` is true only when checks actually ran
+AND nothing was skipped; an incomplete run reports INCONCLUSIVE and fails.
+A green gate on an app the verifier never reached is worse than no gate.
+
+Issues writes and deletes — run it against a seeded test database, never
+production.
+
+```ts
+verifyClass.get().run(options): Promise<VerifyReport>
+verifyClass.get().format(report): string
+verifyClass.reset() / verifyClass.disconnectAll()
+```
 
 ---
 

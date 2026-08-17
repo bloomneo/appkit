@@ -79,6 +79,9 @@ export { utilClass } from './util/index.js';
 /** MCP server — exposes your app's features to AI agents as callable tools. */
 export { mcpClass } from './mcp/index.js';
 
+/** Tenant-isolation verifier — proves an app does not leak across tenants. */
+export { verifyClass } from './verify/index.js';
+
 // Unified error types — every typed error below extends AppKitError, so
 // consumers can `catch (err) { if (err instanceof AppKitError) ... }` once
 // and match anything thrown from any module.

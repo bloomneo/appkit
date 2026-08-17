@@ -48,6 +48,8 @@ export { storageClass } from './storage/index.js';
 export { utilClass } from './util/index.js';
 /** MCP server — exposes your app's features to AI agents as callable tools. */
 export { mcpClass } from './mcp/index.js';
+/** Tenant-isolation verifier — proves an app does not leak across tenants. */
+export { verifyClass } from './verify/index.js';
 export { AppKitError } from './util/errors.js';
 export { TokenError } from './auth/auth.js';
 export { CacheError } from './cache/cache.js';

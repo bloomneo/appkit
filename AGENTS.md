@@ -7,7 +7,7 @@
 
 ## What this package is
 
-`@bloomneo/appkit` is a Node.js backend toolkit with **13 integrated modules**
+`@bloomneo/appkit` is a Node.js backend toolkit with **14 integrated modules**
 that share one canonical pattern: every module exports a `xxxClass` namespace
 object with a `.get()` factory. There is exactly one way to obtain each module
 and exactly one way to use it.
@@ -42,7 +42,7 @@ Both work. The subpath form is unusual for AppKit (most users want
 multiple modules in the same file) but it tree-shakes slightly better.
 **Don't mix the two styles in the same file.**
 
-## The 13 modules at a glance
+## The 14 modules at a glance
 
 | Module | Import | Purpose |
 |---|---|---|
@@ -59,6 +59,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | `configClass` | `from '@bloomneo/appkit/config'` | Environment-driven config |
 | `utilClass` | `from '@bloomneo/appkit/util'` | Safe property access, debounce, chunk |
 | `mcpClass` | `from '@bloomneo/appkit/mcp'` | Your app as an MCP server for AI agents |
+| `verifyClass` | `from '@bloomneo/appkit/verify'` | Proves the app doesn't leak across tenants |
 
 For full method signatures and examples, read `llms.txt` in this same directory.
 
@@ -170,6 +171,10 @@ per-route workaround.
 - `auth.roleParts()` / `requireTier()` / `requireScope()` only work in matrix mode.
 - Put `tenantId` in the token at login; read it back with `auth.scopedWhere(req)`.
 - Mask personal data for non-admins: `if (!auth.canSeePII(user)) auth.maskPII(v, { as: 'email' })`.
+- **Gate CI on `verifyClass`.** It generates the cross-tenant attack matrix
+  from the app itself — no per-endpoint tests to write. `report.ok` is true
+  only when checks ran and nothing was skipped, so an incomplete run fails
+  rather than going green.
 
 ## MCP — exposing your app to AI agents
 

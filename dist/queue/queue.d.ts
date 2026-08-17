@@ -34,6 +34,8 @@ export declare class QueueClass implements Queue {
     private transport;
     private transportType;
     private isClosing;
+    /** Job types with an active repeat series. cancelRepeat() removes one. */
+    private repeating;
     constructor(config: QueueConfig);
     /**
      * Initialize transport based on configuration
@@ -53,6 +55,42 @@ export declare class QueueClass implements Queue {
      * @llm-rule AVOID: Multiple processors for same job type - causes conflicts
      */
     process<T = JobData>(jobType: string, handler: JobHandler<T>, options?: ProcessOptions): void;
+    /**
+     * Run a job on a repeating interval.
+     *
+     * Durability equals the transport's durability: on Redis or Database the
+     * next occurrence is a real scheduled job that survives a restart, because
+     * the continuation travels in the payload rather than in process memory.
+     * On the memory transport it dies with the process — the same as
+     * setInterval, which is what this replaces.
+     *
+     * The next occurrence is scheduled **before** the handler runs, not after.
+     * Re-scheduling afterwards means a crash mid-handler silently ends the
+     * series, and a recurring job that quietly stops is worse than one that
+     * never started.
+     *
+     * ```ts
+     * await queue.repeat('nightly-report', { scope: 'all' }, 24 * 60 * 60 * 1000);
+     * queue.process('nightly-report', async (data) => { ... });
+     * ```
+     *
+     * @llm-rule WHEN: Recurring work — digests, cleanups, polling
+     * @llm-rule AVOID: setInterval - it dies with the process and never survives a deploy
+     * @llm-rule NOTE: Use cancelRepeat(jobType) to stop the series
+     */
+    repeat<T = JobData>(jobType: string, data: T, everyMs: number, options?: {
+        startDelay?: number;
+    }): Promise<string>;
+    /**
+     * Stop a repeating series. The occurrence already scheduled still runs; it
+     * simply doesn't enqueue a successor.
+     *
+     * @llm-rule WHEN: Turning off recurring work without redeploying
+     * @llm-rule AVOID: Assuming it cancels the in-flight occurrence - it does not
+     */
+    cancelRepeat(jobType: string): void;
+    /** Job types currently set to repeat, for health checks. */
+    getRepeating(): string[];
     /**
      * Schedule job for future execution
      * @llm-rule WHEN: Need to delay job execution (reminders, notifications, etc.)

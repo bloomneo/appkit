@@ -7,7 +7,7 @@
 
 > Minimal, framework-agnostic Node.js toolkit designed for AI agentic backend development.
 
-**12 integrated modules. One pattern. Zero config to start, enterprise scaling on demand.**
+**14 integrated modules. One pattern. Zero config to start, enterprise scaling on demand.**
 
 ```ts
 import { authClass, databaseClass, errorClass, loggerClass } from '@bloomneo/appkit';
@@ -175,7 +175,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 
 ---
 
-## 🎭 The 13 modules
+## 🎭 The 14 modules
 
 | # | Module | Purpose | Auto-scales |
 |---|---|---|---|
@@ -192,6 +192,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 11 | **Config** | Type-safe env var access | — |
 | 12 | **Util** | Safe property access, debounce, chunk, uuid, slugify | — |
 | 13 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery | optional peers |
+| 14 | **Verify** | Generates the cross-tenant attack matrix and fails CI on a leak | — |
 
 For full method signatures and per-module examples, read [`llms.txt`](./llms.txt).
 

@@ -68,6 +68,14 @@ export interface Queue {
   add<T = JobData>(jobType: string, data: T, options?: JobOptions): Promise<string>;
   process<T = JobData>(jobType: string, handler: JobHandler<T>, options?: ProcessOptions): void;
   schedule<T = JobData>(jobType: string, data: T, delay: number): Promise<string>;
+  repeat<T = JobData>(
+    jobType: string,
+    data: T,
+    everyMs: number,
+    options?: { startDelay?: number },
+  ): Promise<string>;
+  cancelRepeat(jobType: string): void;
+  getRepeating(): string[];
   pause(jobType?: string): Promise<void>;
   resume(jobType?: string): Promise<void>;
   getStats(jobType?: string): Promise<QueueStats>;

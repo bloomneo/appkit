@@ -193,3 +193,80 @@ describe('shared env vars are validated only when used (regression — 4.2.1)', 
     });
   });
 });
+
+describe('repeat() — recurring jobs (5.1)', () => {
+  // midhuna hand-rolled setInterval for recurring work with no cron library.
+  // setInterval dies with the process, so every deploy silently stops the
+  // series. The continuation here travels in the job payload instead, so on a
+  // durable transport it survives a restart.
+  afterEach(async () => {
+    await queueClass.disconnectAll();
+  });
+
+  it('rejects an interval below 1s', async () => {
+    const q = queueClass.get();
+    await expect(q.repeat('too-fast', {}, 999)).rejects.toThrow(/at least 1000ms/);
+    await expect(q.repeat('nan', {}, Number.NaN)).rejects.toThrow(/at least 1000ms/);
+  });
+
+  it('registers a series and reports it', async () => {
+    const q = queueClass.get();
+    await q.repeat('nightly', { scope: 'all' }, 60_000);
+    expect(q.getRepeating()).toContain('nightly');
+  });
+
+  it('cancelRepeat stops the series', async () => {
+    const q = queueClass.get();
+    await q.repeat('hourly', {}, 60_000);
+    q.cancelRepeat('hourly');
+    expect(q.getRepeating()).not.toContain('hourly');
+  });
+
+  it('schedules the NEXT occurrence before running the handler, not after', async () => {
+    // Re-scheduling after the handler means a crash mid-handler silently ends
+    // the series. This asserts the ordering directly: the successor must
+    // already be queued at the moment the handler body runs.
+    const q = queueClass.get();
+    const order: string[] = [];
+    const originalSchedule = q.schedule.bind(q);
+    (q as any).schedule = async (...args: any[]) => {
+      order.push('scheduled');
+      return originalSchedule(...(args as [string, any, number]));
+    };
+
+    await q.repeat('tick', { n: 1 }, 1000, { startDelay: 1000 });
+    order.length = 0; // drop the initial enqueue
+
+    let sawScheduleBeforeHandler = false;
+    q.process('tick', async () => {
+      sawScheduleBeforeHandler = order.includes('scheduled');
+      order.push('handled');
+    });
+
+    await new Promise((r) => setTimeout(r, 1400));
+    expect(sawScheduleBeforeHandler).toBe(true);
+    q.cancelRepeat('tick');
+  });
+
+  it('a handler that throws does not end the series', async () => {
+    const q = queueClass.get();
+    let runs = 0;
+    await q.repeat('flaky', {}, 1000, { startDelay: 1000 });
+    q.process('flaky', async () => {
+      runs++;
+      throw new Error('boom');
+    });
+    await new Promise((r) => setTimeout(r, 2400));
+    q.cancelRepeat('flaky');
+    // The successor was enqueued before the throw, so the chain continued.
+    expect(runs).toBeGreaterThan(1);
+  });
+
+  it('a cancelled series stops enqueuing successors', async () => {
+    const q = queueClass.get();
+    await q.repeat('short-lived', {}, 1000, { startDelay: 1000 });
+    q.process('short-lived', async () => { q.cancelRepeat('short-lived'); });
+    await new Promise((r) => setTimeout(r, 2400));
+    expect(q.getRepeating()).not.toContain('short-lived');
+  });
+});

@@ -2,6 +2,85 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [5.1.0] - 2026-08-17
+
+Closes the last three items on the roadmap. Nothing breaking.
+
+### Added — `verifyClass`, a 14th module: prove the app doesn't leak
+
+```ts
+const report = await verifyClass.get().run({
+  baseUrl: 'http://localhost:3000',
+  identities: [
+    { label: 'firm-a', email: 'owner@a.test', password: 'pw' },
+    { label: 'firm-b', email: 'owner@b.test', password: 'pw' },
+  ],
+});
+if (!report.ok) process.exit(1);
+```
+
+Ids are **discovered, not declared**. It logs in as each identity, asks the
+FBCA api-router which features exist, harvests the ids each identity can
+legitimately see, then replays every id against every other identity —
+GET / PATCH / DELETE — and flags anything that isn't a 404. No per-app
+manifest of routes, fixtures or response shapes. Add a feature, and it is
+covered on the next run.
+
+**This was the unproven assumption in the whole plan** — whether such a thing
+generates or merely templates. It was tested against the LedgerLite benchmark
+apps: a clean run auto-discovered 4 endpoints, harvested 16 ids and made 40
+checks with zero configuration. Then the tenant filter was deliberately
+removed from one `findFirst` — the exact defect a production audit found in
+4 of 44 route files — and it reported 4 cross-tenant writes naming actor,
+victim, method and path.
+
+**A skip is never a pass.** `report.ok` requires that checks actually ran and
+nothing was skipped. A CI gate going green on an app the verifier never
+reached is worse than no gate, so an incomplete run reports INCONCLUSIVE and
+fails. (Caught during development: the plain-Express arm returned 0 checks
+and `ok: true`.)
+
+### Added — `queue.repeat()` for recurring jobs
+
+```ts
+await queue.repeat('nightly-report', { scope: 'all' }, 24 * 60 * 60 * 1000);
+queue.cancelRepeat('nightly-report');
+```
+
+The continuation travels in the job payload, so on Redis or Database the
+series survives a restart — which is the whole point over `setInterval`, and
+what a production app hand-rolled with no cron library.
+
+The next occurrence is scheduled **before** the handler runs. Re-scheduling
+afterwards means a crash mid-handler silently ends the series, and a
+recurring job that quietly stops is worse than one that never started. A
+duplicate on crash-after-schedule is recoverable; a stall is not. Tested
+directly, including that a throwing handler doesn't break the chain.
+
+### Added — integration gates: every module claim exercised for real
+
+`npm run test:integration` runs cache, queue and event against real Redis,
+database against real Postgres, and storage against a real bucket. CI
+supplies the services.
+
+These exist because `appkit-database` advertised SQLite support that could
+never have worked and nobody noticed — nothing ever ran it. Each suite skips
+**loudly** when its service is absent, printing `UNVERIFIED`, so a missing
+service is never mistaken for a passing claim.
+
+Includes a regression gate for the SQLite claim itself, and one asserting
+`cache.getOrSet` coalesces concurrent misses — the property a production app
+hand-rolled an entire TTL cache to get, not knowing appkit already had it.
+
+### Docs
+
+`llms.txt` gains Module 14, AGENTS.md gains the verify rule and a 14-module
+table, README updated. The bidirectional doc-coverage gate caught
+`verifyClass` before it could ship undocumented — the second time it has
+earned its keep.
+
+Suite: 752 → 780 passing, plus 8 integration gates.
+
 ## [5.0.0] - 2026-08-16
 
 One breaking change, and it is the whole release: **in multi-tenant mode the
