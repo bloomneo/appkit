@@ -505,11 +505,29 @@ export class PrismaAdapter {
       '@prisma/client', // Global fallback
     ];
 
+    /*
+     * This is a PROBE, not a sequence of operations that must each succeed.
+     *
+     * It used to print
+     *     ❌ [@bloomneo/appkit/database] Failed to load Prisma client at: <path>
+     * for every candidate that missed, then find the client on a later one and
+     * carry on perfectly happily. A completely healthy app therefore opened
+     * with three red failure lines about its database.
+     *
+     * For anyone reading the log to find out why something broke — and for an
+     * agent especially, which cannot discount a scary line by familiarity —
+     * that is worse than silence: it manufactures a false lead at the exact
+     * moment someone is looking for a true one.
+     *
+     * A failed candidate is not news. Only failing them ALL is, and then the
+     * paths tried belong in the error, where they are actionable.
+     */
+    const attempted: string[] = [];
+
     for (const clientPath of fallbackPaths) {
       try {
         const module = await import(clientPath);
-        if (module.PrismaClient) { 
-         
+        if (module.PrismaClient) {
           if (this.isDevelopment) {
             console.log(`✅ [@bloomneo/appkit/database] Found Prisma client at - ${clientPath}`);
           }
@@ -518,15 +536,17 @@ export class PrismaAdapter {
         if (module.default?.PrismaClient) {
           return module.default.PrismaClient;
         }
-      } catch (error) {
-        console.log(`❌ [@bloomneo/appkit/database] Failed to load Prisma client at: ${clientPath}`);
+        attempted.push(`${clientPath} (no PrismaClient export)`);
+      } catch {
+        attempted.push(clientPath);
         continue;
       }
     }
 
     throw createDatabaseError(
       `Prisma client not found for app '${appName}'. ` +
-      `Run: cd apps/${appName} && npx prisma generate`,
+      `Run: cd apps/${appName} && npx prisma generate\n` +
+      `Tried:\n  ${attempted.join('\n  ')}`,
       500,
       null,
       'troubleshooting'

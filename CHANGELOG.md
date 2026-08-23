@@ -2,6 +2,37 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [5.1.2] - 2026-08-23
+
+### Fixed
+
+- **`minimal` logger scope discarded the metadata object entirely.** It is the
+  default scope, so `logger.info('Customer created', { customerId, slug })`
+  printed `Customer created` and dropped the two facts that made the line worth
+  writing. Across a real app that was ~110 call sites whose arguments never
+  reached the log, with nothing to tell the author.
+
+  Metadata now renders as compact `key=value` pairs on the same line —
+  `Customer created customerId=12 slug=acme [customers]`. Boilerplate that
+  repeats every line (service, version, environment) is excluded, values are
+  truncated, and the tail is capped so one oversized object cannot swamp the
+  line. `full` scope is unchanged.
+
+- **The Prisma client probe logged a failure for every candidate path it
+  tried.** Loading walks a list of five locations until one works; each miss
+  printed `❌ Failed to load Prisma client at: <path>`, so a perfectly healthy
+  app opened with three red database errors. A failed candidate is not news —
+  only failing them all is, and the paths tried now appear in that error, where
+  they are actionable.
+
+- **The env-var format check warned about the OS's own variables.** The named
+  allowlist could not keep up with what a platform injects, so macOS produced
+  three warnings a boot about `MallocNanoZone`, `OSLogRateLimit` and
+  `NoDefaultCurrentDirectoryInExePath` — names the developer never set and
+  cannot rename. Those follow a convention (CamelCase, no underscores) that a
+  real mistake in an app's own `.env` does not; `api_key` and `myApiKey` still
+  warn.
+
 ## [5.1.1] - 2026-08-17
 
 A documentation-and-teaching-material audit. The code was already correct;

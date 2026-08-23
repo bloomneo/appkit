@@ -40,10 +40,30 @@ export declare class ConsoleTransport implements Transport {
     /**
      * Format for minimal mode - clean and simple, all logs visible
      * @llm-rule WHEN: Development mode with minimal scope for clean console
-     * @llm-rule AVOID: Adding JSON metadata - defeats purpose of minimal mode
+     * @llm-rule NOTE: Metadata renders as compact key=value on the same line
      * @llm-rule NOTE: Shows all logs but with clean formatting, no filtering
      */
     private formatMinimal;
+    /**
+     * Render leftover metadata as compact key=value pairs on the SAME line.
+     *
+     * Minimal mode used to drop the metadata object outright, on the reasoning
+     * that JSON blocks defeat a clean console. The blocks did — but dropping the
+     * data threw out the message's whole point along with them:
+     *
+     *     logger.info('Customer created', { customerId, slug })
+     *       before:  14:02:11 Customer created [customers]
+     *       after:   14:02:11 Customer created customerId=12 slug=acme [customers]
+     *
+     * The first tells you something happened and refuses to say what to. Across a
+     * real app that is a hundred-odd call sites whose arguments never reach the
+     * log, and the author cannot tell, because nothing reports a dropped field.
+     *
+     * Boilerplate that repeats on every line (service, version, environment) is
+     * excluded — it is context, not news. Values are truncated and the whole tail
+     * is capped, so one oversized object cannot swamp the line.
+     */
+    private formatMeta;
     /**
      * Format for pretty development mode - full detail with JSON structure
      * @llm-rule WHEN: Development mode with full scope for detailed debugging

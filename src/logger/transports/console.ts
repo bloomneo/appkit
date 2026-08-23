@@ -98,7 +98,7 @@ export class ConsoleTransport implements Transport {
   /**
    * Format for minimal mode - clean and simple, all logs visible
    * @llm-rule WHEN: Development mode with minimal scope for clean console
-   * @llm-rule AVOID: Adding JSON metadata - defeats purpose of minimal mode
+   * @llm-rule NOTE: Metadata renders as compact key=value on the same line
    * @llm-rule NOTE: Shows all logs but with clean formatting, no filtering
    */
   private formatMinimal(entry: LogEntry): string {
@@ -120,7 +120,9 @@ export class ConsoleTransport implements Transport {
     // Errors and warnings get enhanced formatting
     if (level === 'error' || level === 'warn') {
       let formatted = `${cleanTime} ${this.getLevelLabel(level)} ${message}`;
-      
+
+      formatted += this.formatMeta(entry as Record<string, any>);
+
       // Show location for errors/warnings
       if (_location) {
         formatted += ` (${_location})`;
@@ -141,7 +143,9 @@ export class ConsoleTransport implements Transport {
 
     // For info/debug logs - clean format with essential info
     let formatted = `${cleanTime} ${message}`;
-    
+
+    formatted += this.formatMeta(entry as Record<string, any>);
+
     // Add location for debugging (shows exactly where log came from)
     if (_location) {
       formatted += ` (${_location})`;
@@ -153,6 +157,60 @@ export class ConsoleTransport implements Transport {
     }
 
     return formatted;
+  }
+
+  /**
+   * Render leftover metadata as compact key=value pairs on the SAME line.
+   *
+   * Minimal mode used to drop the metadata object outright, on the reasoning
+   * that JSON blocks defeat a clean console. The blocks did — but dropping the
+   * data threw out the message's whole point along with them:
+   *
+   *     logger.info('Customer created', { customerId, slug })
+   *       before:  14:02:11 Customer created [customers]
+   *       after:   14:02:11 Customer created customerId=12 slug=acme [customers]
+   *
+   * The first tells you something happened and refuses to say what to. Across a
+   * real app that is a hundred-odd call sites whose arguments never reach the
+   * log, and the author cannot tell, because nothing reports a dropped field.
+   *
+   * Boilerplate that repeats on every line (service, version, environment) is
+   * excluded — it is context, not news. Values are truncated and the whole tail
+   * is capped, so one oversized object cannot swamp the line.
+   */
+  private formatMeta(meta: Record<string, any>): string {
+    const SKIP = new Set([
+      'service', 'version', 'environment', 'component', 'error', 'errorType',
+      '_location', 'timestamp', 'level', 'message',
+    ]);
+    const MAX_VALUE = 80;
+    const MAX_TAIL = 400;
+
+    const parts: string[] = [];
+    for (const [key, raw] of Object.entries(meta)) {
+      if (SKIP.has(key) || raw === undefined) continue;
+
+      let value: string;
+      if (raw === null) value = 'null';
+      else if (typeof raw === 'object') {
+        try {
+          value = JSON.stringify(raw);
+        } catch {
+          value = '[unserializable]';
+        }
+      } else value = String(raw);
+
+      if (value.length > MAX_VALUE) value = `${value.slice(0, MAX_VALUE)}…`;
+      // Quote only when it would otherwise break the key=value scan.
+      if (/[\s]/.test(value)) value = JSON.stringify(value);
+
+      parts.push(`${key}=${value}`);
+    }
+
+    if (parts.length === 0) return '';
+    let tail = parts.join(' ');
+    if (tail.length > MAX_TAIL) tail = `${tail.slice(0, MAX_TAIL)}…`;
+    return ` ${tail}`;
   }
 
   /**

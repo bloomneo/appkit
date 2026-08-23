@@ -158,9 +158,29 @@ function warnIfBadEnvVarFormat(envKey) {
     if (isFrameworkVariable(envKey) || isSystemVariable(envKey)) {
         return;
     }
-    if (envKey !== envKey.toUpperCase()) {
-        console.warn(`[@bloomneo/appkit/config] Environment variable "${envKey}" should be uppercase for consistency`);
-    }
+    if (envKey === envKey.toUpperCase())
+        return;
+    /*
+     * The inherited process environment is not the app's to fix.
+     *
+     * The named allowlist above cannot keep up with what an OS injects, so this
+     * warned about `MallocNanoZone`, `OSLogRateLimit` and
+     * `NoDefaultCurrentDirectoryInExePath` — three lines at every boot, on macOS,
+     * about variables the developer never set and cannot rename.
+     *
+     * Un-actionable warnings are worse than none: they are the ones that teach a
+     * reader to skip the warning column, and they cost an agent a detour into
+     * something that was never wrong.
+     *
+     * Those names share a convention — CamelCase, no underscores — that a real
+     * mistake in an app's own .env does not: that looks like `api_key` or
+     * `myApiKey`, both of which still warn.
+     */
+    const looksOsProvided = /^[A-Z][a-zA-Z0-9]*$/.test(envKey);
+    if (looksOsProvided)
+        return;
+    console.warn(`[@bloomneo/appkit/config] Environment variable "${envKey}" should be ` +
+        `UPPER_SNAKE_CASE for consistency`);
 }
 /**
  * Builds the entire configuration object from process.env
