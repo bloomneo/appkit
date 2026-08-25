@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import type { LogEntry, Transport } from '../logger.js';
 import type { LoggingConfig } from '../defaults.js';
+import { filterEssentialMeta } from './meta.js';
 
 /**
  * File transport with built-in rotation, retention and scope optimization
@@ -147,7 +148,7 @@ export class FileTransport implements Transport {
     }
 
     // Add only essential metadata
-    const essentialMeta = this.filterEssentialMeta(rest);
+    const essentialMeta = filterEssentialMeta(rest);
     if (Object.keys(essentialMeta).length > 0) {
       minimal.meta = essentialMeta;
     }
@@ -191,35 +192,6 @@ export class FileTransport implements Transport {
     }
 
     return error;
-  }
-
-  /**
-   * Filter metadata to keep only essential fields
-   * @llm-rule WHEN: Minimizing file size while preserving correlation data
-   * @llm-rule AVOID: Storing all metadata - focus on correlation and debugging fields
-   */
-  private filterEssentialMeta(meta: any): any {
-    const essential: any = {};
-
-    // Essential correlation fields
-    const essentialKeys = [
-      'traceId', 'spanId', 'sessionId', 'tenantId', 'ip'
-    ];
-
-    for (const key of essentialKeys) {
-      if (meta[key] !== undefined) {
-        essential[key] = meta[key];
-      }
-    }
-
-    // Include any field ending with 'Id' (correlation IDs)
-    for (const [key, value] of Object.entries(meta)) {
-      if (key.endsWith('Id') && !essential[key]) {
-        essential[key] = value;
-      }
-    }
-
-    return essential;
   }
 
   /**

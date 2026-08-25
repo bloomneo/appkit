@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loggerClass } from './index.js';
 import { validateEnvironment } from './defaults.js';
+import { filterEssentialMeta } from './transports/meta.js';
 
 beforeEach(async () => { await loggerClass.disconnectAll(); });
 
@@ -162,5 +163,69 @@ describe('DATABASE_URL is only the logger\'s business when it logs to a database
     withEnv({ DATABASE_URL: undefined, BLOOM_LOGGER_DATABASE: 'true' }, () => {
       expect(() => validateEnvironment()).toThrow(/DATABASE_URL not provided/);
     });
+  });
+});
+
+describe('minimal scope keeps diagnostic meta, not just IDs (regression — 5.1.3)', () => {
+  it('keeps the measurements an event-loop-lag monitor reports', () => {
+    // Found in production: the monitor collected all five of these and the file
+    // transport wrote none of them, because the old filter kept only *Id fields.
+    const kept = filterEssentialMeta({
+      lagMs: 1400,
+      rssMB: 1487,
+      heapUsedMB: 900,
+      heapTotalMB: 1100,
+      externalMB: 12,
+    });
+
+    expect(kept).toEqual({
+      lagMs: 1400,
+      rssMB: 1487,
+      heapUsedMB: 900,
+      heapTotalMB: 1100,
+      externalMB: 12,
+    });
+  });
+
+  it('still keeps correlation fields and anything ending in Id', () => {
+    const kept = filterEssentialMeta({
+      traceId: 't-1',
+      ip: '10.0.0.1',
+      orderId: 'o-9',
+      appName: 'api',
+    });
+
+    expect(kept).toEqual({
+      traceId: 't-1',
+      ip: '10.0.0.1',
+      orderId: 'o-9',
+      appName: 'api',
+    });
+  });
+
+  it('keeps booleans and null, drops only undefined', () => {
+    expect(filterEssentialMeta({ cached: false, evicted: null, missing: undefined }))
+      .toEqual({ cached: false, evicted: null });
+  });
+
+  it('truncates a long string rather than dropping the field', () => {
+    const kept = filterEssentialMeta({ sql: 'x'.repeat(500) });
+
+    expect(kept.sql).toHaveLength(203); // 200 + '...'
+    expect(kept.sql.endsWith('...')).toBe(true);
+  });
+
+  it('summarizes bulky values so the key never vanishes silently', () => {
+    const kept = filterEssentialMeta({
+      rows: [1, 2, 3],
+      config: { a: 1, b: 2 },
+    });
+
+    expect(kept).toEqual({ rows: '[3 items]', config: '{2 keys}' });
+  });
+
+  it('tolerates a non-object meta', () => {
+    expect(filterEssentialMeta(null)).toEqual({});
+    expect(filterEssentialMeta('nope' as any)).toEqual({});
   });
 });

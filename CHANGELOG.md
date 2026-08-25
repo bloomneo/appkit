@@ -2,6 +2,48 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [5.1.3] - 2026-08-25
+
+### Fixed
+
+- **The file, database and HTTP transports discarded diagnostic metadata in
+  `minimal` scope.** 5.1.2 fixed this for the console transport; the three
+  persistent transports each carried their own near-identical copy of the filter,
+  and those copies kept only correlation fields — `traceId`, `spanId`,
+  `sessionId`, `tenantId`, `ip`, plus anything ending in `Id`. Every measurement
+  a caller passed was dropped on the way to disk.
+
+  Found in a production app whose event-loop-lag monitor did everything right:
+
+  ```js
+  const payload = { lagMs, rssMB, heapUsedMB, heapTotalMB, externalMB };
+  logger.error('[event-loop-lag] severe stall', payload);
+  ```
+
+  and whose log file recorded, 190 times in one day:
+
+  ```json
+  {"ts":"...","lvl":"error","msg":"[event-loop-lag] severe stall","comp":"server"}
+  ```
+
+  The process was being restarted by its memory ceiling roughly every other hour.
+  Each of those 190 lines had captured the exact heap and RSS at the moment of the
+  stall — the fact that identifies the cause — and wrote none of it.
+
+  The rule was wrong in kind, not in degree: it filtered by field *name*, when
+  `minimal` exists to bound file *size*. `lagMs: 1400` costs twelve bytes. What
+  actually grows a log file is bulky strings, arrays and nested objects. Filtering
+  now follows cost — correlation fields and scalars are kept, long strings are
+  truncated, and arrays and objects are summarized as `[3 items]` / `{2 keys}` so
+  a key is never silently absent. A summarized value tells the reader to re-run
+  with `BLOOM_LOGGER_SCOPE=full`; a missing key tells them nothing.
+
+### Changed
+
+- The three copies of the metadata filter are now one module,
+  `src/logger/transports/meta.ts`. They had already drifted — two listed
+  `appName` as essential and one did not.
+
 ## [5.1.2] - 2026-08-23
 
 ### Fixed

@@ -12,6 +12,7 @@ import https from 'https';
 import http from 'http';
 import type { LogEntry, Transport } from '../logger.js';
 import type { LoggingConfig } from '../defaults.js';
+import { filterEssentialMeta } from './meta.js';
 
 /**
  * HTTP transport with automatic service detection and format optimization
@@ -143,7 +144,7 @@ export class HttpTransport implements Transport {
     }
 
     // Add essential metadata for correlation
-    const essentialMeta = this.filterEssentialMeta(rest);
+    const essentialMeta = filterEssentialMeta(rest);
     if (Object.keys(essentialMeta).length > 0) {
       minimal.meta = essentialMeta;
     }
@@ -182,35 +183,6 @@ export class HttpTransport implements Transport {
     }
 
     return error;
-  }
-
-  /**
-   * Filter metadata for essential monitoring fields
-   * @llm-rule WHEN: Keeping HTTP payload size manageable while preserving correlation
-   * @llm-rule AVOID: Sending all metadata - focus on monitoring and correlation fields
-   */
-  private filterEssentialMeta(meta: any): any {
-    const essential: any = {};
-
-    // Essential monitoring and correlation fields
-    const essentialKeys = [
-      'traceId', 'spanId', 'sessionId', 'tenantId', 'appName', 'ip'
-    ];
-
-    for (const key of essentialKeys) {
-      if (meta[key] !== undefined) {
-        essential[key] = meta[key];
-      }
-    }
-
-    // Include correlation IDs
-    for (const [key, value] of Object.entries(meta)) {
-      if (key.endsWith('Id') && !essential[key]) {
-        essential[key] = value;
-      }
-    }
-
-    return essential;
   }
 
   /**
