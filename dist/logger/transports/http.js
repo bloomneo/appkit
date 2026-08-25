@@ -9,6 +9,7 @@
  */
 import https from 'https';
 import http from 'http';
+import { filterEssentialMeta } from './meta.js';
 /**
  * HTTP transport with automatic service detection and format optimization
  */
@@ -119,7 +120,7 @@ export class HttpTransport {
             minimal.error = this.optimizeError(error);
         }
         // Add essential metadata for correlation
-        const essentialMeta = this.filterEssentialMeta(rest);
+        const essentialMeta = filterEssentialMeta(rest);
         if (Object.keys(essentialMeta).length > 0) {
             minimal.meta = essentialMeta;
         }
@@ -152,30 +153,6 @@ export class HttpTransport {
             return optimized;
         }
         return error;
-    }
-    /**
-     * Filter metadata for essential monitoring fields
-     * @llm-rule WHEN: Keeping HTTP payload size manageable while preserving correlation
-     * @llm-rule AVOID: Sending all metadata - focus on monitoring and correlation fields
-     */
-    filterEssentialMeta(meta) {
-        const essential = {};
-        // Essential monitoring and correlation fields
-        const essentialKeys = [
-            'traceId', 'spanId', 'sessionId', 'tenantId', 'appName', 'ip'
-        ];
-        for (const key of essentialKeys) {
-            if (meta[key] !== undefined) {
-                essential[key] = meta[key];
-            }
-        }
-        // Include correlation IDs
-        for (const [key, value] of Object.entries(meta)) {
-            if (key.endsWith('Id') && !essential[key]) {
-                essential[key] = value;
-            }
-        }
-        return essential;
     }
     /**
      * Setup automatic batch flushing

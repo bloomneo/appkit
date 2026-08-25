@@ -53,12 +53,6 @@ export declare class FileTransport implements Transport {
      */
     private optimizeError;
     /**
-     * Filter metadata to keep only essential fields
-     * @llm-rule WHEN: Minimizing file size while preserving correlation data
-     * @llm-rule AVOID: Storing all metadata - focus on correlation and debugging fields
-     */
-    private filterEssentialMeta;
-    /**
      * Write line to stream with timeout protection
      * @llm-rule WHEN: Writing to file stream safely
      * @llm-rule AVOID: Blocking writes - uses timeout to prevent hanging

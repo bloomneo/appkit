@@ -54,12 +54,6 @@ export declare class DatabaseTransport implements Transport {
      */
     private optimizeEntry;
     /**
-     * Filter metadata for essential correlation fields
-     * @llm-rule WHEN: Keeping database size manageable while preserving correlation data
-     * @llm-rule AVOID: Storing all metadata - focus on correlation and debugging fields
-     */
-    private filterEssentialMeta;
-    /**
      * Connect to database with appropriate client
      * @llm-rule WHEN: Establishing database connection based on detected type
      * @llm-rule AVOID: Manual connection setup - auto-detection handles client selection

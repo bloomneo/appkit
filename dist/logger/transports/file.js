@@ -9,6 +9,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { filterEssentialMeta } from './meta.js';
 /**
  * File transport with built-in rotation, retention and scope optimization
  */
@@ -121,7 +122,7 @@ export class FileTransport {
             minimal.err = this.optimizeError(error);
         }
         // Add only essential metadata
-        const essentialMeta = this.filterEssentialMeta(rest);
+        const essentialMeta = filterEssentialMeta(rest);
         if (Object.keys(essentialMeta).length > 0) {
             minimal.meta = essentialMeta;
         }
@@ -158,30 +159,6 @@ export class FileTransport {
             return optimized;
         }
         return error;
-    }
-    /**
-     * Filter metadata to keep only essential fields
-     * @llm-rule WHEN: Minimizing file size while preserving correlation data
-     * @llm-rule AVOID: Storing all metadata - focus on correlation and debugging fields
-     */
-    filterEssentialMeta(meta) {
-        const essential = {};
-        // Essential correlation fields
-        const essentialKeys = [
-            'traceId', 'spanId', 'sessionId', 'tenantId', 'ip'
-        ];
-        for (const key of essentialKeys) {
-            if (meta[key] !== undefined) {
-                essential[key] = meta[key];
-            }
-        }
-        // Include any field ending with 'Id' (correlation IDs)
-        for (const [key, value] of Object.entries(meta)) {
-            if (key.endsWith('Id') && !essential[key]) {
-                essential[key] = value;
-            }
-        }
-        return essential;
     }
     /**
      * Write line to stream with timeout protection

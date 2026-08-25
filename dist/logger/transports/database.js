@@ -7,6 +7,7 @@
  * @llm-rule AVOID: Manual database setup - auto-detects from DATABASE_URL and creates tables
  * @llm-rule NOTE: Supports PostgreSQL, MySQL, SQLite with automatic batching and retry logic
  */
+import { filterEssentialMeta } from './meta.js';
 /**
  * Database transport with automatic connection and table management
  */
@@ -139,35 +140,11 @@ export class DatabaseTransport {
             }
         }
         // Add only essential metadata as JSON
-        const essentialMeta = this.filterEssentialMeta(rest);
+        const essentialMeta = filterEssentialMeta(rest);
         if (Object.keys(essentialMeta).length > 0) {
             minimal.meta = essentialMeta;
         }
         return minimal;
-    }
-    /**
-     * Filter metadata for essential correlation fields
-     * @llm-rule WHEN: Keeping database size manageable while preserving correlation data
-     * @llm-rule AVOID: Storing all metadata - focus on correlation and debugging fields
-     */
-    filterEssentialMeta(meta) {
-        const essential = {};
-        // Essential correlation fields for database queries
-        const essentialKeys = [
-            'traceId', 'spanId', 'sessionId', 'tenantId', 'appName', 'ip'
-        ];
-        for (const key of essentialKeys) {
-            if (meta[key] !== undefined) {
-                essential[key] = meta[key];
-            }
-        }
-        // Include correlation IDs (fields ending with 'Id')
-        for (const [key, value] of Object.entries(meta)) {
-            if (key.endsWith('Id') && !essential[key]) {
-                essential[key] = value;
-            }
-        }
-        return essential;
     }
     /**
      * Connect to database with appropriate client

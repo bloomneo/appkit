@@ -53,12 +53,6 @@ export declare class HttpTransport implements Transport {
      */
     private optimizeError;
     /**
-     * Filter metadata for essential monitoring fields
-     * @llm-rule WHEN: Keeping HTTP payload size manageable while preserving correlation
-     * @llm-rule AVOID: Sending all metadata - focus on monitoring and correlation fields
-     */
-    private filterEssentialMeta;
-    /**
      * Setup automatic batch flushing
      * @llm-rule WHEN: Transport initialization - ensures logs are sent regularly
      * @llm-rule AVOID: Manual flushing - automatic batching optimizes HTTP requests
