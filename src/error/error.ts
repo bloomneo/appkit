@@ -194,10 +194,18 @@ export class ErrorClass {
 
     return (error: any, req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction): void => {
       // Log errors if enabled
+      // A 4xx AppError (validation, not found, forbidden) is the request's
+      // mistake and an expected outcome: one line, no stack. Stacks are for
+      // the server's own failures.
+      const expected = error instanceof AppError && error.statusCode >= 400 && error.statusCode < 500;
       if (logErrors) {
-        console.error('[@bloomneo/appkit/error] Error:', error?.message);
-        if (showStack && error?.stack) {
-          console.error('[@bloomneo/appkit/error] Stack:', error.stack);
+        if (expected) {
+          console.warn(`[@bloomneo/appkit/error] ${error.statusCode} ${error.type}: ${error.message}`);
+        } else {
+          console.error('[@bloomneo/appkit/error] Error:', error?.message);
+          if (showStack && error?.stack) {
+            console.error('[@bloomneo/appkit/error] Stack:', error.stack);
+          }
         }
       }
 

@@ -167,3 +167,18 @@ describe('requestId()', () => {
     expect(currentRequestId()).toBeUndefined();
   });
 });
+
+describe('public contracts', () => {
+  it('never initialise auth, so an app with no BLOOM_AUTH_SECRET can serve them', async () => {
+    const { vi } = await import('vitest');
+    const spy = vi.spyOn(authClass, 'get');
+    try {
+      route({ method: 'GET', path: '/api/open', auth: 'public' } as any, () => 'ok');
+      expect(spy).not.toHaveBeenCalled();
+      route({ method: 'GET', path: '/api/closed', auth: 'user' } as any, () => 'ok');
+      expect(spy).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});

@@ -57,9 +57,11 @@ export interface ContractRoute<C extends RouteContract = RouteContract> {
 }
 
 function authMiddleware(contract: RouteContract): RequestHandler[] {
-  const auth = authClass.get();
   const a = contract.auth;
+  // Public routes never touch auth, so an app with no BLOOM_AUTH_SECRET
+  // (no auth at all) can still serve them.
   if (a === 'public') return [];
+  const auth = authClass.get();
   if (a === 'user') return [auth.requireLoginToken()];
   if (a === 'apiToken') return [auth.requireApiToken()];
   if (a && typeof a === 'object' && Array.isArray(a.roles) && a.roles.length) {
