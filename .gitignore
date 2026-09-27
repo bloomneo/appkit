@@ -60,3 +60,6 @@ tests/integration/fixtures/tenant/generated/
 
 # Build output: produced by `npm run build` (CI and prepublishOnly), not tracked.
 dist/
+
+# Server test fixtures (src/server/server.test.ts)
+.tmp-features-*

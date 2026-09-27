@@ -30,12 +30,15 @@ import type {
 export class AppError extends AppKitError {
   readonly statusCode: number;
   readonly type: string;
+  /** Client-safe detail sent with the response (e.g. validation issues). */
+  readonly details?: Record<string, unknown>;
 
-  constructor(message: string, statusCode: number, type: string) {
+  constructor(message: string, statusCode: number, type: string, details?: Record<string, unknown>) {
     super(message, { module: 'error', code: type });
     this.name = 'AppError';
     this.statusCode = statusCode;
     this.type = type;
+    if (details) this.details = details;
   }
 }
 
@@ -218,6 +221,12 @@ export class ErrorClass {
         error: errorType,
         message: hideMessage ? serverErrorMessage : error?.message || 'An error occurred',
       };
+
+      // AppError details are written for the client (e.g. which fields failed
+      // validation), so they are sent in every environment.
+      if (error instanceof AppError && error.details) {
+        Object.assign(response, error.details);
+      }
 
       // Outside production, name the appkit error so the fix is one search away.
       if (!isProduction && error instanceof AppKitError && !(error instanceof AppError)) {

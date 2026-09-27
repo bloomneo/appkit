@@ -169,6 +169,15 @@ PII helpers were removed in 6.0.
   only when checks ran and nothing was skipped, so an incomplete run fails
   rather than going green.
 
+## Route contracts on the server (6.0)
+
+Declare routes with `defineRoute()` from `@bloomneo/bloom` and serve them with
+`route(contract, handler)` from `@bloomneo/appkit/server`. The contract's
+`auth`, tenant scope and schemas are applied for you — don't add
+`requireLoginToken()`, `database.context()` or manual validation to a contract
+route. Mount the app's API with `createApiRouter({ featuresDir })` instead of
+copying an api-router into the app.
+
 ## MCP — exposing your app to AI agents
 
 ```ts

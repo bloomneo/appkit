@@ -8,6 +8,13 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
 
 ### Added
 
+- **`@bloomneo/appkit/server`**: `route(contract, handler)` enforces a route
+  contract's auth decision, tenant context and input validation (400 with the
+  failing fields) and sends the handler's return value; `contractRouter()`;
+  `createApiRouter({ featuresDir })` — the feature auto-discovery every app
+  copied, with a guard check that recognises app wrappers, an endpoint index,
+  and a JSON 404. `AppError` gained client-safe `details`.
+
 - **Tenant isolation on Postgres row-level security** (`BLOOM_DB_TENANT=rls`).
   Each model operation runs in its own transaction that sets
   `app.tenant_id` (parameterised, transaction-local); `rlsPolicyStatements()`

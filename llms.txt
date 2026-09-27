@@ -691,6 +691,42 @@ verifyClass.reset() / verifyClass.disconnectAll()
 
 ---
 
+## Server (`@bloomneo/appkit/server`)
+
+The API side of a Bloom app: feature discovery and route contracts.
+
+```ts
+import { createApiRouter, route, contractRouter } from '@bloomneo/appkit/server';
+
+// server.ts — mounts features/<name>/<name>.route.ts at /api/<name>;
+// a feature that exports a contractRouter is mounted at its contracts' paths.
+app.use('/api', await createApiRouter({ featuresDir: join(__dirname, 'features') }));
+
+// features/invoices/invoices.route.ts — contracts come from @bloomneo/bloom (defineRoute)
+export default await contractRouter([
+  route(getInvoice, async ({ params, user }) => {
+    const db = await databaseClass.get();            // tenant-scoped for tenant routes
+    return db.invoice.findUniqueOrThrow({ where: { id: params.id } });
+  }),
+]);
+```
+
+`route(contract, handler)` applies, from the contract alone: the auth decision
+(`'public'` → none, `'user'` → `requireLoginToken`, `{ roles }` → +
+`requireUserRoles`, `'apiToken'` → `requireApiToken`), the tenant context
+(`database.context()` for tenant-scoped routes), and validation of params,
+query and body (400 `VALIDATION_ERROR` with an `issues` list). The handler
+returns the body: 201 for POST, 204 for `undefined`, otherwise 200. Outside
+production, a response that doesn't match `contract.response` is logged.
+
+- Query-string values arrive as strings: use coercing schemas (`z.coerce.number()`).
+- `createApiRouter` answers `GET /api` with every endpoint (what `verifyClass`
+  probes), answers unmatched `/api/*` with a JSON 404, and warns at boot about
+  unguarded features, unmounted `*.route.ts` siblings, and load failures.
+- Errors are `ServerError` (`instanceof AppKitError`).
+
+---
+
 ## Environment variable reference
 
 | Variable | Purpose | Required? |

@@ -41,6 +41,11 @@ Nothing below was used by any of the four production apps (counted
 
 ## Added
 
+- **`@bloomneo/appkit/server`**: `createApiRouter({ featuresDir })` replaces the
+  `src/api/lib/api-router.ts` every app copied (and its error duck-typing);
+  `route(contract, handler)` + `contractRouter()` serve `@bloomneo/bloom`
+  contracts with auth, tenant context and validation applied.
+
 - **Row-level security** (`BLOOM_DB_TENANT=rls`): `database.context()`
   middleware, `database.rlsPolicyStatements()` / `rlsPolicySql()`,
   `database.onBypass()`, `currentTenant()`, `BLOOM_DB_TENANT_COLUMN`,
