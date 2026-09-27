@@ -16,6 +16,7 @@ const OAUTH_SECRET = 'a-test-oauth-secret-that-is-over-32-chars';
 const tool = (over: Partial<McpTool> = {}): McpTool => ({
   name: 'echo',
   description: 'Echo the input back',
+  roles: ['user.basic'],
   handler: (args) => ({ echoed: args.text }),
   ...over,
 });
@@ -99,6 +100,10 @@ describe('tool registration', () => {
     expect(() => mcp.register(tool({ name: 'bad name!' }))).toThrow(/may only contain/);
     expect(() => mcp.register(tool({ description: '' }))).toThrow(/description/);
     expect(() => mcp.register(tool({ handler: undefined as any }))).toThrow(/handler/);
+    // An auth decision is required, as with a route contract.
+    expect(() => mcp.register(tool({ roles: undefined as any }))).toThrow(/needs roles/);
+    expect(() => mcp.register(tool({ roles: [] }))).toThrow(/needs roles/);
+    expect(() => mcp.register(tool({ roles: ['admin'] }))).toThrow(/needs roles/);
     expect(() => mcp.registerAll('nope' as any)).toThrow(/array/);
   });
 
@@ -118,34 +123,25 @@ describe('tool registration', () => {
 describe('role-based visibility', () => {
   const reg = () => {
     const r = new McpRegistryClass();
-    r.register(tool({ name: 'public_read', roles: undefined }));
-    r.register(tool({ name: 'staff_write', roles: ['user.basic'] }));
+    r.register(tool({ name: 'any_user', roles: ['user.basic'] }));
     r.register(tool({ name: 'admin_delete', roles: ['admin.tenant'] }));
     return r;
   };
 
-  it('offers every tool when no role resolution is configured', () => {
-    expect(reg().visibleTo(null).map((t) => t.name)).toEqual([
-      'public_read',
-      'staff_write',
-      'admin_delete',
-    ]);
+  it('a caller whose role is unresolved sees no tools (fail closed)', () => {
+    expect(reg().visibleTo(null)).toEqual([]);
   });
 
   it('hides tools the caller has no role for', () => {
-    expect(reg().visibleTo('user.basic').map((t) => t.name)).toEqual(['public_read', 'staff_write']);
+    expect(reg().visibleTo('user.basic').map((t) => t.name)).toEqual(['any_user']);
   });
 
   it('applies role inheritance (admin.system reaches admin.tenant)', () => {
-    expect(reg().visibleTo('admin.system').map((t) => t.name)).toEqual([
-      'public_read',
-      'staff_write',
-      'admin_delete',
-    ]);
+    expect(reg().visibleTo('admin.system').map((t) => t.name)).toEqual(['any_user', 'admin_delete']);
   });
 
-  it('an unknown role still sees unrestricted tools only', () => {
-    expect(reg().visibleTo('nonsense.role').map((t) => t.name)).toEqual(['public_read']);
+  it('an unknown role sees nothing', () => {
+    expect(reg().visibleTo('nonsense.role')).toEqual([]);
   });
 });
 
@@ -175,7 +171,7 @@ describe('buildServer', () => {
     const r = new McpRegistryClass();
     r.register(tool({ handler: () => ({ ok: 1 }) }));
     const server: any = r.buildServer(FakeMcpServer as any, {
-      name: 'app', version: '1.0.0', roleLevel: null, ctx: {},
+      name: 'app', version: '1.0.0', roleLevel: 'user.basic', ctx: {},
     });
     const out = await server.tools[0].handler({});
     expect(out.content[0].text).toBe('{"ok":1}');
@@ -185,7 +181,7 @@ describe('buildServer', () => {
     const r = new McpRegistryClass();
     r.register(tool({ handler: () => ({ content: [{ type: 'text', text: 'raw' }] }) }));
     const server: any = r.buildServer(FakeMcpServer as any, {
-      name: 'app', version: '1.0.0', roleLevel: null, ctx: {},
+      name: 'app', version: '1.0.0', roleLevel: 'user.basic', ctx: {},
     });
     const out = await server.tools[0].handler({});
     expect(out.content).toEqual([{ type: 'text', text: 'raw' }]);
@@ -195,7 +191,7 @@ describe('buildServer', () => {
     const r = new McpRegistryClass();
     r.register(tool({ handler: () => { throw new Error('boom'); } }));
     const server: any = r.buildServer(FakeMcpServer as any, {
-      name: 'app', version: '1.0.0', roleLevel: null, ctx: {},
+      name: 'app', version: '1.0.0', roleLevel: 'user.basic', ctx: {},
     });
     const out = await server.tools[0].handler({});
     expect(out.isError).toBe(true);
@@ -207,10 +203,25 @@ describe('buildServer', () => {
     let seen: any;
     r.register(tool({ handler: (_a, ctx) => { seen = ctx; return 'ok'; } }));
     const server: any = r.buildServer(FakeMcpServer as any, {
-      name: 'app', version: '1.0.0', roleLevel: null, ctx: { sub: 'u1', scope: 'mcp', roleLevel: null },
+      name: 'app', version: '1.0.0', roleLevel: 'user.basic', ctx: { sub: 'u1', scope: 'mcp', roleLevel: 'user.basic', tenantId: null },
     });
     await server.tools[0].handler({});
     expect(seen.sub).toBe('u1');
+  });
+
+  it("runs the handler inside the caller's tenant; no tenant, no context", async () => {
+    const { currentTenant } = await import('../database/tenancy.js');
+    const r = new McpRegistryClass();
+    let seen: unknown = 'unset';
+    r.register(tool({ handler: () => { seen = currentTenant()?.tenantId; return 'ok'; } }));
+    const build = (tenantId: string | null): any =>
+      r.buildServer(FakeMcpServer as any, {
+        name: 'app', version: '1.0.0', roleLevel: 'user.basic', ctx: { sub: 'u1', scope: 'mcp', roleLevel: 'user.basic', tenantId },
+      });
+    await build('t1').tools[0].handler({});
+    expect(seen).toBe('t1');
+    await build(null).tools[0].handler({});
+    expect(seen).toBeUndefined();
   });
 });
 
@@ -384,6 +395,7 @@ describe('root well-known discovery (regression — the claude.ai connector bug)
       secret: OAUTH_SECRET,
       serviceName: 'Regression App',
       authenticate: async () => ({ sub: 'u1' }),
+      resolveRoles: () => 'admin.system',
     });
 
     const app = express();
@@ -472,5 +484,28 @@ describe('module convention parity', () => {
     expect(mcpClass.getToolCount()).toBe(0);
     expect(typeof fresh.register).toBe('function');
     mcpClass.disconnectAll();
+  });
+});
+
+describe('mcp.routers() refuses to start without the rules routes follow', () => {
+  beforeEach(() => mcpClass.disconnectAll());
+  afterEach(() => {
+    mcpClass.disconnectAll();
+    delete process.env.BLOOM_DB_TENANT;
+  });
+
+  it('needs resolveRoles', async () => {
+    await expect(
+      mcpClass.get().routers({ secret: OAUTH_SECRET, serviceName: 'x', authenticate: async () => null } as any),
+    ).rejects.toThrow(/needs resolveRoles/);
+  });
+
+  it('needs resolveTenant when BLOOM_DB_TENANT is on, and not when it is off', async () => {
+    const base = { secret: OAUTH_SECRET, serviceName: 'x', authenticate: async () => null, resolveRoles: () => 'user.basic' };
+    process.env.BLOOM_DB_TENANT = 'rls';
+    await expect(mcpClass.get().routers(base)).rejects.toThrow(/needs resolveTenant/);
+    await expect(mcpClass.get().routers({ ...base, resolveTenant: () => 't1' })).resolves.toBeDefined();
+    process.env.BLOOM_DB_TENANT = 'false';
+    await expect(mcpClass.get().routers(base)).resolves.toBeDefined();
   });
 });

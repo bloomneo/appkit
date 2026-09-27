@@ -242,7 +242,12 @@ export default await contractRouter([
 const mcp = mcpClass.get();
 await mcp.discover(join(__dirname, 'features'));   // features/<n>/<n>.mcp.ts
 
-const { wellKnown, mcp: mcpRouter } = await mcp.routers({ serviceName, authenticate });
+const { wellKnown, mcp: mcpRouter } = await mcp.routers({
+  serviceName,
+  authenticate,
+  resolveRoles,      // REQUIRED: (sub) => 'role.level' | null
+  resolveTenant,     // REQUIRED when BLOOM_DB_TENANT is on: (sub) => tenantId | null
+});
 app.use(wellKnown);            // ROOT — before any SPA catch-all
 app.use('/mcp', mcpRouter);
 ```
@@ -252,11 +257,19 @@ app.use('/mcp', mcpRouter);
   returns your SPA's HTML the client reports "couldn't register" even though
   `/mcp/register` works.
 - `inputSchema` on a tool is a **Zod raw shape**, not JSON Schema.
-- `authenticate()` decides how privileged the whole connection is — reject
-  there, not per tool, unless you also pass `resolveRoles`.
-- MCP tools run outside the HTTP request path, so tenant-context middleware
-  never ran. Establish it inside the tool or writes fail under `FORCE ROW LEVEL
-  SECURITY` in production while passing locally.
+- **Every tool declares `roles`** (`['role.level', ...]`), like a route
+  contract's `auth` — required by `McpTool`, and `register()` throws
+  `MCP_TOOL_NO_ROLES` without it. Use `['user.basic']` for a tool any
+  signed-in caller may use; there are no unrestricted tools.
+- **Always pass `resolveRoles`** — `routers()` throws `MCP_NO_ROLE_RESOLVER`
+  without it. A caller resolved to null (or whose resolver throws) sees no
+  tools. `authenticate()` still decides whether the connection exists at all.
+- **Tools run in the caller's tenant.** With `BLOOM_DB_TENANT` on, pass
+  `resolveTenant` (`MCP_NO_TENANT_RESOLVER` otherwise); every handler runs
+  inside that tenant like a route behind `database.context()`, and
+  `ctx.tenantId` names it. Don't set tenant context by hand in a tool. A null
+  tenant (platform staff) gets none, so cross-tenant reads need
+  `database.bypass('reason', fn)`.
 
 ## Canonical pattern — protected endpoint with database + logger
 

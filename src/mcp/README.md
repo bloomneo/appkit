@@ -16,6 +16,7 @@ const { wellKnown, mcp: mcpRouter } = await mcp.routers({
     const user = await verify(email, password);
     return user ? { sub: user.id, label: user.email } : null;   // null rejects
   },
+  resolveRoles: async (sub) => roleLevelOf(sub),    // required — see Authorization
 });
 
 app.use(wellKnown);          // ROOT — must come BEFORE any SPA catch-all
@@ -109,7 +110,8 @@ and is the only app-specific hook. A connection is exactly as privileged as
 whatever you return, so gate on role here — returning `null` for non-admins is
 how you stop an agent inheriting more reach than you intended.
 
-**The tool.** Pass `resolveRoles` to enable per-tool `roles`:
+**The tool.** Every tool declares `roles` (required, like a route contract's
+`auth`), and `resolveRoles` (required) maps the OAuth subject to a role:
 
 ```ts
 const { wellKnown, mcp: mcpRouter } = await mcp.routers({
@@ -127,9 +129,29 @@ const { wellKnown, mcp: mcpRouter } = await mcp.routers({
 the role **never sees the tool in `tools/list` at all** — better than offering
 a tool that always refuses.
 
-Without `resolveRoles`, every registered tool is offered to every authorised
-connection, which is the right shape when `authenticate` already restricts the
-connection to one role.
+There is no unrestricted tool: `['user.basic']` admits every signed-in role.
+A tool without `roles` is refused at registration (`MCP_TOOL_NO_ROLES`), the
+router refuses to start without `resolveRoles` (`MCP_NO_ROLE_RESOLVER`), and a
+caller whose role resolves to null sees no tools.
+
+## Tenants
+
+With `BLOOM_DB_TENANT` on, pass `resolveTenant` (the router refuses to start
+without it: `MCP_NO_TENANT_RESOLVER`). Every tool then runs inside the
+caller's tenant, exactly like a route behind `database.context()` — its
+queries are scoped, and with row-level security Postgres enforces it:
+
+```ts
+resolveTenant: async (sub) => {
+  const user = await database.bypass('mcp: resolve the caller tenant', (db) =>
+    db.user.findUnique({ where: { id: sub }, select: { tenantId: true } }));
+  return user?.tenantId ?? null;   // null: platform staff
+},
+```
+
+`ctx.tenantId` says whose data the call is acting on. A caller with no tenant
+(null) gets no tenant context: their tools' database calls fail closed unless
+the tool names a bypass — `database.bypass('reason', fn)`.
 
 ## How the OAuth layer works
 
@@ -174,7 +196,7 @@ await mcp.discover(featuresPath)       // FBCA auto-discovery
 mcp.list()                             // name + description pairs
 mcp.getTools()
 mcp.has(name)
-await mcp.routers({ serviceName, authenticate, resolveRoles?, mountPath?, secret? })
+await mcp.routers({ serviceName, authenticate, resolveRoles, resolveTenant?, mountPath?, secret? })
 mcp.getConfig()
 
 mcpClass.getToolCount()
@@ -198,8 +220,7 @@ OAuth flow. Connect through the client's "add connector" flow rather than
 calling the endpoint directly.
 
 **A tool is missing from `tools/list`.** Either the caller's role doesn't
-satisfy its `roles`, or `resolveRoles` returned null. Without `resolveRoles`,
-`roles` is not enforced at all.
+satisfy its `roles`, or `resolveRoles` returned null (or threw).
 
 **OAuth secret rejected.** It must be at least 32 characters. Set
 `BLOOM_MCP_OAUTH_SECRET`, or let it fall back to `BLOOM_AUTH_SECRET`.
@@ -209,8 +230,8 @@ client is probing the root well-known paths and getting your SPA. Mount
 `wellKnown` at the root before the catch-all, and route `/.well-known/oauth-*`
 to the app in your reverse proxy. See [Why two mounts](#why-two-mounts).
 
-**A tool writes fine locally and is refused in production.** If you use
-Postgres row-level security, note that MCP tools run outside your normal
-request path, so any middleware that establishes tenant context never ran.
-Under `FORCE ROW LEVEL SECURITY` the insert is refused; a non-forcing dev
-database silently passes. Establish the context explicitly inside the tool.
+**A tool's query fails with `DATABASE_NO_TENANT_CONTEXT`.** The caller's
+`resolveTenant` returned null (or threw), so the tool ran with no tenant
+context and the query failed closed. Return the caller's tenant, or — for a
+tool that deliberately reads across tenants — wrap the query in
+`database.bypass('reason', fn)`. See [Tenants](#tenants).

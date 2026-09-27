@@ -10,7 +10,8 @@
 
 import { authClass } from '../auth/index.js';
 import { McpError } from './errors.js';
-import type { McpTool, McpToolDescriptor } from './types.js';
+import type { McpContext, McpTool, McpToolDescriptor } from './types.js';
+import { tenantStore } from '../database/tenancy.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/mcp/README.md';
 
@@ -44,6 +45,12 @@ export class McpRegistryClass {
       throw new McpError(
         `Tool "${tool.name}" needs a description — it is the only thing the agent sees when choosing. See: ${DOCS_URL}#declaring-tools`,
         { code: 'MCP_INVALID_TOOL' }
+      );
+    }
+    if (!Array.isArray(tool.roles) || tool.roles.length === 0 || !tool.roles.every((r) => typeof r === 'string' && /^[a-z]+\.[a-z]+$/.test(r))) {
+      throw new McpError(
+        `Tool "${tool.name}" needs roles: ['role.level', ...] — who may call it. Use ['user.basic'] for any signed-in caller. See: ${DOCS_URL}#declaring-tools`,
+        { code: 'MCP_TOOL_NO_ROLES' }
       );
     }
     if (typeof tool.handler !== 'function') {
@@ -85,17 +92,13 @@ export class McpRegistryClass {
   }
 
   /**
-   * Which tools a caller with this role.level may use.
-   *
-   * A null roleLevel means "no role resolution configured" — every tool is
-   * allowed, which matches a deployment that gates entirely at OAuth consent.
+   * Which tools a caller with this role.level may use. A caller whose role
+   * could not be resolved sees none — fail closed.
    */
   visibleTo(roleLevel: string | null): McpTool[] {
-    if (roleLevel === null) return this.getTools();
+    if (!roleLevel) return [];
     const auth = authClass.get();
-    return this.getTools().filter(
-      (tool) => !tool.roles?.length || tool.roles.some((required) => auth.hasRole(roleLevel, required))
-    );
+    return this.getTools().filter((tool) => tool.roles.some((required) => auth.hasRole(roleLevel, required)));
   }
 
   /**
@@ -121,7 +124,12 @@ export class McpRegistryClass {
         },
         async (args: Record<string, any>) => {
           try {
-            const result = await tool.handler(args ?? {}, options.ctx as any);
+            // Inside the caller's tenant, exactly like a route behind
+            // database.context(): queries are scoped, and with no tenant they
+            // fail closed unless the tool names a bypass.
+            const ctx = options.ctx as McpContext;
+            const call = () => tool.handler(args ?? {}, ctx);
+            const result = await (ctx.tenantId ? tenantStore.run({ tenantId: ctx.tenantId }, call) : call());
             // A tool may return an SDK-shaped result itself; pass it straight
             // through rather than double-wrapping it.
             if (result && typeof result === 'object' && Array.isArray((result as any).content)) {

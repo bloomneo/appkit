@@ -656,7 +656,11 @@ const { wellKnown, mcp: mcpRouter } = await mcp.routers({
     const user = await verify(email, password);
     return user ? { sub: user.id, label: user.email } : null;   // null rejects
   },
-  resolveRoles: async (sub) => `${(await getUser(sub)).role}.${(await getUser(sub)).level}`,
+  resolveRoles: async (sub) => {                    // REQUIRED — 'role.level' | null
+    const user = await getUser(sub);
+    return user ? `${user.role}.${user.level}` : null;         // null: no tools
+  },
+  resolveTenant: async (sub) => (await getUser(sub))?.tenantId ?? null,   // REQUIRED when BLOOM_DB_TENANT is on
 });
 
 app.use(wellKnown);            // ROOT — MUST be before any SPA catch-all
@@ -700,7 +704,7 @@ await mcp.discover(featuresPath)       // FBCA auto-discovery
 mcp.list()                             // { name, description }[]
 mcp.getTools()
 mcp.has(name)
-await mcp.routers(options)             // { wellKnown, mcp }
+await mcp.routers({ serviceName, authenticate, resolveRoles, resolveTenant?, mountPath?, secret? })   // { wellKnown, mcp }
 mcp.getConfig()
 
 mcpClass.getToolCount()
@@ -711,16 +715,36 @@ mcpClass.disconnectAll()
 
 Two layers. `authenticate()` gates the **connection** — it runs at OAuth consent
 and the connection is exactly as privileged as what it returns, so reject
-non-admins there if that's your model. `roles` on a tool gates the **tool**, and
-needs `resolveRoles`; a caller without the role never sees the tool in
-`tools/list` at all rather than being refused on call.
+non-admins there if that's your model. `roles` gates the **tool**, the same
+rule a route contract's `auth` enforces:
 
-### Note on tenancy
+- **Every tool declares `roles`** (`role.level` strings, OR-ed, with
+  `requireUserRoles()` inheritance). It is required by the `McpTool` type and
+  `register()` throws `MCP_TOOL_NO_ROLES` without a non-empty array. There is
+  no unrestricted tool: `['user.basic']` admits every signed-in role.
+- **`resolveRoles(sub)` is required** — `routers()` throws
+  `MCP_NO_ROLE_RESOLVER` without it. It runs on every request, so a role
+  change applies on the next call.
+- A caller without the role **never sees the tool in `tools/list`**. A caller
+  whose role resolves to null (or whose resolver throws) sees no tools at all.
 
-MCP tools run outside the HTTP request path, so any middleware that establishes
-tenant context never ran. Under Postgres `FORCE ROW LEVEL SECURITY` a write is
-refused; a non-forcing dev database silently passes. Establish the context
-explicitly inside the tool.
+### Tenants
+
+With `BLOOM_DB_TENANT` on, `resolveTenant(sub)` is required (`routers()`
+throws `MCP_NO_TENANT_RESOLVER`). Every tool handler then runs inside the
+caller's tenant, like a route behind `database.context()`: its database calls
+are scoped, and under row-level security Postgres enforces it. `ctx.tenantId`
+says whose data the call acts on. A caller resolved to null (platform staff)
+gets no tenant context, so their tools' queries fail closed unless the tool
+uses `database.bypass('reason', fn)`.
+
+```ts
+handler: async (args, ctx) => {
+  // ctx: { sub, scope, roleLevel, tenantId } — already inside ctx.tenantId
+  const db = await databaseClass.get();
+  return db.invoice.findMany();               // scoped to the caller's tenant
+},
+```
 
 ---
 

@@ -17,6 +17,9 @@ import { loadExpress, loadMcpSdk } from './peers.js';
 import { getSmartDefaults, type McpConfig } from './defaults.js';
 import { loggerClass } from '../logger/index.js';
 import type { McpContext, McpInputSchema, McpTool, McpToolDescriptor } from './types.js';
+import { tenantModeOn } from '../database/tenancy.js';
+
+const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/mcp/README.md';
 
 let globalConfig: McpConfig | null = null;
 let registry: McpRegistryClass | null = null;
@@ -30,11 +33,18 @@ export interface McpRouterOptions extends Omit<McpOAuthConfig, 'secret' | 'mount
   /** Path you will mount the MCP router at. Default '/mcp'. */
   mountPath?: string;
   /**
-   * Resolve the caller's `role.level` from the OAuth subject. Supply it to
-   * enable per-tool `roles`; without it every registered tool is offered to
-   * every authorised connection (gate entirely at authenticate()).
+   * REQUIRED: the caller's `role.level` from the OAuth subject, read on every
+   * request so a role change applies on the next call. Every tool declares
+   * roles; a caller resolved to null sees no tools.
    */
-  resolveRoles?: (sub: string) => Promise<string | null> | string | null;
+  resolveRoles: (sub: string) => Promise<string | null> | string | null;
+  /**
+   * The caller's tenant from the OAuth subject. Tools run inside it, so their
+   * database calls are scoped like a route's. Required when BLOOM_DB_TENANT is
+   * on; return null for a caller with no tenant (their tools must use
+   * database.bypass(reason, fn)).
+   */
+  resolveTenant?: (sub: string) => Promise<string | null> | string | null;
 }
 
 export interface McpRouters {
@@ -148,6 +158,21 @@ function get(): Mcp {
         options.secret ?? process.env.BLOOM_MCP_OAUTH_SECRET ?? process.env.BLOOM_AUTH_SECRET ?? '';
       const mountPath = options.mountPath ?? '/mcp';
 
+      // The same rules a route contract enforces: an auth decision for every
+      // tool, and a tenant for every call when the app is multi-tenant.
+      if (typeof options.resolveRoles !== 'function') {
+        throw new McpError(
+          `mcp.routers() needs resolveRoles(sub) → 'role.level' — tool roles cannot be enforced without it. See: ${DOCS_URL}#authorization`,
+          { code: 'MCP_NO_ROLE_RESOLVER' }
+        );
+      }
+      if (tenantModeOn() && typeof options.resolveTenant !== 'function') {
+        throw new McpError(
+          `BLOOM_DB_TENANT is on, so mcp.routers() needs resolveTenant(sub) → tenant id (or null for staff): tools run inside the caller's tenant. See: ${DOCS_URL}#tenants`,
+          { code: 'MCP_NO_TENANT_RESOLVER' }
+        );
+      }
+
       const [express, sdk] = await Promise.all([loadExpress(), loadMcpSdk()]);
       const Router = () => (express.Router ?? express.default?.Router)();
 
@@ -159,6 +184,7 @@ function get(): Mcp {
       // takes effect on the next call rather than being pinned for the
       // connection's lifetime.
       const roleCache = new Map<string, string | null>();
+      const tenantCache = new Map<string, string | null>();
 
       const transport = createMcpTransport(
         {
@@ -167,11 +193,12 @@ function get(): Mcp {
             `${oauth.resourceUrl(req).replace(/\/$/, '')}/.well-known/oauth-protected-resource`,
           buildServer: (auth) => {
             const roleLevel = roleCache.get(auth.sub) ?? null;
+            const tenantId = tenantCache.get(auth.sub) ?? null;
             return reg.buildServer(sdk.McpServer, {
               name: config.name,
               version: config.version,
-              roleLevel: options.resolveRoles ? roleLevel : null,
-              ctx: { sub: auth.sub, scope: auth.scope, roleLevel } satisfies McpContext,
+              roleLevel,
+              ctx: { sub: auth.sub, scope: auth.scope, roleLevel, tenantId } satisfies McpContext,
             });
           },
         },
@@ -179,17 +206,24 @@ function get(): Mcp {
       );
 
       const resolveMiddleware = async (req: any, _res: any, next: any) => {
-        if (!options.resolveRoles) return next();
         const header = req?.headers?.authorization;
         const token = typeof header === 'string' && /^Bearer\s+/i.test(header)
           ? header.replace(/^Bearer\s+/i, '').trim()
           : null;
         const auth = token ? oauth.verifyAccessToken(token) : null;
         if (!auth) return next();
+        // A resolver that throws leaves the caller with no role (no tools)
+        // and no tenant (queries fail closed) — never with the last value.
         try {
           roleCache.set(auth.sub, (await options.resolveRoles(auth.sub)) ?? null);
         } catch {
           roleCache.set(auth.sub, null);
+        }
+        try {
+          const tenant = options.resolveTenant ? await options.resolveTenant(auth.sub) : null;
+          tenantCache.set(auth.sub, tenant === null || tenant === undefined ? null : String(tenant));
+        } catch {
+          tenantCache.set(auth.sub, null);
         }
         next();
       };

@@ -144,6 +144,62 @@ if (violations > 0) {
 console.log(`OK: scanned ${SCAN.length} files, no drift.`);
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * MCP: every tool declares roles, every router resolves them.
+ *
+ * In 6.0 `roles` is required on an McpTool and `mcp.routers()` throws without
+ * `resolveRoles` — the rules a route contract enforces. Teaching material
+ * that omits either would compile-fail or boot-fail when copied, so check
+ * every snippet: each `.routers({ … })` call passes `resolveRoles`, and each
+ * tool literal (`register({ … })`, `McpTool[] = [ … ]`) has as many `roles:`
+ * as `handler:`.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** The balanced `open…close` text starting at `from` (which must be `open`). */
+function balanced(src: string, from: number, open: string, close: string): string {
+  let depth = 0;
+  for (let i = from; i < src.length; i++) {
+    if (src[i] === open) depth++;
+    else if (src[i] === close && --depth === 0) return src.slice(from, i + 1);
+  }
+  return src.slice(from);
+}
+
+const MCP_DOCS = [
+  ...SCAN.filter((f) => !f.startsWith('src/') || f.endsWith('README.md')),
+  'MIGRATION-6.md',
+  ...readdirSync(join(ROOT, '.claude/skills'))
+    .map((d) => join('.claude/skills', d, 'SKILL.md'))
+    .filter((f) => existsSync(join(ROOT, f))),
+];
+const mcpErrors: string[] = [];
+for (const file of MCP_DOCS) {
+  const src = readFileSync(join(ROOT, file), 'utf8');
+  const lineOf = (i: number) => src.slice(0, i).split('\n').length;
+  for (const m of src.matchAll(/\.routers\(\s*\{/g)) {
+    const call = balanced(src, m.index! + m[0].length - 1, '{', '}');
+    if (!/\bresolveRoles\b/.test(call.replace(/\/\/.*$/gm, ''))) {   // a commented-out hook doesn't count
+      mcpErrors.push(`${file}:${lineOf(m.index!)} mcp.routers({...}) without resolveRoles`);
+    }
+  }
+  for (const m of src.matchAll(/\bregister\(\s*\{|McpTool\[\]\s*=\s*\[/g)) {
+    const open = m[0].endsWith('[') ? '[' : '{';
+    const body = balanced(src, m.index! + m[0].length - 1, open, open === '[' ? ']' : '}');
+    const handlers = (body.match(/\bhandler\s*:/g) ?? []).length;
+    const roles = (body.match(/\broles\s*:/g) ?? []).length;
+    if (handlers > roles) {
+      mcpErrors.push(`${file}:${lineOf(m.index!)} MCP tool without roles (${handlers} handler, ${roles} roles)`);
+    }
+  }
+}
+if (mcpErrors.length > 0) {
+  console.error('\nFAIL: MCP snippets that would not compile or boot in 6.0:\n');
+  for (const e of mcpErrors) console.error(`  ${e}`);
+  console.error("\nEvery tool declares roles (['user.basic'] = any signed-in caller); every mcp.routers() passes resolveRoles.\n");
+  process.exit(1);
+}
+console.log(`OK: MCP snippets declare roles and resolveRoles (${MCP_DOCS.length} files).`);
+
+/* ────────────────────────────────────────────────────────────────────────────
  * Coverage: every public module must appear in the agent-facing docs.
  *
  * The scan above is one-directional — it catches names that were REMOVED and

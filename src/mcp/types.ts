@@ -30,8 +30,15 @@ export interface McpContext {
   sub: string;
   /** Granted OAuth scope. */
   scope: string;
-  /** `role.level` when a resolveRoles hook is configured, else null. */
+  /** The caller's `role.level`, from the router's resolveRoles hook. */
   roleLevel: string | null;
+  /**
+   * The caller's tenant, from the router's resolveTenant hook. The handler
+   * already runs inside it — database calls are scoped to it. Null for a
+   * caller with no tenant (e.g. platform staff): database calls then need
+   * `database.bypass(reason, fn)`.
+   */
+  tenantId: string | null;
 }
 
 export interface McpTool {
@@ -47,13 +54,15 @@ export interface McpTool {
   /** Zod raw shape describing the arguments. Omit for a no-argument tool. */
   inputSchema?: McpInputSchema;
   /**
-   * Required role.level values, OR-ed, using the same inheritance as
-   * auth.requireUserRoles() — ['admin.tenant'] also admits admin.system.
+   * REQUIRED: who may call this tool — role.level values, OR-ed, with the same
+   * inheritance as auth.requireUserRoles() (['admin.tenant'] also admits
+   * admin.system). ['user.basic'] admits every signed-in role.
    *
-   * A caller without the role never sees the tool in tools/list at all.
-   * Only enforced when the router is given a resolveRoles hook.
+   * There is no default, as with a route contract's `auth`: a tool that
+   * forgets it does not compile and is refused at registration. A caller
+   * without the role never sees the tool in tools/list.
    */
-  roles?: string[];
+  roles: string[];
   handler: (args: Record<string, any>, ctx: McpContext) => Promise<unknown> | unknown;
 }
 

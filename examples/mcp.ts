@@ -22,7 +22,10 @@ mcp.register({
   name: 'echo',
   description: 'Echo a message back. Replace with something your app can do.',
   inputSchema: { text: z.string().describe('Anything you want returned') },
-  handler: async (args, ctx) => ({ echoed: args.text, calledBy: ctx.sub }),
+  // Required, like a route contract's `auth`. ['user.basic'] admits every
+  // signed-in role; ['admin.tenant'] would hide the tool from everyone below.
+  roles: ['user.basic'],
+  handler: async (args, ctx) => ({ echoed: args.text, calledBy: ctx.sub, tenant: ctx.tenantId }),
 });
 
 const app = express();
@@ -38,9 +41,13 @@ const { wellKnown, mcp: mcpRouter } = await mcp.routers({
     }
     return null;
   },
-  // Optional: enables per-tool `roles`. Without it, every registered tool is
-  // offered to every authorised connection.
-  // resolveRoles: async (sub) => 'admin.tenant',
+  // Required: the caller's 'role.level', read on every request. A caller
+  // resolved to null (or whose resolver throws) sees no tools.
+  resolveRoles: async (sub) => (sub === 'user-1' ? 'admin.tenant' : null),
+  // Required when BLOOM_DB_TENANT is on: every tool then runs inside the
+  // caller's tenant, like a route behind database.context(). Return null for
+  // platform staff — their tools' queries need database.bypass(reason, fn).
+  // resolveTenant: async (sub) => (await getUser(sub))?.tenantId ?? null,
 });
 
 // ORDER MATTERS. Connector clients probe the discovery documents at the ROOT

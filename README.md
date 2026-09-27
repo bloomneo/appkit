@@ -187,7 +187,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 8 | **Email** | Console → SMTP → Resend | `RESEND_API_KEY` |
 | 9 | **Logger** | Console + rotating file | `BLOOM_LOGGER_*` |
 | 10 | **Config** | Type-safe env var access | — |
-| 11 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery | optional peers |
+| 11 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery, role-gated tools that run in the caller's tenant | optional peers |
 | 12 | **Verify** | Generates the cross-tenant attack matrix and fails CI on a leak | — |
 | + | **Server** (`@bloomneo/appkit/server`) | `createApiRouter()` feature discovery, `route(contract, handler)` for `@bloomneo/bloom` contracts, `requestId()` | — |
 

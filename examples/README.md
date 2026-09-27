@@ -43,7 +43,7 @@ using the published package, swap those imports for `'@bloomneo/appkit/<module>'
 | `queue.ts`        | queue    | add / process / schedule, pause / resume, stats, retry                          |
 | `security.ts`     | security | rate-limit middleware, encrypt / decrypt, generateKey                           |
 | `storage.ts`      | storage  | put / get / url / signedUrl / copy / list, convenience upload / download       |
-| `mcp.ts`          | mcp      | tool declaration, discovery, the two router mounts                              |
+| `mcp.ts`          | mcp      | tool declaration with roles, resolveRoles, the two router mounts              |
 | `verify.ts`       | verify   | cross-tenant verification run and report                                        |
 
 For end-to-end recipes that combine modules, see [`cookbook/`](../cookbook/README.md).

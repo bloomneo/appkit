@@ -28,6 +28,9 @@ jobs it queues and its log lines.
    and mount `requestId()` first ([Added](#added)).
 6. Multi-tenant apps: check the tenant comes from the login token only, then
    read [Tenant context](#the-tenant-follows-the-request).
+7. Apps exposing MCP tools: add `roles` to every tool and pass
+   `resolveRoles` (and `resolveTenant` in tenant mode) —
+   [MCP tools](#mcp-tools-declare-roles-and-run-in-the-callers-tenant).
 
 ## Versioning
 
@@ -243,6 +246,48 @@ mode (`BLOOM_DB_TENANT` set):
   keys or namespaces by hand.
 - **Storage keys are not prefixed** (existing files would move). Keep putting
   the tenant in the key yourself.
+
+### MCP tools declare roles and run in the caller's tenant
+
+`@bloomneo/appkit/mcp` now follows the same rules a route contract enforces:
+an auth decision for every tool, and the caller's tenant for every call. In
+5.x `roles` was optional and ignored unless the router had `resolveRoles`, so
+by default every tool was offered to every connection; and tools ran outside
+any tenant context.
+
+- **Add `roles` to every tool.** It is required by the `McpTool` type and
+  `register()` throws `MCP_TOOL_NO_ROLES` without a non-empty array of
+  `role.level` strings. Use `['user.basic']` for a tool any signed-in caller
+  may use (it admits every role); `['admin.tenant']` etc. as for
+  `requireUserRoles()`.
+- **Pass `resolveRoles` to `mcp.routers()`.** Without it the router throws
+  `MCP_NO_ROLE_RESOLVER` at boot. Return the caller's `'role.level'`, or null —
+  a null (or throwing) resolver means the caller sees no tools.
+- **Tenant mode (`BLOOM_DB_TENANT` set): pass `resolveTenant`** (otherwise
+  `MCP_NO_TENANT_RESOLVER`). Each handler runs inside the returned tenant, like
+  a route behind `database.context()`; `ctx.tenantId` names it. Delete any
+  code in a tool that set the tenant by hand.
+- **Replace per-tool cross-tenant access with `database.bypass(reason, fn)`.**
+  A caller resolved to a null tenant (platform staff) gets no tenant context,
+  so their tools' queries fail closed unless the tool names a bypass.
+
+```ts
+const { wellKnown, mcp: mcpRouter } = await mcp.routers({
+  serviceName: 'My App',
+  authenticate,
+  resolveRoles: async (sub) => {
+    const user = await getUser(sub);
+    return user ? `${user.role}.${user.level}` : null;
+  },
+  resolveTenant: async (sub) => (await getUser(sub))?.tenantId ?? null,
+});
+```
+
+Apps that built their own MCP server (their own OAuth endpoints and
+Streamable-HTTP transport, as midhuna did) can move onto
+`@bloomneo/appkit/mcp`: tools become `features/<name>/<name>.mcp.ts` files,
+the OAuth server and transport come from `mcp.routers()`, and the app keeps
+only `authenticate`, `resolveRoles` and `resolveTenant`.
 
 ### Public contracts don't need auth configured
 

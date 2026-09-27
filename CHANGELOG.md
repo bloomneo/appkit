@@ -95,6 +95,28 @@ upgrade guide, with a replacement for every removal, is
 - Build output (`dist/`) is no longer committed; it is built in CI and by
   `prepublishOnly`. `npm run build` cleans `dist/` first.
 
+### Changed (breaking)
+
+- **MCP tools follow the same rules a route contract enforces — an auth
+  decision for every tool, and the caller's tenant for every call.** In 5.x
+  `roles` was optional and silently unenforced without `resolveRoles`, so
+  every tool was offered to every connection, and tools ran with no tenant
+  context.
+  1. Every `McpTool` declares `roles: ['role.level', ...]` (required in the
+     type); `register()` throws `MCP_TOOL_NO_ROLES` without a non-empty array
+     of `role.level` strings. `['user.basic']` admits every signed-in role;
+     there are no unrestricted tools.
+  2. `mcp.routers()` requires `resolveRoles(sub) → 'role.level' | null`
+     (`MCP_NO_ROLE_RESOLVER`). A caller whose role resolves to null, or whose
+     resolver throws, sees no tools — fail closed.
+  3. New `resolveTenant(sub) → tenantId | null`, required when
+     `BLOOM_DB_TENANT` is on (`MCP_NO_TENANT_RESOLVER`). Each handler runs
+     inside the caller's tenant, so its database calls are scoped like a
+     route behind `database.context()` / row-level security; `ctx.tenantId`
+     is new on `McpContext`. A null tenant (platform staff) gets no tenant
+     context: queries fail closed unless the tool uses
+     `database.bypass('reason', fn)`.
+
 ### Removed
 
 - `eventClass` / `@bloomneo/appkit/event` and `EventError` (2,188 lines),
