@@ -179,7 +179,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 6 | **Storage** | Local → S3/R2 | `AWS_S3_BUCKET` |
 | 7 | **Queue** | Memory → Redis → DB | `REDIS_URL` / `BLOOM_QUEUE_DB` |
 | 8 | **Email** | Console → SMTP → Resend | `RESEND_API_KEY` |
-| 9 | **Logger** | Console → File → HTTP | `BLOOM_LOGGER_*` |
+| 9 | **Logger** | Console + rotating file | `BLOOM_LOGGER_*` |
 | 10 | **Config** | Type-safe env var access | — |
 | 11 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery | optional peers |
 | 12 | **Verify** | Generates the cross-tenant attack matrix and fails CI on a leak | — |
@@ -203,7 +203,7 @@ REDIS_URL=redis://prod-cache:6379         # → distributed cache + queue
 AWS_S3_BUCKET=prod-assets                 # → cloud storage + CDN
 RESEND_API_KEY=re_production_key          # → professional email
 BLOOM_DB_TENANT=auto                      # → multi-tenant filtering
-BLOOM_LOGGER_HTTP_URL=https://logs.example.com  # → centralized logging
+BLOOM_LOGGER_DIR=/var/log/my-app          # → log files outside the release dir
 ```
 
 See [`.env.example`](./.env.example) at the repo root for the full canonical template — every BLOOM_* var, organized by module.

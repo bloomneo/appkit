@@ -3,11 +3,9 @@
  *
  * Runnable tour of the @bloomneo/appkit/logger module.
  *
- * Transports auto-enable from environment:
- *   • console                  — always on
- *   • BLOOM_LOGGER_FILE_PATH   — file transport
- *   • BLOOM_LOGGER_HTTP_URL    — HTTP ingest transport
- *   • BLOOM_LOGGER_WEBHOOK_URL — Slack-style webhook transport
+ * Two transports, both on by default (off under NODE_ENV=test):
+ *   • console — BLOOM_LOGGER_CONSOLE=false turns it off
+ *   • file    — BLOOM_LOGGER_FILE=false turns it off; BLOOM_LOGGER_DIR sets the folder
  *
  * Run: tsx examples/logger.ts
  */

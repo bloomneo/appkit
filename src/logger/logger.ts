@@ -10,9 +10,6 @@
 
 import { ConsoleTransport } from './transports/console.js';
 import { FileTransport } from './transports/file.js';
-import { DatabaseTransport } from './transports/database.js';
-import { HttpTransport } from './transports/http.js';
-import { WebhookTransport } from './transports/webhook.js';
 import type { LoggingConfig } from './defaults.js';
 import type { LogMeta, Logger } from './index.js';
 import { existsSync } from 'fs';
@@ -81,30 +78,6 @@ export class LoggerClass implements Logger {
         this.transports.set('file', new FileTransport(this.config));
       } catch (error) {
         console.error('[@bloomneo/appkit/logger] File transport initialization failed:', (error as Error).message);
-      }
-    }
-
-    if (transports.database && this.config.database.url) {
-      try {
-        this.transports.set('database', new DatabaseTransport(this.config));
-      } catch (error) {
-        console.error('[@bloomneo/appkit/logger] Database transport initialization failed:', (error as Error).message);
-      }
-    }
-
-    if (transports.http && this.config.http.url) {
-      try {
-        this.transports.set('http', new HttpTransport(this.config));
-      } catch (error) {
-        console.error('[@bloomneo/appkit/logger] HTTP transport initialization failed:', (error as Error).message);
-      }
-    }
-
-    if (transports.webhook && this.config.webhook.url) {
-      try {
-        this.transports.set('webhook', new WebhookTransport(this.config));
-      } catch (error) {
-        console.error('[@bloomneo/appkit/logger] Webhook transport initialization failed:', (error as Error).message);
       }
     }
 
@@ -990,9 +963,6 @@ export class LoggerClass implements Logger {
       service: this.config.service,
       environment: {
         NODE_ENV: process.env.NODE_ENV,
-        hasDbUrl: !!process.env.DATABASE_URL,
-        hasHttpUrl: !!process.env.BLOOM_LOGGER_HTTP_URL,
-        hasWebhookUrl: !!process.env.BLOOM_LOGGER_WEBHOOK_URL,
       },
     };
   }

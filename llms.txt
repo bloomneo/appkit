@@ -530,7 +530,7 @@ the `BLOOM_*` prefix.
 
 ## Module 10 — Logger (`@bloomneo/appkit/logger`)
 
-Multi-transport structured logging. Console → File → HTTP auto-scaling.
+Structured logging to two transports: console and a rotating file.
 
 ### Methods
 
@@ -543,9 +543,9 @@ logger.warn(message: string, meta?)
 logger.error(message: string, meta?)
 logger.fatal(message: string, meta?)
 
-// Multi-transport — set env vars to enable
-// BLOOM_LOGGER_FILE_PATH=/var/log/app.log → file transport
-// BLOOM_LOGGER_HTTP_URL=https://logs.example.com → HTTP transport
+// Console and file are on by default (both off under NODE_ENV=test).
+// BLOOM_LOGGER_FILE=false turns the file off; BLOOM_LOGGER_DIR sets its folder.
+// No database / HTTP / webhook transport (removed in 6.0) — collect stdout or the file.
 ```
 
 ---
@@ -703,8 +703,7 @@ verifyClass.reset() / verifyClass.disconnectAll()
 | `BLOOM_DB_TENANT` | `auto` enables multi-tenant filtering | optional |
 | `RESEND_API_KEY` | Production email | optional |
 | `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` | SMTP email | optional |
-| `BLOOM_LOGGER_FILE_PATH` | File transport for logger | optional |
-| `BLOOM_LOGGER_HTTP_URL` | HTTP transport for logger | optional |
+| `BLOOM_LOGGER_FILE` / `BLOOM_LOGGER_DIR` | Logger file transport on/off and folder | optional |
 | `ORG_<NAME>` | Per-org database (multi-org SaaS) | optional |
 | `BLOOM_AUTH_SCOPES` | Reach axis, low→high — enables matrix mode | optional |
 | `BLOOM_AUTH_TIERS` | Capability axis, low→high — enables matrix mode | optional |

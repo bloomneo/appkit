@@ -15,6 +15,10 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   `src/internal/`; `AppKitError` is still exported from the package root.
 - The `appkit` CLI (`appkit generate …`, 1,077 lines plus templates) and its
   `commander` dependency. `bloom create` scaffolds projects.
+- Logger database, HTTP and webhook transports (1,562 lines) and their env
+  vars (`BLOOM_LOGGER_DATABASE`, `BLOOM_LOGGER_DB_*`, `BLOOM_LOGGER_HTTP_*`,
+  `BLOOM_LOGGER_WEBHOOK_*`). Console and file remain. The logger no longer
+  reads or validates `DATABASE_URL`.
 
 ### Changed
 

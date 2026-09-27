@@ -51,6 +51,9 @@ const BANNED: Banned[] = [
   { pattern: /\beventClass\b|@bloomneo\/appkit\/event\b/, now: 'removed in 6.0 — use queueClass jobs for async work (MIGRATION-6.md)' },
   { pattern: /\butilClass\b|@bloomneo\/appkit\/util\b/,   now: 'removed in 6.0 — use Node built-ins, e.g. crypto.randomUUID() (MIGRATION-6.md)' },
 
+  // 6.0.0 — removed features inside kept modules. See MIGRATION-6.md.
+  { pattern: /\bBLOOM_LOGGER_(HTTP|WEBHOOK|DB)_\w+|\bBLOOM_LOGGER_DATABASE\b/, now: 'removed in 6.0 — logger has console + file only; collect stdout or the log file (MIGRATION-6.md)' },
+
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },
 

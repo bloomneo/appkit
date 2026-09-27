@@ -1,7 +1,7 @@
 # @bloomneo/appkit/logger
 
-> **Ultra-simple logging that just works** - One function, five transports, zero
-> headaches
+> **Ultra-simple logging that just works** - One function, two transports
+> (console and file), zero headaches
 
 [![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -11,8 +11,8 @@
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `loggerClass.get()`, everything else is automatic
-- **🎯 Five Transports** - Console, file, database, HTTP, webhook - all
-  auto-detected
+- **🎯 Two Transports** - Console and rotating file, both on by default
+  (off under `NODE_ENV=test`)
 - **🔧 Zero Configuration** - Smart defaults with environment variable override
 - **🌍 Environment-First** - Auto-detects from `BLOOM_LOGGER_*` variables
 - **🎨 Visual Error Display** - Enhanced error formatting in development
@@ -40,18 +40,16 @@ dbLog.warn('⚠️ Connection slow', { latency: '2s' });
 
 **That's it!** No configuration, no setup, production-ready.
 
-## ✨ Auto-Transport Detection
+## ✨ Transports
 
-The logger **automatically detects** what you need:
+| Transport | Default                        | Turn off                      |
+| --------- | ------------------------------ | ----------------------------- |
+| Console   | On (except `NODE_ENV=test`)    | `BLOOM_LOGGER_CONSOLE=false`  |
+| File      | On (except `NODE_ENV=test`)    | `BLOOM_LOGGER_FILE=false`     |
 
-| Environment Variable       | Transport Enabled  | What You Get            |
-| -------------------------- | ------------------ | ----------------------- |
-| _Nothing_                  | Console + File     | Development logging     |
-| `DATABASE_URL`             | + Database         | Centralized storage     |
-| `BLOOM_LOGGER_HTTP_URL`    | + External service | Professional monitoring |
-| `BLOOM_LOGGER_WEBHOOK_URL` | + Slack alerts     | Real-time notifications |
-
-**Set environment variables, get enterprise features. No code changes.**
+There is no database, HTTP or webhook transport (removed in 6.0). To ship logs
+to a central service, collect stdout or the log file with your platform's log
+agent (Datadog agent, Vector, Fluent Bit, journald).
 
 ## 🤖 LLM Quick Reference - Copy These Patterns
 
@@ -220,15 +218,16 @@ BLOOM_SERVICE_NAME=my-app                  # Default: package.json name
 ### **Transport Control**
 
 ```bash
-# Database (auto-enabled if DATABASE_URL exists)
-DATABASE_URL=postgres://user:pass@localhost/app
+# Console
+BLOOM_LOGGER_CONSOLE=false               # Disable console output
+BLOOM_LOGGER_CONSOLE_COLOR=false         # Disable colours
 
-# HTTP (Datadog, Elasticsearch, etc.)
-BLOOM_LOGGER_HTTP_URL=https://logs.datadog.com/api/v1/logs
-
-# Webhook (Slack alerts)
-BLOOM_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/xxx
-BLOOM_LOGGER_WEBHOOK_LEVEL=error         # Default: error only
+# File (rotating JSON lines)
+BLOOM_LOGGER_FILE=false                  # Disable the file transport
+BLOOM_LOGGER_DIR=logs                    # Default: logs
+BLOOM_LOGGER_FILE_NAME=app.log           # Default: app.log
+BLOOM_LOGGER_FILE_SIZE=10000000          # Bytes before rotation (10MB dev, 50MB prod)
+BLOOM_LOGGER_FILE_RETENTION=7            # Days kept (7 dev, 30 prod)
 ```
 
 ## 🚀 Production Deployment
@@ -240,11 +239,7 @@ BLOOM_LOGGER_WEBHOOK_LEVEL=error         # Default: error only
 NODE_ENV=production
 BLOOM_LOGGER_SCOPE=minimal
 BLOOM_LOGGER_LEVEL=warn
-
-# ✅ Required transports
-DATABASE_URL=postgres://prod-user:pass@prod-db/app
-BLOOM_LOGGER_HTTP_URL=https://logs.datadog.com/api/v1/logs
-BLOOM_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/xxx
+BLOOM_LOGGER_DIR=/var/log/my-app
 ```
 
 ### **Security Validation**
@@ -292,8 +287,8 @@ log.close(); // Close transports
 ### **Utility Methods**
 
 ```typescript
-loggerClass.getActiveTransports(); // ['console', 'file', 'database']
-loggerClass.hasTransport('database'); // true/false
+loggerClass.getActiveTransports(); // ['console', 'file']
+loggerClass.hasTransport('file'); // true/false
 loggerClass.getConfig(); // Debug configuration
 await loggerClass.disconnectAll(); // Clear state (testing)
 ```
@@ -358,20 +353,6 @@ class DatabaseService {
 }
 ```
 
-## 🔧 External Services
-
-### **Datadog**
-
-```bash
-BLOOM_LOGGER_HTTP_URL=https://http-intake.logs.datadoghq.com/api/v1/input/YOUR_API_KEY
-```
-
-### **Slack Alerts**
-
-```bash
-BLOOM_LOGGER_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
-```
-
 ## 📊 Output Examples
 
 ### **Development Console**
@@ -415,7 +396,6 @@ describe('Payment Service', () => {
 - **Memory**: < 5MB baseline usage
 - **Throughput**: 10,000+ logs/second
 - **File I/O**: Batched writes, no blocking
-- **Network**: Smart batching for external services
 
 ## 🔍 TypeScript Support
 
@@ -488,7 +468,7 @@ No anti-pattern caps apply.
 
 ### Gaps to reach 🟢 85+
 
-1. **D8 → 8**: Transport init failures should log a pointer, e.g. `[@bloomneo/appkit/logger] File transport failed: <reason>. Check BLOOM_LOGGER_FILE_PATH is writable. See src/logger/README.md#transport-control`.
+1. **D8 → 8**: Transport init failures should log a pointer, e.g. `[@bloomneo/appkit/logger] File transport failed: <reason>. Check BLOOM_LOGGER_DIR is writable. See src/logger/README.md#transport-control`.
 2. **D10 → 9**: Add a CI drift check that greps doc files for `loggerClass.<name>(` and fails if `<name>` is not on the real export.
 3. **D11 → 8**: Add an explicit "See also: AGENTS.md · examples/logger.ts · llms.txt" block in the first 20 lines of the README.
 4. **D14 → 9**: Call out `error()`'s dev-mode visual side effect at the call-site doc (inline on the `error(message, meta?)` line in API Reference), not only in the "Enhanced error logging" subsection.

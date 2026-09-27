@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loggerClass } from './index.js';
-import { validateEnvironment } from './defaults.js';
+import { validateEnvironment, getSmartDefaults } from './defaults.js';
 import { filterEssentialMeta } from './transports/meta.js';
 
 beforeEach(async () => { await loggerClass.disconnectAll(); });
@@ -113,11 +113,10 @@ describe('Public API surface — drift check', () => {
   }
 });
 
-describe('DATABASE_URL is only the logger\'s business when it logs to a database (regression — 4.0.1)', () => {
-  // Before 4.0.1 this validation ran unconditionally, so merely *setting*
-  // DATABASE_URL to a value the logger didn't recognise (e.g. Prisma's
-  // `file:./dev.db`) threw at import time and killed the whole server before
-  // a single route loaded — even with database logging switched off.
+describe('the logger never reads DATABASE_URL (6.0 — database transport removed)', () => {
+  // 4.0.1 fixed a bug where merely setting DATABASE_URL to a value the logger
+  // did not recognise threw at import time. 6.0 removed the database, http and
+  // webhook transports, so no logger env var depends on DATABASE_URL at all.
   const withEnv = (env: Record<string, string | undefined>, fn: () => void) => {
     const saved: Record<string, string | undefined> = {};
     for (const [k, v] of Object.entries(env)) {
@@ -135,33 +134,15 @@ describe('DATABASE_URL is only the logger\'s business when it logs to a database
     }
   };
 
-  it('ignores an unrecognised DATABASE_URL when database logging is off', () => {
-    withEnv({ DATABASE_URL: 'file:./dev.db', BLOOM_LOGGER_DATABASE: undefined }, () => {
-      expect(() => validateEnvironment()).not.toThrow();
-    });
-  });
-
-  it('ignores a totally malformed DATABASE_URL when database logging is off', () => {
-    withEnv({ DATABASE_URL: 'this-is-not-a-url', BLOOM_LOGGER_DATABASE: undefined }, () => {
-      expect(() => validateEnvironment()).not.toThrow();
-    });
-  });
-
-  it('accepts a file: URL when database logging is ON', () => {
-    withEnv({ DATABASE_URL: 'file:./dev.db', BLOOM_LOGGER_DATABASE: 'true' }, () => {
-      expect(() => validateEnvironment()).not.toThrow();
-    });
-  });
-
-  it('still rejects a malformed DATABASE_URL when database logging is ON', () => {
+  it('ignores a malformed DATABASE_URL even with the old BLOOM_LOGGER_DATABASE flag set', () => {
     withEnv({ DATABASE_URL: 'this-is-not-a-url', BLOOM_LOGGER_DATABASE: 'true' }, () => {
-      expect(() => validateEnvironment()).toThrow(/Invalid DATABASE_URL/);
+      expect(() => validateEnvironment()).not.toThrow();
     });
   });
 
-  it('still requires DATABASE_URL when database logging is ON', () => {
-    withEnv({ DATABASE_URL: undefined, BLOOM_LOGGER_DATABASE: 'true' }, () => {
-      expect(() => validateEnvironment()).toThrow(/DATABASE_URL not provided/);
+  it('only exposes console and file transport flags', () => {
+    withEnv({ BLOOM_LOGGER_HTTP_URL: 'https://example.com/logs', BLOOM_LOGGER_WEBHOOK_URL: 'https://example.com/hook' }, () => {
+      expect(Object.keys(getSmartDefaults().transports).sort()).toEqual(['console', 'file']);
     });
   });
 });

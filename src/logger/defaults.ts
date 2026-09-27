@@ -20,9 +20,6 @@ export interface LoggingConfig {
   transports: {
     console: boolean;
     file: boolean;
-    database: boolean;
-    http: boolean;
-    webhook: boolean;
   };
   
   // Direct environment access (no complex config objects)
@@ -37,24 +34,6 @@ export interface LoggingConfig {
     filename: string;
     maxSize: number;
     retentionDays: number;
-  };
-  
-  database: {
-    url: string | null;
-    table: string;
-    batchSize: number;
-  };
-  
-  http: {
-    url: string | null;
-    batchSize: number;
-    timeout: number;
-  };
-  
-  webhook: {
-    url: string | null;
-    level: 'debug' | 'info' | 'warn' | 'error';
-    rateLimit: number;
   };
   
   // Service identification
@@ -111,27 +90,6 @@ export function getSmartDefaults(): LoggingConfig {
       retentionDays: parseInt(process.env.BLOOM_LOGGER_FILE_RETENTION || (isProduction ? '30' : '7')),
     },
     
-    // Database config - direct env access
-    database: {
-      url: process.env.DATABASE_URL || null,
-      table: process.env.BLOOM_LOGGER_DB_TABLE || 'logs',
-      batchSize: parseInt(process.env.BLOOM_LOGGER_DB_BATCH || (minimal ? '50' : '100')),
-    },
-    
-    // HTTP config - direct env access
-    http: {
-      url: process.env.BLOOM_LOGGER_HTTP_URL || null,
-      batchSize: parseInt(process.env.BLOOM_LOGGER_HTTP_BATCH || (minimal ? '25' : '50')),
-      timeout: parseInt(process.env.BLOOM_LOGGER_HTTP_TIMEOUT || '30000'),
-    },
-    
-    // Webhook config - direct env access
-    webhook: {
-      url: process.env.BLOOM_LOGGER_WEBHOOK_URL || null,
-      level: (process.env.BLOOM_LOGGER_WEBHOOK_LEVEL as any) || 'error',
-      rateLimit: parseInt(process.env.BLOOM_LOGGER_WEBHOOK_RATE || (minimal ? '5' : '10')),
-    },
-    
     // Service identification - direct env access
     service: {
       name: process.env.BLOOM_SERVICE_NAME || process.env.npm_package_name || 'app',
@@ -183,7 +141,7 @@ function getLevel(isProduction: boolean, isDevelopment: boolean): 'debug' | 'inf
  * Auto-detect enabled transports from environment
  * @llm-rule WHEN: Need to determine which transports to enable automatically
  * @llm-rule AVOID: Manual transport configuration - auto-detection prevents errors
- * @llm-rule NOTE: DATABASE_URL auto-enables database, WEBHOOK_URL auto-enables webhooks
+ * @llm-rule NOTE: Only console and file exist; ship logs elsewhere by collecting stdout or the file
  */
 function getEnabledTransports(isTest: boolean) {
   return {
@@ -192,15 +150,6 @@ function getEnabledTransports(isTest: boolean) {
     
     // File: default on (except test)
     file: process.env.BLOOM_LOGGER_FILE !== 'false' && !isTest,
-    
-    // Database: auto-enable if DATABASE_URL exists
-    database: process.env.BLOOM_LOGGER_DATABASE === 'true' && !!process.env.DATABASE_URL,
-    
-    // HTTP: auto-enable if URL provided
-    http: !!process.env.BLOOM_LOGGER_HTTP_URL,
-    
-    // Webhook: auto-enable if URL provided
-    webhook: !!process.env.BLOOM_LOGGER_WEBHOOK_URL,
   };
 }
 
@@ -228,35 +177,9 @@ export function validateEnvironment(): void {
     throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_VISUAL_ERRORS: "${visualErrors}". Must be: true, false. See: ${DOCS_URL}#environment-variables`);
   }
 
-  // Validate URLs if provided
-  const httpUrl = process.env.BLOOM_LOGGER_HTTP_URL;
-  if (httpUrl && !isValidUrl(httpUrl)) {
-    throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_HTTP_URL: "${httpUrl}". See: ${DOCS_URL}#environment-variables`);
-  }
-
-  const webhookUrl = process.env.BLOOM_LOGGER_WEBHOOK_URL;
-  if (webhookUrl && !isValidUrl(webhookUrl)) {
-    throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_WEBHOOK_URL: "${webhookUrl}". See: ${DOCS_URL}#environment-variables`);
-  }
-
-  // Validate database URL if database logging enabled
-  const dbEnabled = process.env.BLOOM_LOGGER_DATABASE === 'true';
-  const dbUrl = process.env.DATABASE_URL;
-  if (dbEnabled && !dbUrl) {
-    throw new Error(`[@bloomneo/appkit/logger] BLOOM_LOGGER_DATABASE=true but DATABASE_URL not provided. See: ${DOCS_URL}#environment-variables`);
-  }
-  // Only the logger's OWN use of DATABASE_URL is the logger's business. Validating
-  // it unconditionally made merely *setting* the var a fatal import-time error for
-  // every app whose URL the logger happened not to recognise — even with database
-  // logging switched off.
-  if (dbEnabled && dbUrl && !isValidDatabaseUrl(dbUrl)) {
-    throw new Error(`[@bloomneo/appkit/logger] Invalid DATABASE_URL: "${dbUrl}". See: ${DOCS_URL}#environment-variables`);
-  }
-
   // Validate numeric values
   validateNumericEnv('BLOOM_LOGGER_FILE_SIZE', 1000000, 100000000); // 1MB to 100MB
   validateNumericEnv('BLOOM_LOGGER_FILE_RETENTION', 1, 365); // 1 to 365 days
-  validateNumericEnv('BLOOM_LOGGER_HTTP_TIMEOUT', 1000, 300000); // 1s to 5min
 }
 
 /**
@@ -269,32 +192,5 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
     throw new Error(`[@bloomneo/appkit/logger] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`);
-  }
-}
-
-/**
- * Validate URL format (like auth module)
- */
-function isValidUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Validate database URL format
- */
-function isValidDatabaseUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    // `file:` is Prisma's SQLite scheme (`file:./dev.db`). `sqlite:` is accepted
-    // too because older AppKit docs advertised it, but Prisma itself never emits it.
-    const validProtocols = ['postgres:', 'postgresql:', 'mysql:', 'sqlite:', 'file:'];
-    return validProtocols.includes(parsed.protocol);
-  } catch {
-    return false;
   }
 }

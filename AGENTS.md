@@ -54,7 +54,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | `storageClass` | `from '@bloomneo/appkit/storage'` | Local → S3/R2 auto-scaling |
 | `queueClass` | `from '@bloomneo/appkit/queue'` | Memory → Redis → DB scaling |
 | `emailClass` | `from '@bloomneo/appkit/email'` | Console → SMTP → Resend |
-| `loggerClass` | `from '@bloomneo/appkit/logger'` | Multi-transport, auto-scaling |
+| `loggerClass` | `from '@bloomneo/appkit/logger'` | Structured logs to console + rotating file |
 | `configClass` | `from '@bloomneo/appkit/config'` | Environment-driven config |
 | `mcpClass` | `from '@bloomneo/appkit/mcp'` | Your app as an MCP server for AI agents |
 | `verifyClass` | `from '@bloomneo/appkit/verify'` | Proves the app doesn't leak across tenants |

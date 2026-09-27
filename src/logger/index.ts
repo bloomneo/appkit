@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/logger
  * @file src/logger/index.ts
  * 
- * @llm-rule WHEN: Need logging in any app - console, files, database, external services
+ * @llm-rule WHEN: Need logging in any app - console and rotating files
  * @llm-rule AVOID: Using console.log directly - this provides structured logging with levels
  * @llm-rule NOTE: Uses loggerClass.get() pattern like auth - get() → log.info() → done
  * @llm-rule NOTE: Enhanced error() method now provides automatic visual formatting in development
@@ -82,13 +82,13 @@ function get(component?: string): Logger {
 
 /**
  * Close every logger + transport and reset internal state — the canonical
- * teardown call. Named to match cache/queue/email/event/storage/database per
+ * teardown call. Named to match cache/queue/email/storage/database per
  * NAMING.md §Bulk-and-Lifecycle-Ops so agents see one teardown verb across
  * every appkit module.
  *
  * @llm-rule WHEN: App shutdown, SIGTERM handler, end-of-test-suite teardown
  * @llm-rule AVOID: Abrupt process exit — graceful drain prevents log loss
- *   for batched transports (HTTP, webhook, database)
+ *   from the file transport's write buffer
  */
 async function disconnectAll(): Promise<void> {
   if (globalLogger) {
@@ -100,7 +100,7 @@ async function disconnectAll(): Promise<void> {
 
 /**
  * Get active transport names for debugging
- * @llm-rule WHEN: Need to see which transports are running (console, file, database, etc)
+ * @llm-rule WHEN: Need to see which transports are running (console, file)
  * @llm-rule AVOID: Using for business logic - this is for debugging only
  */
 function getActiveTransports(): string[] {
