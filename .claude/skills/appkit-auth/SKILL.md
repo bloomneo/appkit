@@ -2,7 +2,7 @@
 name: appkit-auth
 description: >-
   Use when writing code that authenticates users, issues or verifies JWTs,
-  hashes passwords, protects Express/Fastify routes, or checks roles via
+  hashes passwords, protects Express routes, or checks roles via
   `@bloomneo/appkit/auth`. Covers the canonical issue →
   verify → protect → extract flow and the role.level hierarchy.
 ---

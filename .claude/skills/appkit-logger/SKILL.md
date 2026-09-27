@@ -25,9 +25,13 @@ logger.error('Payment failed', { orderId, error: err.message });
 logger.debug('Cache miss', { key });
 
 // Child loggers — bind context that every call inherits
-const reqLog = logger.child({ requestId: req.id });
-reqLog.info('Route hit');                      // → includes requestId automatically
+const jobLog = logger.child({ jobId: job.id });
+jobLog.info('Job started');                    // → includes jobId automatically
 ```
+
+Request ids need no child logger: mount `requestId()` from
+`@bloomneo/appkit/server` first, and every line written while handling a
+request carries `req=<id>` (6.0).
 
 ## Levels
 

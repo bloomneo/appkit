@@ -82,21 +82,20 @@ appkit/
 │   ├── email/                   # Email module
 │   │   └── strategies/         # Email strategies
 │   ├── error/                   # Error handling module
-│   ├── event/                   # Event handling module
-│   │   └── strategies/         # Event strategies
+│   ├── internal/                # Shared internals (AppKitError, env, Express types, request context)
 │   ├── logger/                  # Logger module
-│   │   └── transports/         # Logger transports (Console, File, etc.)
+│   │   └── transports/         # Logger transports (console, file)
+│   ├── mcp/                     # MCP server module
 │   ├── queue/                   # Queue module
-│   │   └── transports/         # Queue transports
-│   ├── security/                # Security utilities
+│   │   └── transports/         # Queue transports (memory, database)
+│   ├── security/                # Rate limiting and encryption
+│   ├── server/                  # API router, route contracts, requestId()
 │   ├── storage/                 # Storage module
-│   │   └── strategies/         # Storage strategies
-│   ├── util/                    # Utility functions
+│   │   └── strategies/         # Storage strategies (local, S3)
+│   ├── verify/                  # Tenant-isolation verifier
 │   └── index.ts                # Main AppKit exports
-├── bin/                         # CLI tools
-│   ├── commands/               # CLI command implementations
-│   ├── templates/              # Project templates
-│   └── appkit.js              # Main CLI entry point
+├── scripts/                     # Doc drift, README anchor and skill API checks
+├── tests/                       # Cross-module, type-level and integration tests
 ├── docs/                        # Project documentation
 ├── CONTRIBUTING.md             # This file
 ├── README.md                   # Project overview
@@ -112,8 +111,7 @@ appkit/
 2. **New Features**: Add new functionality to existing modules
 3. **New Modules**: Create entirely new modules for the toolkit
 4. **Documentation**: Improve or add documentation
-5. **CLI Templates**: Add or improve project templates
-6. **Tests**: Add test coverage (testing infrastructure is being developed)
+5. **Tests**: Add test coverage
 
 ### Development Workflow
 
@@ -145,7 +143,7 @@ appkit/
 3. **Update documentation**:
 
    - Update relevant README.md files in module directories
-   - Update CLI templates if needed
+   - Update `AGENTS.md`, `llms.txt` and the skill for any public API change
    - Update main README.md if needed
 
 4. **Create Pull Request**:
@@ -273,10 +271,12 @@ Testing infrastructure is in place and gates every PR. `npm test` runs:
 
 1. **`check:docs`** — `scripts/check-doc-drift.ts` scans docs + examples + cookbook + `src/` for renamed / hallucinated method names. Any hit fails the build.
 2. **`check:anchors`** — `scripts/check-readme-anchors.ts` verifies every `See: .../README.md#anchor` URL in a thrown error actually resolves to a heading in the target README.
-3. **Vitest** — 640+ unit/integration tests across all 12 modules, plus `tests/public-surface.test.ts` which asserts the top-level exported shape of every module.
-4. **CI** — `.github/workflows/ci.yml` runs the above on Node 18/20/22 for every push and pull request.
+3. **`check:skills`** — `scripts/check-skill-api.ts` fails if a skill's Public API block names a class method the built module lacks (needs `dist/`: run `npm run build` first).
+4. **`test:types`** — compiles `tests/types/` against the source, so Express usage without casts keeps type-checking.
+5. **Vitest** — unit tests across every module, plus `tests/public-surface.test.ts` (the exported shape of every module) and `tests/typed-errors.test.ts` (no plain `throw new Error(` in `src/`). `npm run test:integration` runs the Postgres tests.
+6. **CI** — `.github/workflows/ci.yml` runs the above on Node 18/20/22 for every push and pull request.
 
-Every change must keep all four green.
+Every change must keep all of these green.
 
 ### Writing tests
 
@@ -312,8 +312,8 @@ npm run build
 # Run linting
 npm run lint
 
-# Test CLI commands manually
-node bin/appkit.js --help
+# Unit tests only
+npm run test:unit
 ```
 
 ## Documentation

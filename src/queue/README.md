@@ -83,6 +83,15 @@ The queue **automatically detects** what you need:
 `REDIS_URL` does not select a queue transport; the Redis transport was removed
 in 6.0. It still switches the cache to Redis.
 
+### Jobs keep their tenant (6.0)
+
+A job added inside a tenant context (`database.tenant()`,
+`database.context()`, a contract route) runs its handler in that same tenant,
+so database calls in the handler stay scoped. A job added during
+`database.bypass()` runs as that bypass. appkit carries this in a marker on the
+job data and removes it before your handler sees `data`. Jobs added outside
+any context run with no tenant, as before.
+
 ## 🏢 Production Ready
 
 ```bash
@@ -852,6 +861,8 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ---
 
 ## Agent-Dev Friendliness Score
+
+> Snapshot from before 6.0. Modules, methods and types it mentions may since have changed or been removed; see [`MIGRATION-6.md`](../../MIGRATION-6.md).
 
 **Score: 85/100 — 🟢 Exemplary**
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*

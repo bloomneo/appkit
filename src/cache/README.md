@@ -64,6 +64,17 @@ await cache.set('bad\nkey', data);       // ❌ throws CacheError
 await cache.set('', data);               // ❌ throws CacheError
 ```
 
+### Keys are per tenant inside a tenant context (6.0)
+
+Inside a tenant context — `database.tenant()`, `database.context()`, a
+contract route from `@bloomneo/appkit/server`, or a job queued from one — keys
+are stored as `${keyPrefix}:${namespace}:t:${tenantId}:${key}`. A value cached
+for one tenant never answers another, with no change to your code. Code
+outside any context, and `database.bypass()`, share the global key space.
+
+After upgrading, values cached before 6.0 from inside a tenant context are no
+longer read (their keys have no tenant part); they expire on their TTL.
+
 ## 🌍 Environment Variables
 
 ```bash
@@ -728,6 +739,8 @@ await cache.set('user:123', userData, 3600);
 **Same features, 90% less code, automatic strategy selection.**
 
 ## Agent-Dev Friendliness Score
+
+> Snapshot from before 6.0. Modules, methods and types it mentions may since have changed or been removed; see [`MIGRATION-6.md`](../../MIGRATION-6.md).
 
 **Score: 89.1/100 — 🟢 Exemplary** *(no cap)*
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*

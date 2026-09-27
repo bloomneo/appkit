@@ -51,6 +51,23 @@ There is no database, HTTP or webhook transport (removed in 6.0). To ship logs
 to a central service, collect stdout or the log file with your platform's log
 agent (Datadog agent, Vector, Fluent Bit, journald).
 
+## 🔗 Request ids (6.0)
+
+Mount `requestId()` from `@bloomneo/appkit/server` first. Every line the
+logger writes while handling that request then carries a `req` field with
+the request id (`req=<id>`), with no id passed around. The id is the incoming
+`X-Request-Id` when it is safe (letters, digits, `.`, `_`, `-`, up to 64
+characters), otherwise a new 8-character id; it is echoed in the response
+header and set on `req.requestId` and `req.requestMetadata.requestId`.
+
+```typescript
+import { requestId } from '@bloomneo/appkit/server';
+
+app.use(requestId());   // before routes
+```
+
+A `req` field you pass in `meta` yourself wins.
+
 ## 🤖 LLM Quick Reference - Copy These Patterns
 
 ### **Basic Setup (Copy Exactly)**
@@ -420,6 +437,8 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ---
 
 ## Agent-Dev Friendliness Score
+
+> Snapshot from before 6.0. Modules, methods and types it mentions may since have changed or been removed; see [`MIGRATION-6.md`](../../MIGRATION-6.md).
 
 **Score: 82/100 — 🟡 Solid** *(+42 vs previous 40/100 capped; +16 vs previous 66/100 uncapped)*
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*

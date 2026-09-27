@@ -5,9 +5,15 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 [![AI Ready](https://img.shields.io/badge/AI-Optimized-purple.svg)](https://github.com/bloomneo/appkit)
 
-> Minimal, framework-agnostic Node.js toolkit designed for AI agentic backend development.
+> Bloomneo makes business apps safe, consistent and maintainable, however much of the code AI writes.
 
-**12 integrated modules. One pattern. Zero config to start, enterprise scaling on demand.**
+AppKit is the backend half: auth, tenant isolation, errors, logging, jobs and
+the rest, each behind one `xxxClass.get()` call, so the code an agent writes
+takes the safe path by default. The tenant comes only from the login token,
+Postgres row-level security can back it up, and route contracts apply auth,
+tenant scope and validation for you.
+
+**12 modules plus a server layer. One pattern. Zero config to start, scales by env var.**
 
 ```ts
 import { authClass, databaseClass, errorClass, loggerClass } from '@bloomneo/appkit';
@@ -45,7 +51,7 @@ Five locations at the package root tell agents everything they need to know:
 | **[`AGENTS.md`](./AGENTS.md)** | Rules: always-do, never-do, canonical patterns. Read first. |
 | **[`llms.txt`](./llms.txt)** | Reference: every export, every method, signatures + examples. |
 | **[`examples/`](./examples)** | 12 minimal `.ts` files, one per module. Copy and modify. |
-| **[`cookbook/`](./cookbook)** | Composed recipes for whole patterns (CRUD, multi-tenant, file upload, real-time). |
+| **[`cookbook/`](./cookbook)** | Composed recipes for whole patterns (CRUD, multi-tenant, file upload, API keys). |
 | **[`.claude/skills/`](./.claude/skills)** | Claude Code skills — one `appkit` overview + one per module (`appkit-auth`, `appkit-cache`, `appkit-config`, `appkit-database`, `appkit-email`, `appkit-error`, `appkit-logger`, `appkit-mcp`, `appkit-queue`, `appkit-security`, `appkit-storage`, `appkit-verify`). Auto-trigger when agents work on code that imports this package. Copy the directory into your own repo's `.claude/skills/` to activate. |
 
 All of the above ship inside the npm tarball. AI agents installing `@bloomneo/appkit`
@@ -93,7 +99,7 @@ the most common first-run stumbles, so do them up front:
 {
   "type": "module",
   "dependencies": {
-    "@bloomneo/appkit": "^5.1.4",
+    "@bloomneo/appkit": "^6.0.0",
     "dotenv": "^16.0.0",
     "express": "^5.0.0"
   }
@@ -172,7 +178,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | # | Module | Purpose | Auto-scales |
 |---|---|---|---|
 | 1 | **Auth** | JWT tokens, role.level hierarchy, middleware | — |
-| 2 | **Database** | Prisma with multi-tenant filtering (tenant from the login token) | `BLOOM_DB_TENANT` |
+| 2 | **Database** | Prisma with multi-tenant filtering (tenant from the login token), optional Postgres row-level security | `BLOOM_DB_TENANT=auto` / `rls` |
 | 3 | **Security** | Rate limiting, AES-256-GCM encryption | — |
 | 4 | **Error** | HTTP errors with semantic types + middleware | — |
 | 5 | **Cache** | Memory → Redis | `REDIS_URL` |
@@ -183,6 +189,11 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 10 | **Config** | Type-safe env var access | — |
 | 11 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery | optional peers |
 | 12 | **Verify** | Generates the cross-tenant attack matrix and fails CI on a leak | — |
+| + | **Server** (`@bloomneo/appkit/server`) | `createApiRouter()` feature discovery, `route(contract, handler)` for `@bloomneo/bloom` contracts, `requestId()` | — |
+
+Every middleware takes and returns Express's own types (`req.user` is typed,
+no casts), and every error appkit throws is an `AppKitError` with a stable
+`code`.
 
 For full method signatures and per-module examples, read [`llms.txt`](./llms.txt).
 
@@ -202,7 +213,7 @@ DATABASE_URL=postgresql://localhost/myapp
 REDIS_URL=redis://prod-cache:6379         # → distributed cache
 AWS_S3_BUCKET=prod-assets                 # → cloud storage + CDN
 RESEND_API_KEY=re_production_key          # → professional email
-BLOOM_DB_TENANT=auto                      # → multi-tenant filtering
+BLOOM_DB_TENANT=rls                       # → multi-tenant filtering + Postgres row-level security
 BLOOM_LOGGER_DIR=/var/log/my-app          # → log files outside the release dir
 ```
 
@@ -212,49 +223,18 @@ See [`.env.example`](./.env.example) at the repo root for the full canonical tem
 
 ## 🏗️ Migration
 
-**Current release: 6.0.0-alpha.0.** Pre-release; stable is 5.1.4. The full, canonical migration table lives in
-[`CHANGELOG.md`](./CHANGELOG.md#400---2026-04-17) — run that project-wide
-find-and-replace and your code works.
+**Current release: 6.0.0-alpha.0.** Pre-release; stable is 5.1.4.
 
-### From `@bloomneo/appkit@2.0.0` → `4.0.0`
+**From 5.x to 6.0:** read [`MIGRATION-6.md`](./MIGRATION-6.md). It lists every
+removal with its replacement (event, util, the CLI, the logger's database /
+HTTP / webhook transports, the queue's Redis transport, the R2 strategy,
+Mongoose, per-org databases, header/subdomain tenants, auth permissions and
+matrix mode, CSRF and sanitizers, `sendTemplate`), every addition, and every
+behaviour change.
 
-Teardown and error handling changed. Nothing else in the 2.0.0 public API
-was renamed.
-
-```
-cacheClass.flushAll(      → cacheClass.clearAll(
-cacheClass.shutdown(      → cacheClass.disconnectAll(
-queueClass.clear(         → queueClass.disconnectAll(
-emailClass.shutdown(      → emailClass.disconnectAll(
-emailClass.clear(         → emailClass.disconnectAll(
-storageClass.shutdown(    → storageClass.disconnectAll(
-storageClass.clear(       → storageClass.disconnectAll(
-loggerClass.clear(        → loggerClass.disconnectAll(
-databaseClass.disconnect( → databaseClass.disconnectAll(
-```
-
-Then:
-- Error handling: every typed error now extends `AppKitError`. Prefer
-  `catch (err) { if (err instanceof AppKitError) ... }` over
-  module-specific `instanceof` checks.
-- Production: email/storage/database/security refuse to silently fall back.
-  Confirm required env vars are set before deploy.
-- Library no longer auto-registers `process.on('SIGTERM', ...)` — wire
-  `xxxClass.disconnectAll()` from your own signal handler (the scaffolded
-  backend template does this).
-
-### From `@bloomneo/appkit@1.5.x` (or earlier) → `4.0.0`
-
-Apply everything above PLUS the pre-2.0 renames:
-
-- `auth.user(req)` → `auth.getUser(req)`
-- `auth.can(user, perm)` → `auth.hasPermission(user, perm)` (removed in 6.0; use `requireUserRoles` / `hasRole`)
-- `security.csrf()` → `security.forms()` (removed in 6.0)
-- `error.handleErrors({ includeStack })` → `error.handleErrors({ showStack })`
-
-If your code called `auth.requireLogin()` or `auth.requireRole(...)`, it
-was already broken — those methods never existed. Use
-`auth.requireLoginToken()` and `auth.requireUserRoles([...])`.
+**From 4.x or earlier:** apply the tables in [`CHANGELOG.md`](./CHANGELOG.md)
+(4.0.0 unified teardown on `xxxClass.disconnectAll()`; 5.0.0 made
+`databaseClass.get()` throw in tenant mode), then `MIGRATION-6.md`.
 
 ---
 
@@ -263,7 +243,8 @@ was already broken — those methods never existed. Use
 - **[`AGENTS.md`](./AGENTS.md)** — agent-facing rules and conventions
 - **[`llms.txt`](./llms.txt)** — full machine-readable API reference
 - **[`examples/`](./examples)** — one minimal example per module
-- **[`cookbook/`](./cookbook)** — composed recipes (auth + crud, multi-tenant, file upload, real-time)
+- **[`cookbook/`](./cookbook)** — composed recipes (auth + crud, multi-tenant, file upload, API keys)
+- **[`MIGRATION-6.md`](./MIGRATION-6.md)** — upgrading from 5.x
 - **[`CHANGELOG.md`](./CHANGELOG.md)** — release history
 - **[Per-module READMEs](https://github.com/bloomneo/appkit/tree/main/src)** — long-form human docs (also shipped in the tarball at `node_modules/@bloomneo/appkit/src/<module>/README.md`)
 - **Issues**: https://github.com/bloomneo/appkit/issues
@@ -277,7 +258,7 @@ MIT © [Krishna Teja GS](https://github.com/ktvoilacode)
 ---
 
 <p align="center">
-  <strong>🚀 Built for the AI-first future of backend development</strong><br>
-  <strong>Where enterprise applications are generated, not written</strong><br><br>
+  <strong>Business apps that stay safe, consistent and maintainable,</strong><br>
+  <strong>however much of the code AI writes</strong><br><br>
   <a href="https://github.com/bloomneo/appkit">⭐ Star on GitHub</a>
 </p>

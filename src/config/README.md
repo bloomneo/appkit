@@ -609,6 +609,8 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
+> Snapshot from before 6.0. Modules, methods and types it mentions may since have changed or been removed; see [`MIGRATION-6.md`](../../MIGRATION-6.md).
+
 **Score: 75/100 — 🟡 Solid** *(no cap)* · **Δ +7 vs 2026-04-13 (68)**
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
 

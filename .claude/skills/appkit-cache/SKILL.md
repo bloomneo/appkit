@@ -39,6 +39,14 @@ await users.clear();   // clears THIS namespace only
 
 Override explicitly with `BLOOM_CACHE_STRATEGY=memory|redis`.
 
+## Tenant-scoped keys (6.0)
+
+Inside a tenant context (`database.tenant()`, `database.context()`, a contract
+route, or a job queued from one) keys are stored per tenant as
+`<prefix>:<namespace>:t:<tenantId>:<key>`. Don't add the tenant to keys or
+namespaces yourself. `database.bypass()` and code outside any request share
+the global key space.
+
 ## Teardown — two distinct operations
 
 Don't conflate these:

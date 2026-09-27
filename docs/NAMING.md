@@ -29,12 +29,11 @@ cleanly to the next module. Inconsistency is the #1 source of agent misuse.
 | Pattern          | Use for                                                                                             | Example                                                                    |
 | ---------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `get<Thing>()`   | **Nullable extractor.** Returns `Thing \| null`. Never throws on "not found." Read like a function. | `getUser(req)`, `getToken(req)`, `getConfig()`                             |
-| `has<Thing>()`   | **Boolean check.** Returns `boolean`. Never throws.                                                 | `hasRole()`, `hasRedis()`, `hasPermission()`                               |
+| `has<Thing>()`   | **Boolean check.** Returns `boolean`. Never throws.                                                 | `hasRole()`, `hasRedis()`, `hasTransport()`                                |
 | `is<State>()`    | **State boolean.** Returns `boolean`. Describes a *current* state, not a capability.                | `isProduction()`, `isConnected()`, `isExpired()`                           |
 | `create<Thing>()`| **Factory** that constructs a domain object. Does not touch external state.                         | `createSession()`, `createMiddleware()`                                    |
 | `generate<Thing>()` | **Producer** of tokens, ids, secrets, or cryptographic output. May be async; may have side effects. | `generateLoginToken()`, `generateApiKey()`                                 |
 | `require<Thing>()` | **Middleware factory** or guard that throws / rejects / sends 4xx on failure.                     | `requireLoginToken()`, `requireUserRoles()`, `requireApiToken()`           |
-| `can(<action>)`  | **Permission check.** Domain-standard short form is acceptable here.                                | `can(user, 'edit:tenant')`                                                 |
 | `<verb><Thing>()` | **Imperative single action.** Default for everything not covered above.                            | `hashPassword()`, `verifyToken()`, `clearNamespace()`                      |
 | `<verb>All()`    | **Bulk op across all entities** the instance knows about.                                           | `clearAll()`, `disconnectAll()`, `shutdownAll()`                           |
 

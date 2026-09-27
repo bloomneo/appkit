@@ -9,10 +9,11 @@ description: >-
 
 # @bloomneo/appkit
 
-`@bloomneo/appkit` is a framework-agnostic Node.js toolkit with 12 modules
-(auth, cache, config, database, email, error, event, logger, queue, security,
-storage, util). Every public method an agent will invoke goes through one
-consistent pattern.
+`@bloomneo/appkit` is a Node.js backend toolkit with 12 modules (auth, cache,
+config, database, email, error, logger, mcp, queue, security, storage, verify)
+plus `@bloomneo/appkit/server` (route contracts, feature discovery, request
+ids). Every module goes through one consistent pattern; its middleware takes
+Express's own types.
 
 ## The one rule
 
@@ -49,7 +50,7 @@ Everything else is opt-in and auto-detected.
 | Need | Module | Import |
 |---|---|---|
 | Sign/verify tokens, hash passwords, protect routes | auth | `@bloomneo/appkit/auth` |
-| Hit Postgres/MySQL/SQLite/Mongo via Prisma | database | `@bloomneo/appkit/database` |
+| Hit Postgres/MySQL/SQLite via Prisma; tenant isolation (incl. Postgres RLS) | database | `@bloomneo/appkit/database` |
 | Cache data (Memory → Redis auto-switch on `REDIS_URL`) | cache | `@bloomneo/appkit/cache` |
 | Run background jobs | queue | `@bloomneo/appkit/queue` |
 | Send email | email | `@bloomneo/appkit/email` |
@@ -58,12 +59,17 @@ Everything else is opt-in and auto-detected.
 | Typed HTTP errors + middleware | error | `@bloomneo/appkit/error` |
 | Rate limit, encryption | security | `@bloomneo/appkit/security` |
 | Config lookup helpers | config | `@bloomneo/appkit/config` |
+| Expose the app to AI agents as an MCP server | mcp | `@bloomneo/appkit/mcp` |
+| Prove no cross-tenant leaks in CI | verify | `@bloomneo/appkit/verify` |
+| Serve `defineRoute()` contracts, mount features, request ids | server | `@bloomneo/appkit/server` (`route`, `contractRouter`, `createApiRouter`, `requestId`) |
 
 ## Non-negotiable conventions
 
 - **No synonym drift.** `clear`/`clearAll` (not `flush`), `disconnectAll` (not `shutdown`).
 - **No bare-noun methods.** `auth.getUser(req)` — never `auth.user(req)`.
-- **Errors carry the full prefix.** Every thrown `Error` starts with
+- **Errors are typed.** Everything appkit throws is an `AppKitError` subclass
+  with `module` and a stable `code` (6.0). Match with `instanceof`, never by
+  message text. Every message starts with
   `[@bloomneo/appkit/<module>]` and ends with a `README.md#anchor` link.
 - **Graceful shutdown is opt-in.** Library does not register `process.on`
   handlers. Host app wires `SIGTERM` → `xxxClass.disconnectAll()` itself.

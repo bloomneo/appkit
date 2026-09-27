@@ -103,7 +103,7 @@ app.post('/webhook/payment', auth.requireApiToken(), handler);
 app.get('/api/public-data', auth.requireApiToken(), handler);
 ```
 
-## 🏗️ Role-Level-Permission Architecture
+## 🏗️ Role-Level Architecture
 
 > 🧩 **Two forms of the same identity — don't mix them up.**
 > - **Token payloads** use two separate fields: `{ role: 'admin', level: 'tenant' }`

@@ -11,18 +11,18 @@ For single-module tours, see [`examples/`](../examples/README.md) first.
 | File                          | Modules                                            | What it builds                                                              |
 | ----------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
 | `auth-protected-crud.ts`      | auth, database, error, logger                      | Express CRUD router gated by login + role middleware                        |
-| `multi-tenant-saas.ts`        | auth, database, cache, error, logger               | Row-level tenant filtering, per-org admin, per-tenant cached dashboards     |
-| `file-upload-pipeline.ts`     | auth, security, storage, queue, event, error, log  | Rate-limited upload → storage → queue worker → event fan-out                |
+| `multi-tenant-saas.ts`        | auth, database, cache, error, logger               | Tenant context per request, per-org admin, per-tenant cached dashboards     |
+| `file-upload-pipeline.ts`     | auth, security, storage, queue, error, logger      | Rate-limited upload → storage → queue worker → follow-up job                |
 | `api-key-service.ts`          | auth, security, database, error, logger            | JWT-backed API keys with encrypted DB copies, revocation, and auth middleware |
 
 ## Environment
 
-Copy `examples/.env.example` to `.env` and fill in:
+Copy the root `.env.example` to `.env` and fill in:
 
 - `BLOOM_AUTH_SECRET` — required by every recipe
 - `DATABASE_URL` — required by any recipe that persists state
 - `BLOOM_SECURITY_ENCRYPTION_KEY` — required by `api-key-service.ts`
-- `BLOOM_DB_TENANT=auto` — enables row-level multi-tenancy in `multi-tenant-saas.ts`
+- `BLOOM_DB_TENANT=auto` (or `rls` on Postgres) — enables multi-tenancy in `multi-tenant-saas.ts`
 - `REDIS_URL` — upgrades the cache from in-process to Redis
 
 ## Running

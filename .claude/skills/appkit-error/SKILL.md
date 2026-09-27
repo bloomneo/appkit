@@ -1,7 +1,7 @@
 ---
 name: appkit-error
 description: >-
-  Use when writing Express/Fastify routes that need typed HTTP errors,
+  Use when writing Express routes that need typed HTTP errors,
   `asyncRoute` error propagation, or the `handleErrors()` middleware from
   `@bloomneo/appkit/error`. Covers the canonical throw-semantic-errors pattern
   and how to avoid `try { } catch { res.status(500) }` boilerplate.
@@ -50,9 +50,8 @@ Throw by meaning, not by status code. The middleware maps to the right status.
 | `error.notFound(msg)` | 404 | Resource doesn't exist |
 | `error.conflict(msg)` | 409 | State conflict (dup email, etc.) |
 | `error.tooMany(msg)` | 429 | Rate limited |
-| `error.server(msg)` | 500 | Unexpected server error |
-| `error.badGateway(msg)` | 502 | Upstream failure |
-| `error.unavailable(msg)` | 503 | Maintenance / overload |
+| `error.serverError(msg)` | 500 | Unexpected server error (alias `error.internal`) |
+| `error.createError(status, msg, type?)` | any | A status with no named method (502, 503, ...) |
 
 Prefer the semantic method over `throw new Error(...)` — the middleware can't
 classify a bare `Error` and will fall back to 500.
@@ -63,25 +62,37 @@ Plain `async` Express handlers that throw don't propagate to error middleware
 automatically (Express 4 quirk; Express 5 fixes this). `asyncRoute` wraps the
 handler so rejected promises reach `handleErrors()`.
 
-In Express 5, `asyncRoute` is still useful because it also preserves the
-original stack trace and attaches request context to the error object for
-logging.
+In Express 5 it is still the canonical wrapper: one pattern for both majors,
+and it returns Express's own `RequestHandler` type, so no casts are needed.
+
+## What `handleErrors()` does (6.0)
+
+- Errors with a `statusCode` (`AppError`, `SecurityError`) keep their status,
+  type and message. `AppError` `details` (e.g. a failed contract validation's
+  `issues`) are merged into the body.
+- Anything else — including appkit configuration/misuse errors, every one an
+  `AppKitError` — is a 500. In production its message is replaced by the
+  generic server-error message; outside production the appkit `code` is sent.
+- A 4xx `AppError` is logged as one `console.warn` line with no stack; server
+  errors are logged with the stack.
 
 ## Public API
 
 ```ts
 // Instance (from errorClass.get())
-error.badRequest(msg, details?)      // → typed Error
-error.unauthorized(msg, details?)
-error.forbidden(msg, details?)
-error.notFound(msg, details?)
-error.conflict(msg, details?)
-error.tooMany(msg, details?)
-error.server(msg, details?)
-error.badGateway(msg, details?)
-error.unavailable(msg, details?)
-error.asyncRoute(handler)            // → wrapped handler (async-safe)
-error.handleErrors()                 // → error middleware (register LAST)
+error.badRequest(msg?)               // → AppError (400)
+error.unauthorized(msg?)             // 401
+error.forbidden(msg?)                // 403
+error.notFound(msg?)                 // 404
+error.conflict(msg?)                 // 409
+error.tooMany(msg?)                  // 429
+error.serverError(msg?)              // 500 (alias: error.internal)
+error.createError(status, msg, type?)
+error.asyncRoute(handler)            // → Express RequestHandler (async-safe)
+error.handleErrors({ showStack?, logErrors? })  // → error middleware (register LAST)
+
+// Errors with client-safe details
+new AppError(message, statusCode, type, details?)   // import { AppError } from '@bloomneo/appkit/error'
 
 // Class
 errorClass.get()                     // → instance

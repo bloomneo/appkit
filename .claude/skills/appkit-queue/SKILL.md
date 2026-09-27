@@ -42,6 +42,14 @@ queue.process('send-email', async (data) => {
 Override explicitly: `BLOOM_QUEUE_TRANSPORT=database` or `memory`. `REDIS_URL`
 does not select a queue transport; the Redis transport was removed in 6.0.
 
+## Jobs keep their tenant (6.0)
+
+A job added inside a tenant context (`database.tenant()`, `database.context()`,
+a contract route) runs its handler in that tenant, so database calls in the
+handler stay scoped; a job added during `database.bypass()` runs as that
+bypass. The marker is removed before the handler sees `data`. Don't pass
+`tenantId` in job data just to re-scope the handler.
+
 ## Worker mode — jobs don't process by default
 
 In `NODE_ENV=test` the memory transport's processing loop is off by default,

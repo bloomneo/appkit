@@ -475,8 +475,8 @@ one valid mental model.
 2. Check return types — does `null` mean "not found" or "failure"?
 3. Check boolean flags with non-obvious meanings.
 4. Check for state-dependent behavior (same call, different result).
-5. Check for shape-but-not-semantics matches (e.g. `requireUserRoles` is OR,
-   `requireUserPermissions` is AND — same shape, different rule).
+5. Check for shape-but-not-semantics matches (e.g. two middleware factories
+   that take the same list, one matching ANY entry and one matching ALL).
 
 **Failure mode it catches:** `cache.get(key)` returning `null` for both
 "not in cache" and "found, value is null" — consumer can't tell.

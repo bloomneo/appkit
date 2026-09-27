@@ -20,7 +20,7 @@ framework.
 - **🔧 Zero Configuration** - Smart defaults for development vs production
 - **🌍 Environment-First** - Auto-detects dev/prod behavior
 - **🛡️ Production-Safe** - Hides stack traces and sensitive info in production
-- **🔄 Framework Agnostic** - Express, Fastify, Koa, any Node.js framework
+- **🔄 Express-typed middleware** - `asyncRoute()` / `handleErrors()` take Express's own types; the error objects work in any framework
 - **🤖 AI-Ready** - Optimized for LLM code generation
 
 ## 📦 Installation
@@ -397,6 +397,11 @@ BLOOM_ERROR_LOG=true             # Enable error logging
   is a 500 `SERVER_ERROR`. In production its message is replaced by
   `messages.serverError`, so env var names and driver errors never reach the
   client; outside production the message and the appkit `code` are included.
+- `AppError` `details` (e.g. the `issues` list of a failed contract
+  validation) are merged into the response body in every environment.
+- Logging (6.0): a 4xx `AppError` — validation, not found, forbidden — is one
+  `console.warn` line (`[@bloomneo/appkit/error] 404 NOT_FOUND: …`) with no
+  stack. Server errors are logged with `console.error` and the stack.
 
 ### **Framework-Specific Setup**
 
@@ -657,7 +662,7 @@ expect(env.isProduction).toBeDefined();
 - **Middleware Processing**: ~0.1ms per request
 - **Memory Usage**: <100KB overhead
 - **Environment Parsing**: Once per app startup
-- **Framework Agnostic**: Works with any Node.js framework
+- **Framework use**: the error objects work in any framework; `asyncRoute()` / `handleErrors()` are Express middleware
 
 ## 🔍 TypeScript Support
 
@@ -695,6 +700,8 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ---
 
 ## Agent-Dev Friendliness Score
+
+> Snapshot from before 6.0. Modules, methods and types it mentions may since have changed or been removed; see [`MIGRATION-6.md`](../../MIGRATION-6.md).
 
 **Score: 83/100 — 🟡 Solid** *(uncapped: 83/100 — no cap applies)*
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*

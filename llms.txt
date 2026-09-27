@@ -30,6 +30,9 @@ import {
   verifyClass,
 } from '@bloomneo/appkit';
 
+// The API layer (plain functions, not a xxxClass) — see "Server" below:
+import { createApiRouter, route, contractRouter, requestId } from '@bloomneo/appkit/server';
+
 // 4. Get instances at module scope (NEVER inside route handlers)
 const auth = authClass.get();
 const database = await databaseClass.get();
@@ -372,9 +375,28 @@ app.get('/x', error.asyncRoute(async (req, res) => {
   // ...
 }));
 
+// Any other status
+throw error.createError(503, 'Maintenance', 'SERVICE_UNAVAILABLE')
+
+// Client-safe details, merged into the response body
+import { AppError } from '@bloomneo/appkit/error';
+throw new AppError('Import failed', 422, 'UNPROCESSABLE', { rows: [3, 7] })
+
 // Error-handling middleware (mount LAST in stack)
-app.use(error.handleErrors());
+app.use(error.handleErrors());            // options: { showStack?, logErrors? }
 ```
+
+What `handleErrors()` sends and logs (6.0):
+
+- Errors with a `statusCode` (`AppError`, `SecurityError`) keep status, type
+  and message; `AppError` `details` are merged into the body.
+- Anything else is a 500. In production its message is replaced by the
+  generic server-error message; outside production the appkit `code` is added.
+- A 4xx `AppError` is logged as ONE `console.warn` line, no stack
+  (`[@bloomneo/appkit/error] 404 NOT_FOUND: …`); server errors are logged with
+  `console.error` and the stack.
+- `asyncRoute()` returns Express's `RequestHandler`; `handleErrors()` returns
+  `ErrorRequestHandler`. No casts.
 
 ---
 
@@ -402,6 +424,11 @@ await cache.getOrSet<T>(key, fetcher: () => Promise<T>, ttlSeconds?): Promise<T>
 ```
 
 Set `REDIS_URL` to auto-upgrade from memory to Redis. No code changes needed.
+
+Inside a tenant context (tenant mode; `database.tenant()`, `database.context()`,
+a contract route, or a job queued from one) keys are stored per tenant as
+`<prefix>:<namespace>:t:<tenantId>:<key>` (6.0). Don't add the tenant to keys
+or namespaces yourself.
 
 ---
 
@@ -460,7 +487,12 @@ queue.process(jobType, async (data) => {
 await queue.schedule(jobType: string, data: any, delayMs: number): Promise<string>
 // e.g. run once 8 hours from now:
 await queue.schedule('cleanup-tokens', {}, 8 * 60 * 60 * 1000)
-// For recurring/cron jobs use a cron library (node-cron etc.) to call queue.add().
+
+// Repeat — every N ms (min 1000). The next run is queued before the handler
+// runs; on the database transport the series survives restarts.
+await queue.repeat(jobType: string, data: object, everyMs: number, opts?: { startDelay?: number }): Promise<string>
+queue.cancelRepeat(jobType: string)
+// For wall-clock schedules ("09:00 every Monday") use a cron library to call queue.add().
 
 // Other instance methods
 await queue.pause(jobType?: string)
@@ -472,6 +504,11 @@ await queue.remove(jobId: string)
 
 Memory by default; database when `DATABASE_URL` is set. `REDIS_URL` does not
 affect the queue (Redis transport removed in 6.0).
+
+**Jobs keep their tenant (6.0):** a job added inside a tenant context runs its
+handler in that tenant (a job added during `bypass()` runs as that bypass), so
+`databaseClass.get()` in the handler is scoped. The marker is stripped before
+the handler sees `data`. Don't pass `tenantId` in job data to re-scope it.
 
 ---
 
@@ -580,7 +617,14 @@ logger.fatal(message: string, meta?)
 // Console and file are on by default (both off under NODE_ENV=test).
 // BLOOM_LOGGER_FILE=false turns the file off; BLOOM_LOGGER_DIR sets its folder.
 // No database / HTTP / webhook transport (removed in 6.0) — collect stdout or the file.
+
+// Child logger — bind fields every call inherits
+const jobLog = logger.child({ jobId });
 ```
+
+**Request ids (6.0):** mount `requestId()` from `@bloomneo/appkit/server` first;
+every line written while handling the request then carries a `req` field with
+the id (`req=<id>`). A `req` you pass in `meta` wins.
 
 ---
 
@@ -729,11 +773,13 @@ verifyClass.reset() / verifyClass.disconnectAll()
 The API side of a Bloom app: feature discovery and route contracts.
 
 ```ts
-import { createApiRouter, route, contractRouter } from '@bloomneo/appkit/server';
+import { createApiRouter, route, contractRouter, requestId } from '@bloomneo/appkit/server';
 
 // server.ts — mounts features/<name>/<name>.route.ts at /api/<name>;
 // a feature that exports a contractRouter is mounted at its contracts' paths.
+app.use(requestId());                                  // first
 app.use('/api', await createApiRouter({ featuresDir: join(__dirname, 'features') }));
+app.use(error.handleErrors());                         // last
 
 // features/invoices/invoices.route.ts — contracts come from @bloomneo/bloom (defineRoute)
 export default await contractRouter([
@@ -753,6 +799,11 @@ returns the body: 201 for POST, 204 for `undefined`, otherwise 200. Outside
 production, a response that doesn't match `contract.response` is logged.
 
 - Query-string values arrive as strings: use coercing schemas (`z.coerce.number()`).
+- Contracts are tenant-scoped unless `auth: 'public'` or `tenant: false`
+  (`isTenantScoped(contract)`). Public routes never touch auth, so they work
+  with no `BLOOM_AUTH_SECRET`.
+- Schemas are any Standard Schema: Zod 3.24+, Valibot, ArkType.
+- The handler gets `{ params, query, body, user, req, res }`.
 - `createApiRouter` answers `GET /api` with every endpoint (what `verifyClass`
   probes), answers unmatched `/api/*` with a JSON 404, and warns at boot about
   unguarded features, unmounted `*.route.ts` siblings, and load failures.
@@ -761,6 +812,19 @@ production, a response that doesn't match `contract.response` is logged.
   `req.requestMetadata.requestId`, and every logger line written while
   handling the request gets `req=<id>`.
 - Errors are `ServerError` (`instanceof AppKitError`).
+- Also exported: `createApiRouter` option `log` (`{ info, warn }`, default
+  console) and the types `RouteContract`, `RouteAuth`, `StandardSchema`,
+  `ContractRoute`, `ContractHandler`, `HandlerContext`, `ApiRouterOptions`,
+  `DiscoveredEndpoint`.
+
+### Express request typing (6.0)
+
+appkit augments `Express.Request`: `req.user?: Express.User` (login token
+claims, set by `requireLoginToken()`), `req.token?: JwtPayload` (API token,
+set by `requireApiToken()`), `req.requestId?: string` and
+`req.requestMetadata?: { requestId?, startTime?, … }` (set by `requestId()`).
+Install `@types/express`; never cast appkit middleware or `req` to `any`. Add
+app-specific claims by augmenting `Express.User`.
 
 ---
 
@@ -774,7 +838,11 @@ production, a response that doesn't match `contract.response` is logged.
 | `REDIS_URL` | Distributed cache | optional |
 | `AWS_S3_BUCKET` | Cloud storage (S3) | optional |
 | `S3_ENDPOINT` / `S3_FORCE_PATH_STYLE` | S3-compatible endpoint (R2, Wasabi, MinIO) | optional |
-| `BLOOM_DB_TENANT` | `auto` enables multi-tenant filtering | optional |
+| `BLOOM_DB_TENANT` | `auto` enables multi-tenant filtering; `rls` adds Postgres row-level security | optional |
+| `BLOOM_DB_TENANT_COLUMN` | Tenant column name (default `tenant_id`) | optional |
+| `BLOOM_PRISMA_CLIENT` | Prisma client generated to a custom `output` | optional |
+| `BLOOM_QUEUE_TRANSPORT` | `memory` or `database` (auto from `DATABASE_URL`) | optional |
+| `BLOOM_STORAGE_CDN_URL` | Public URL base for stored files | optional |
 | `RESEND_API_KEY` | Production email | optional |
 | `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` | SMTP email | optional |
 | `BLOOM_LOGGER_FILE` / `BLOOM_LOGGER_DIR` | Logger file transport on/off and folder | optional |
@@ -802,6 +870,9 @@ import { queueClass } from '@bloomneo/appkit/queue';
 import { emailClass } from '@bloomneo/appkit/email';
 import { loggerClass } from '@bloomneo/appkit/logger';
 import { configClass } from '@bloomneo/appkit/config';
+import { mcpClass } from '@bloomneo/appkit/mcp';
+import { verifyClass } from '@bloomneo/appkit/verify';
+import { createApiRouter, route, contractRouter, requestId } from '@bloomneo/appkit/server';
 ```
 
 The flat `from '@bloomneo/appkit'` import is preferred when multiple
@@ -839,13 +910,14 @@ generic server-error message in production.
 | auth | `TokenError` | `expired` / `not_before` / `invalid` / `malformed` | Refresh or re-issue the token |
 | cache | `CacheError` | `CACHE_GET_FAILED` / `CACHE_SET_FAILED` / `CACHE_INVALID_KEY` / `CACHE_CONNECT_FAILED` / `CACHE_INVALID_CONFIG` | Check Redis connectivity / key format |
 | config | `ConfigError` | `CONFIG_MISSING` / `CONFIG_INVALID` / `CONFIG_OVERRIDES_IGNORED` | Set the named env var |
-| database | `DatabaseError` | `DATABASE_MISSING_URL` / `DATABASE_ERROR` | Set `DATABASE_URL` |
+| database | `DatabaseError` | `DATABASE_MISSING_URL` / `DATABASE_UNSCOPED_IN_TENANT_MODE` / `DATABASE_NO_TENANT` / `DATABASE_NO_TENANT_CONTEXT` / `DATABASE_TENANT_MODE_OFF` / `DATABASE_BYPASS_NO_REASON` / `DATABASE_INVALID_IDENTIFIER` / `DATABASE_CONNECT_FAILED` / `DATABASE_ERROR` | Set `DATABASE_URL`; see "Scoped access" above |
 | email | `EmailError` | `EMAIL_PROD_NO_PROVIDER` / `EMAIL_MISSING_CONFIG` / `EMAIL_INVALID_CONFIG` / `EMAIL_INVALID_STRATEGY` / `EMAIL_SEND_FAILED` | Set `RESEND_API_KEY` or `SMTP_HOST` in production |
 | error | `AppError` | HTTP type string (`BAD_REQUEST`, `NOT_FOUND`, etc.) | Handled by `error.handleErrors()` middleware automatically |
 | error | `AppKitError` | `ERROR_INVALID_CONFIG` | Fix `BLOOM_ERROR_*` env |
 | logger | `LoggerError` | `LOGGER_INVALID_CONFIG` / `LOGGER_ERROR` | Check `BLOOM_LOGGER_*` / transport config |
 | mcp | `McpError` | `MCP_INVALID_CONFIG` / `MCP_INVALID_TOOL` / `MCP_MISSING_PEER` / `MCP_WEAK_SECRET` | Fix the tool declaration / env |
 | queue | `QueueError` | `QUEUE_ADD_FAILED` / `QUEUE_INVALID_JOB_TYPE` / `QUEUE_INVALID_JOB_DATA` / `QUEUE_JOB_NOT_FOUND` / `QUEUE_FULL` / `QUEUE_HANDLER_TIMEOUT` / `QUEUE_INVALID_CONFIG` | Investigate handler; override `{ timeout }` on `process()` if intentional |
+| server | `ServerError` | `SERVER_NOT_A_CONTRACT` / `SERVER_CONTRACT_NO_AUTH` / `SERVER_MISSING_EXPRESS` | Pass a `defineRoute()` contract with `auth`; install `express` |
 | security | `SecurityError` | `SECURITY_MISSING_CONFIG` / `SECURITY_INVALID_CONFIG` / `SECURITY_400` / `SECURITY_429` / `SECURITY_500` | Set required env; reject invalid input |
 | storage | `StorageError` | `STORAGE_FILE_NOT_FOUND` / `STORAGE_INVALID_KEY` / `STORAGE_FILE_TOO_LARGE` / `STORAGE_PUT_FAILED` / `STORAGE_MISSING_CONFIG` | Check bucket creds / key path |
 | verify | `VerifyError` | `VERIFY_INVALID_BASE_URL` / `VERIFY_REMOTE_REFUSED` / `VERIFY_INVALID_IDENTITIES` | Point at a local server with two identities |
@@ -854,6 +926,17 @@ Every message is prefixed `[@bloomneo/appkit/<module>]` and ends with
 `See: <README anchor URL>` so an agent can fetch the doc section and self-correct.
 
 ---
+
+## Migration → 6.0.0
+
+Read [`MIGRATION-6.md`](./MIGRATION-6.md): every removal with its replacement,
+every addition, every behaviour change. In short: event, util, the CLI, the
+logger's database/HTTP/webhook transports, the queue's Redis transport, the R2
+strategy, Mongoose, per-org databases, header/subdomain tenants, auth
+permissions / matrix mode / PII helpers, CSRF and sanitizers, and
+`sendTemplate` are gone; errors are all `AppKitError`s; middleware uses
+Express's types; `@bloomneo/appkit/server`, `BLOOM_DB_TENANT=rls` and
+`requestId()` are new; the tenant follows the request into jobs and cache keys.
 
 ## Migration → 4.0.0
 

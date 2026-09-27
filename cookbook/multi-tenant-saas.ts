@@ -23,7 +23,11 @@
  * Put the claim in the token at login so tenant() can resolve it:
  *   auth.generateLoginToken({ userId, role, level, tenantId: user.firmId })
  *
- * Caches are namespaced per (orgId|tenantId) so keys never cross tenants.
+ * 6.0: database.context() binds the caller's tenant for the rest of the
+ * request. Inside it every database call is scoped (even get()), cache keys
+ * are stored per tenant (`t:<tenant>:` prefix), and a job queued from the
+ * request runs in the same tenant. With BLOOM_DB_TENANT=rls, Postgres policies
+ * enforce the same boundary in the database.
  */
 
 import { Router } from 'express';
@@ -38,24 +42,17 @@ import {
 const auth   = authClass.get();
 const logger = loggerClass.get('multi-tenant');
 
-const router = Router();
-router.use(auth.requireLoginToken());
+const cache  = cacheClass.get('dashboard');
 
-// Derive a cache namespace from the authenticated user context.
-function cacheFor(req: any) {
-  const user = auth.getUser(req);
-  const org    = user?.org_id   ?? 'default';
-  const tenant = user?.tenantId ?? 'shared';
-  // Namespaces allow only [a-zA-Z0-9_-]
-  return cacheClass.get(`app-${org}-${tenant}`);
-}
+const router = Router();
+// Login first, then bind the token's tenant for the rest of the request.
+router.use(auth.requireLoginToken(), databaseClass.context());
 
 // ── Tenant-scoped dashboard (cached per tenant) ─────────────────────
 router.get(
   '/dashboard',
   errorClass.asyncRoute(async (req, res) => {
-    const cache = cacheFor(req);
-
+    // Inside the tenant context this key is per tenant automatically.
     const data = await cache.getOrSet('dashboard:summary', async () => {
       // Scoped: every query inside the callback is filtered to this tenant.
       return databaseClass.tenant(req, async (db: any) => {
@@ -112,7 +109,7 @@ router.delete(
   '/admin/tenants/:tenantId',
   auth.requireUserRoles(['admin.org']),
   errorClass.asyncRoute(async (req, res) => {
-    const { tenantId } = req.params;
+    const tenantId = String(req.params.tenantId);
     const exists = await databaseClass.exists(tenantId);
     if (!exists) throw errorClass.notFound('Tenant not found');
 

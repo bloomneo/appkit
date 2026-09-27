@@ -20,24 +20,39 @@
  *
  *   Single-tenant apps leave BLOOM_DB_TENANT unset and keep using get().
  *
+ *   6.0: databaseClass.context() (Express middleware, after
+ *   auth.requireLoginToken()) binds the tenant for a whole request, and
+ *   BLOOM_DB_TENANT=rls adds Postgres row-level security on top.
+ *
  * Prereqs:  DATABASE_URL set, schema already migrated by YOUR ORM.
  * Run:      tsx examples/database.ts
  */
 
-import { databaseClass } from '../src/database/index.js';
+import { databaseClass, currentTenant } from '../src/database/index.js';
 
 async function main() {
+  const tenantMode = !!process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false';
+
   // 1. Single-tenant (no req) — default URL, no tenant filter.
-  const db = await databaseClass.get();
-  console.log('client connected (url masked in logs)', Boolean(db));
+  //    In tenant mode get() throws outside a tenant context, so skip it there.
+  if (!tenantMode) {
+    const db = await databaseClass.get();
+    console.log('client connected (url masked in logs)', Boolean(db));
+  }
 
   // 2. Multi-tenant: the request carries the tenant in req.user, which
   //    auth.requireLoginToken() sets from the login token.
   //    Only active when BLOOM_DB_TENANT is set.
-  if (process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false') {
+  if (tenantMode) {
     const req = { user: { userId: 'u1', tenantId: 'team-1' } } as any;
-    const tenantId = await databaseClass.tenant(req, (scoped) => (scoped as any)._tenantId);
-    console.log('tenant-scoped client:', tenantId);
+    const tenantId = await databaseClass.tenant(req, () => currentTenant()?.tenantId);
+    console.log('tenant-scoped context:', tenantId);
+
+    // With BLOOM_DB_TENANT=rls, apply the policy once per tenant table
+    // (in a migration), connected as an ordinary role:
+    //   for (const sql of databaseClass.rlsPolicyStatements({ table: 'orders' })) {
+    //     await db.$executeRawUnsafe(sql);
+    //   }
   }
 
   // 3. Admin view — every tenant's data, no filtering.

@@ -2,38 +2,94 @@
 
 All notable changes to AppKit will be documented in this file.
 
-## [6.0.0] - Unreleased
+## [6.0.0] - unreleased
 
-Work in progress on the `next` branch; see `MIGRATION-6.md`.
+Released in lockstep with `@bloomneo/uikit` and `@bloomneo/bloom` 6.0.0. The
+upgrade guide, with a replacement for every removal, is
+[`MIGRATION-6.md`](./MIGRATION-6.md).
 
 ### Added
 
-- `requestId()` middleware in `@bloomneo/appkit/server`; logger lines written
-  inside a request carry `req=<id>` automatically.
-
-- **Jobs keep their tenant:** a job queued inside a tenant context runs its
-  handler in that tenant (or bypass); the marker is stripped from `data`.
-- **Per-tenant cache keys** inside a tenant context. Storage keys are left to
-  the app (prefixing would move existing files).
-
-- **`@bloomneo/appkit/server`**: `route(contract, handler)` enforces a route
-  contract's auth decision, tenant context and input validation (400 with the
-  failing fields) and sends the handler's return value; `contractRouter()`;
-  `createApiRouter({ featuresDir })` — the feature auto-discovery every app
-  copied, with a guard check that recognises app wrappers, an endpoint index,
-  and a JSON 404. `AppError` gained client-safe `details`.
-
+- **`@bloomneo/appkit/server`** (also exported from the package root).
+  `createApiRouter({ featuresDir })` is the feature auto-discovery every app
+  copied, moved into the package: it mounts `<name>.route.ts` files and
+  contract routers, lists every endpoint at `GET /api`, answers unmatched
+  `/api/*` with a JSON 404, and warns at boot about unguarded features,
+  unmounted route files and load failures (its guard check recognises app
+  wrappers such as `requireLoginOrApiToken`). `route(contract, handler)`
+  enforces a `defineRoute()` contract's auth decision, tenant context and
+  input validation (400 `VALIDATION_ERROR` with the failing fields) and sends
+  the handler's return value (201 for POST, 204 for `undefined`);
+  `contractRouter()` mounts contract routes at their declared paths.
+  `isTenantScoped()`, `ServerError` and the contract types are exported.
+- **`requestId()`** middleware in `@bloomneo/appkit/server`: reuses a safe
+  incoming `X-Request-Id` or makes one, echoes it, sets `req.requestId` and
+  `req.requestMetadata.requestId`, and every logger line written inside the
+  request carries `req=<id>`.
 - **Tenant isolation on Postgres row-level security** (`BLOOM_DB_TENANT=rls`).
   Each model operation runs in its own transaction that sets
   `app.tenant_id` (parameterised, transaction-local); `rlsPolicyStatements()`
-  writes the policy; `database.context()` binds the caller's tenant for the
-  rest of the request; `onBypass()` reports deliberate cross-tenant reads.
-  One client now serves every tenant (the tenant comes from AsyncLocalStorage)
-  instead of one Prisma client and pool per tenant. Moved from midhuna's
-  production implementation. Integration tests run as an ordinary Postgres
-  role: policy alone, `tenant()`, forced writes, 20 concurrent requests,
-  `context()`, fail-closed, reported bypass.
-- `BLOOM_PRISMA_CLIENT` for Prisma clients generated to a custom `output`.
+  / `rlsPolicySql()` write the policy; `database.context()` binds the caller's
+  tenant for the rest of the request; `onBypass()` reports deliberate
+  cross-tenant reads; `currentTenant()`, `tenantStore` and `BYPASS_TOKEN` are
+  exported from `@bloomneo/appkit/database`. Moved from midhuna's production
+  implementation. Integration tests run as an ordinary Postgres role: policy
+  alone, `tenant()`, forced writes, 20 concurrent requests, `context()`,
+  fail-closed, reported bypass. Measured cost on a local Postgres: 0.13 →
+  0.41 ms per query sequentially, 0.06 → 0.14 ms at 20 in parallel.
+- `BLOOM_DB_TENANT_COLUMN` (tenant column name) and `BLOOM_PRISMA_CLIENT`
+  (Prisma clients generated to a custom `output`).
+- **Jobs keep their tenant:** a job queued inside a tenant context runs its
+  handler in that tenant (or bypass); the marker is stripped from `data`.
+- **Per-tenant cache keys** inside a tenant context
+  (`<prefix>:<namespace>:t:<tenant>:<key>`). Storage keys are left to the app
+  (prefixing would move existing files).
+- `AppError` takes client-safe `details` (fourth constructor argument), which
+  `handleErrors()` merges into the response.
+- `AuthError`, `ConfigError`, `VerifyError` and `ServerError`, exported from
+  their modules and the package root.
+- `req.requestMetadata` and `req.requestId` are declared on `Express.Request`
+  (every Bloom app reads `req.requestMetadata?.requestId`).
+- `@types/express` is an optional peer; `npm test` runs a `test:types`
+  compile check of Express usage without casts.
+- Documented `emailClass.reset(config)` as the way to apply email settings
+  saved in the database, instead of rewriting `.env`.
+
+### Changed
+
+- Released in lockstep with appkit, uikit and bloom on one shared version.
+- Every error appkit throws is now an `AppKitError` subclass with a
+  `module` and a stable `code` (e.g. `QUEUE_ADD_FAILED`,
+  `STORAGE_INVALID_KEY`, `AUTH_INVALID_PAYLOAD`). 169 plain `throw new Error`
+  sites (and two timeout rejections) were converted, and the database
+  module's last nine plain throws now carry codes; messages are unchanged.
+  The database module has one `DatabaseError` (the second, plain-`Error`
+  class in `defaults.ts` is gone). A test fails the build if a plain
+  `throw new Error(` returns anywhere in `src/`.
+- `error.handleErrors()`: errors with a `statusCode` (`AppError`,
+  `SecurityError`) keep it; any other error, including appkit
+  configuration/misuse errors, is a 500, and in production its message is
+  replaced by the generic server-error message instead of leaking env var
+  names or driver errors. Outside production the response also carries the
+  appkit `code`. A 4xx `AppError` is logged as one warning line without a
+  stack; server errors keep the stack.
+- Express types: middleware and handlers (`auth.require*`,
+  `error.asyncRoute` / `handleErrors`, `security.requests`) now take and
+  return express's own `Request` / `Response` / `NextFunction` /
+  `RequestHandler` / `ErrorRequestHandler` (type-only imports), so apps no
+  longer cast to `any`. `ExpressRequest`, `ExpressResponse`,
+  `ExpressNextFunction`, `ExpressMiddleware` and `ExpressErrorHandler` remain
+  exported as aliases. appkit augments `Express.Request` with
+  `user?: Express.User` (the login token's `JwtPayload`) and
+  `token?: JwtPayload`.
+- Tenant mode uses one client for every tenant; the tenant comes from
+  AsyncLocalStorage instead of one Prisma client and pool per tenant.
+- `route()` initialises auth only for non-public contracts, so an app with no
+  `BLOOM_AUTH_SECRET` can serve public contract routes.
+- `security.quickSetup()` returns just the rate limiter; `getStatus()` drops
+  `csrf`.
+- Build output (`dist/`) is no longer committed; it is built in CI and by
+  `prepublishOnly`. `npm run build` cleans `dist/` first.
 
 ### Removed
 
@@ -42,8 +98,9 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   examples, skills and the `real-time-chat` cookbook recipe. No production
   app used either. `AppKitError` and the env helpers moved to
   `src/internal/`; `AppKitError` is still exported from the package root.
-- The `appkit` CLI (`appkit generate …`, 1,077 lines plus templates) and its
-  `commander` dependency. `bloom create` scaffolds projects.
+- The `appkit` CLI (`appkit generate …`, 1,077 lines plus templates), its
+  `bin` entry and its `commander` dependency. `bloom create` scaffolds
+  projects.
 - Logger database, HTTP and webhook transports (1,562 lines) and their env
   vars (`BLOOM_LOGGER_DATABASE`, `BLOOM_LOGGER_DB_*`, `BLOOM_LOGGER_HTTP_*`,
   `BLOOM_LOGGER_WEBHOOK_*`). Console and file remain. The logger no longer
@@ -64,16 +121,16 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   could pick its tenant. The tenant now comes only from `req.user.tenantId`
   (or the pre-4.2 `tenant_id`) set by the login token.
 - Auth permissions model (`hasPermission`, `requireUserPermissions`,
-  `authClass.getPermissions`, `BLOOM_AUTH_PERMISSIONS`), matrix mode
-  (`requireScope`, `requireTier`, `roleParts`, `BLOOM_AUTH_SCOPES`,
-  `BLOOM_AUTH_TIERS`) and `canSeePII` / `maskPII`. The 9-level role ladder,
-  `BLOOM_AUTH_ROLES`, `scopedWhere()` and the `tenantId` / `clientId` claims
-  are unchanged.
+  `authClass.getPermissions`, `BLOOM_AUTH_PERMISSIONS`, `PermissionDefaults`),
+  matrix mode (`requireScope`, `requireTier`, `roleParts`,
+  `BLOOM_AUTH_SCOPES`, `BLOOM_AUTH_TIERS`) and `canSeePII` / `maskPII`. The
+  9-level role ladder, `BLOOM_AUTH_ROLES`, `scopedWhere()` and the
+  `tenantId` / `clientId` claims are unchanged.
 - Security `forms()` (CSRF), `input()`, `html()` and `escape()` with their
-  config and env vars. `BLOOM_SECURITY_CSRF_SECRET` is no longer read or
-  required. `quickSetup()` returns just the rate limiter; `getStatus()` drops
-  `csrf`. `requests()`, `encrypt()`, `decrypt()` and `generateKey()` are
-  unchanged.
+  config, types (`CSRFConfig`, `CSRFOptions`, `InputOptions`, `HTMLOptions`,
+  `SanitizationConfig`) and env vars. `BLOOM_SECURITY_CSRF_SECRET` is no
+  longer read or required. `requests()`, `encrypt()`, `decrypt()` and
+  `generateKey()` are unchanged.
 - `email.sendTemplate()` and its two built-in templates. `send`, `sendBatch`,
   `sendText`, `sendHtml` and the console / SMTP / Resend strategies remain.
 - Dependencies no source file imports any more: `ioredis`; optional `pg`,
@@ -83,39 +140,12 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   `@fastify/helmet`, `@fastify/session`, `multer`; dev `@types/pg`. The
   lockfile drops 216 packages.
 
-### Changed
+### Docs
 
-- The database module has one `DatabaseError` (an `AppKitError`, with a
-  `code` and `statusCode`); the second, plain-`Error` class in `defaults.ts`
-  is gone, and its last nine plain throws now carry codes. The typed-errors
-  test now covers `src/database` too.
-
-- Released in lockstep with appkit, uikit and bloom on one shared version.
-- Build output (`dist/`) is no longer committed; it is built in CI and by
-  `prepublishOnly`.
-- Every error appkit throws is now an `AppKitError` subclass with a
-  `module` and a stable `code` (e.g. `QUEUE_ADD_FAILED`,
-  `STORAGE_INVALID_KEY`, `AUTH_INVALID_PAYLOAD`). 169 plain `throw new Error`
-  sites (and two timeout rejections) outside `src/database` were converted;
-  messages are unchanged. New classes `AuthError`, `ConfigError` and
-  `VerifyError`, exported from their modules and the package root. A test
-  fails the build if a plain `throw new Error(` returns.
-- `error.handleErrors()`: errors with a `statusCode` (`AppError`,
-  `SecurityError`) keep it; any other error, including appkit
-  configuration/misuse errors, is a 500, and in production its message is
-  replaced by the generic server-error message instead of leaking env var
-  names or driver errors. Outside production the response also carries the
-  appkit `code`. `AppError` responses are unchanged.
-- Express types: middleware and handlers (`auth.require*`,
-  `error.asyncRoute` / `handleErrors`, `security.requests`) now take and
-  return express's own `Request` / `Response` / `NextFunction` /
-  `RequestHandler` / `ErrorRequestHandler` (type-only imports), so apps no
-  longer cast to `any`. `ExpressRequest`, `ExpressResponse`,
-  `ExpressNextFunction`, `ExpressMiddleware` and `ExpressErrorHandler` remain
-  exported as aliases. appkit augments `Express.Request` with
-  `user?: Express.User` (the login token's `JwtPayload`) and
-  `token?: JwtPayload`. `@types/express` is a new optional peer and dev
-  dependency. `npm test` runs a `test:types` compile check.
+- `MIGRATION-6.md` lists every removal with its replacement, every addition
+  and every behaviour change. `README.md`, `AGENTS.md`, `llms.txt`, the skills
+  and module READMEs describe only the 6.0 surface; the stale
+  `cookbook/express.d.ts` shim (which hid Express's real types) is gone.
 
 ## [5.1.4] - 2026-09-27
 

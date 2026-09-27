@@ -7,12 +7,15 @@
 
 ## What this package is
 
-`@bloomneo/appkit` is a Node.js backend toolkit with **12 integrated modules**
-that share one canonical pattern: every module exports a `xxxClass` namespace
-object with a `.get()` factory. There is exactly one way to obtain each module
-and exactly one way to use it.
+`@bloomneo/appkit` is the backend of Bloomneo, which makes business apps safe,
+consistent and maintainable however much of the code AI writes. It is a
+Node.js toolkit with **12 integrated modules** that share one canonical
+pattern: every module exports a `xxxClass` namespace object with a `.get()`
+factory. There is exactly one way to obtain each module and exactly one way
+to use it. `@bloomneo/appkit/server` adds the API layer: feature discovery,
+route contracts and request ids.
 
-Use it for: Express/Fastify backends, JWT auth, multi-tenant database,
+Use it for: Express backends, JWT auth, multi-tenant database,
 Redis cache, S3 storage, background queues, email, structured logging,
 error handling. **Don't use it for:** frontend code, CLI tools, real-time
 WebSocket-as-primary-feature, non-Node environments.
@@ -59,6 +62,14 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | `mcpClass` | `from '@bloomneo/appkit/mcp'` | Your app as an MCP server for AI agents |
 | `verifyClass` | `from '@bloomneo/appkit/verify'` | Proves the app doesn't leak across tenants |
 
+Plus the server layer (not a `xxxClass`, plain functions):
+
+| Export | Import | Purpose |
+|---|---|---|
+| `createApiRouter({ featuresDir })` | `from '@bloomneo/appkit/server'` | Mounts `features/<name>/<name>.route.ts` at `/api/<name>` |
+| `route(contract, handler)`, `contractRouter([...])` | `from '@bloomneo/appkit/server'` | Serves `defineRoute()` contracts with auth, tenant scope and validation applied |
+| `requestId()` | `from '@bloomneo/appkit/server'` | Request id on `req`, the response header and every log line |
+
 For full method signatures and examples, read `llms.txt` in this same directory.
 
 ## Pick your starting point (task → files)
@@ -82,6 +93,10 @@ Every file path below ships inside the npm tarball at `node_modules/@bloomneo/ap
 | Type-safe env vars | [`examples/config.ts`](./examples/config.ts) |
 | Rate limit / encrypt fields | [`examples/security.ts`](./examples/security.ts) |
 | Error-handling middleware | [`examples/error.ts`](./examples/error.ts) |
+| Mount the API / serve route contracts | `llms.txt` → "Server" |
+| Postgres row-level security | `llms.txt` → "Row-level security" |
+| Expose the app to AI agents (MCP) | [`examples/mcp.ts`](./examples/mcp.ts) |
+| Gate CI on tenant isolation | [`examples/verify.ts`](./examples/verify.ts) |
 
 ## Environment variables
 
@@ -101,7 +116,8 @@ Optional (auto-scaling kicks in when set):
 REDIS_URL=redis://...                  # → distributed cache
 AWS_S3_BUCKET=...                      # → cloud storage
 RESEND_API_KEY=re_...                  # → professional email
-BLOOM_DB_TENANT=auto                   # → multi-tenant mode
+BLOOM_DB_TENANT=auto                   # → multi-tenant mode (filter in the app)
+BLOOM_DB_TENANT=rls                    # → + Postgres row-level security
 ```
 
 ## When generating code with AppKit
@@ -120,7 +136,17 @@ BLOOM_DB_TENANT=auto                   # → multi-tenant mode
   `requireLoginToken()` first, then `requireUserRoles([...])` — never standalone,
   never reversed.
 - **Use `cache.getOrSet(key, fetcher, ttl)`** instead of manual cache-check-then-fetch.
-- **Use `logger.get('component-name')`** so logs are tagged.
+- **Use `loggerClass.get('component-name')`** so logs are tagged.
+- **Mount `requestId()` first** (`@bloomneo/appkit/server`); every log line in
+  the request then carries `req=<id>`. Don't thread request ids by hand.
+- **Mount the API with `createApiRouter({ featuresDir })`**; don't copy an
+  api-router into the app.
+- **Let TypeScript see Express's types.** appkit middleware returns
+  `RequestHandler`, and `req.user`, `req.token`, `req.requestId` and
+  `req.requestMetadata` are declared on `Express.Request`. Never write
+  `as any` around appkit middleware or `(req as any).user`.
+- **Match appkit errors with `instanceof`** (`AppError`, `AppKitError`) and
+  `err.code`, never by message text.
 
 ### Never
 
@@ -129,10 +155,12 @@ BLOOM_DB_TENANT=auto                   # → multi-tenant mode
   (`signToken` is a private internal — don't reach for it.)
 - **Never instantiate Prisma directly.** `databaseClass.get()` returns the
   shared, tenant-aware client.
-- **Never call `databaseClass.get()` for tenant data in a multi-tenant app.**
-  It throws in tenant mode because it cannot prove a tenant was applied. Use
-  `database.tenant(req, db => ...)`, or `database.bypass('reason', db => ...)`
-  when crossing tenants deliberately. Single-tenant apps keep using `get()`.
+- **Never call `databaseClass.get()` for tenant data outside a tenant context.**
+  In tenant mode it throws there because it cannot prove a tenant was applied.
+  Use `database.tenant(req, db => ...)`, mount `database.context()` (after
+  `auth.requireLoginToken()`) so `get()` is scoped for the whole request, or
+  `database.bypass('reason', db => ...)` when crossing tenants deliberately.
+  Single-tenant apps keep using `get()`.
   The tenant comes only from `req.user.tenantId` (the login token); headers,
   route params and subdomains are ignored.
 - **Never hand-roll rate limiting.** Use `security.requests(maxRequests, windowMs)`.
@@ -164,6 +192,12 @@ PII helpers were removed in 6.0.
   inside the tenant context), not code that stores the query and awaits it
   after `tenant()` returns.
 - Decide which fields a role may see in the app's own serializer.
+- **The tenant follows the request.** Inside `database.tenant()`,
+  `database.context()` or a contract route: `databaseClass.get()` returns the
+  scoped client, jobs added with `queue.add()` run their handler in the same
+  tenant, and cache keys are stored per tenant (`t:<tenant>:` prefix). Don't
+  put the tenant in cache keys or job data yourself. Storage keys are NOT
+  prefixed: put the tenant in the key (`${tenantId}/…`).
 - **Gate CI on `verifyClass`.** It generates the cross-tenant attack matrix
   from the app itself — no per-endpoint tests to write. `report.ok` is true
   only when checks ran and nothing was skipped, so an incomplete run fails
@@ -177,6 +211,28 @@ Declare routes with `defineRoute()` from `@bloomneo/bloom` and serve them with
 `requireLoginToken()`, `database.context()` or manual validation to a contract
 route. Mount the app's API with `createApiRouter({ featuresDir })` instead of
 copying an api-router into the app.
+
+```ts
+import { createApiRouter, contractRouter, route, requestId } from '@bloomneo/appkit/server';
+
+// server.ts
+app.use(requestId());
+app.use('/api', await createApiRouter({ featuresDir: join(__dirname, 'features') }));
+app.use(error.handleErrors());
+
+// features/invoices/invoices.route.ts
+export default await contractRouter([
+  route(getInvoice, async ({ params }) => {
+    const db = await databaseClass.get();          // scoped to the caller's tenant
+    return db.invoice.findUniqueOrThrow({ where: { id: params.id } });
+  }),
+]);
+```
+
+- Return the body; don't call `res.json()`. 201 for POST, 204 for `undefined`.
+- A failed validation is a 400 `VALIDATION_ERROR` with an `issues` list.
+- `auth: 'public'` routes need no auth configured at all.
+- Query-string values are strings: use coercing schemas (`z.coerce.number()`).
 
 ## MCP — exposing your app to AI agents
 
@@ -248,36 +304,34 @@ appkit has no CLI. To start a project, use `bloom create <name>` from
 
 ## Migration notes
 
-**Current release: 6.0.0-alpha.0.** Pre-release of 6.0; 5.1.4 is the stable line. Security and correctness fixes: tenant mode on Prisma works again (`$use` was removed in Prisma 6.14; scoping now uses `$extends` and forces writes into the caller's tenant), `auth.scopedWhere()` throws instead of returning `{}` when the token has no `tenantId` claim, each `security.requests()` limiter counts separately, and `verifyClass` refuses non-local targets and sends DELETE probes only with `allowDestructive: true`.
-See [`CHANGELOG.md`](./CHANGELOG.md) for the complete migration tables.
+**Current release: 6.0.0-alpha.0.** Pre-release of 6.0; 5.1.4 is the stable line.
+Upgrading from 5.x: [`MIGRATION-6.md`](./MIGRATION-6.md) lists every removal
+with its replacement, every addition and every behaviour change. Older
+release history is in [`CHANGELOG.md`](./CHANGELOG.md).
 
-**5.0.0 — the one breaking change that matters.** In multi-tenant mode
-(`BLOOM_DB_TENANT` enabled) `databaseClass.get()` now THROWS rather than
-returning an unscoped client. Use `database.tenant(req, db => ...)` for
-request-scoped queries and `database.bypass('reason', db => ...)` for
-deliberate cross-tenant access. **Single-tenant apps are unaffected** —
-with `BLOOM_DB_TENANT` unset or `false`, `get()` behaves exactly as in 4.x.
+What 6.0 means for code you generate:
 
-Upgrading a multi-tenant app will surface every call site that was silently
-unscoped. That is the point of the major, not a side effect.
-
-Headline renames you will hit:
-- **From 1.5.x or earlier:** `auth.user()` → `auth.getUser(req)`,
-  `auth.can()` → `auth.hasPermission()` (removed in 6.0), `security.csrf()` → `security.forms()` (removed in 6.0).
-- **Also in 4.0.0:** every stateful module's teardown is now
-  `xxxClass.disconnectAll()` — the old `shutdown()` and class-level `clear()`
-  are removed. `databaseClass.disconnect()` → `databaseClass.disconnectAll()`.
-- **Error handling:** every typed error now extends `AppKitError`
-  (`import { AppKitError } from '@bloomneo/appkit'`) so `catch (err) { if (err instanceof AppKitError) ... }` matches every module.
-  **As of 6.0 every module throws only `AppKitError` subclasses** (`AuthError`,
-  `ConfigError`, `QueueError`, `StorageError`, `EmailError`, `VerifyError`, …)
-  with a stable `err.code` — never a plain `Error` — so do not duck-type
-  appkit errors by message prefix.
-
-Everything added in 4.1 → 5.1 was additive: `mcpClass`, `verifyClass`,
-`tenantId`/`clientId` token claims, `auth.scopedWhere()` and `queue.repeat()`.
-**6.0 removes** features no production app used; see
-[`MIGRATION-6.md`](./MIGRATION-6.md) for the list and replacements.
+- **Gone — never generate these:** `eventClass`, `utilClass`, the `appkit`
+  CLI, `auth.hasPermission()` / `requireUserPermissions()` / `requireScope()`
+  / `requireTier()` / `canSeePII()` / `maskPII()`, `security.forms()` /
+  `input()` / `html()` / `escape()`, `email.sendTemplate()`,
+  `databaseClass.org()`, the logger's database / HTTP / webhook transports,
+  the queue's Redis transport, the R2 storage strategy, Mongoose. Tenants
+  never come from headers, route params or subdomains.
+- **Typed errors everywhere:** every module throws only `AppKitError`
+  subclasses (`AuthError`, `ConfigError`, `DatabaseError`, `QueueError`,
+  `StorageError`, `EmailError`, `VerifyError`, `ServerError`, …) with a
+  stable `err.code`. `handleErrors()` hides non-`AppError` messages in
+  production and logs 4xx `AppError`s as one warning line.
+- **Express types:** no casts around appkit middleware.
+- **Tenant context** reaches `get()`, queued jobs and cache keys; Postgres
+  row-level security is one env var (`BLOOM_DB_TENANT=rls`) plus
+  `database.rlsPolicyStatements({ table })` per tenant table.
+- **5.0 still applies:** in tenant mode `databaseClass.get()` throws outside a
+  tenant context; use `database.tenant(req, fn)`, `database.context()` or
+  `database.bypass('reason', fn)`. Single-tenant apps are unaffected.
+- **4.0 still applies:** teardown is `xxxClass.disconnectAll()` on every
+  stateful module.
 
 ## Where to look next
 
