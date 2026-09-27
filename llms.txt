@@ -479,6 +479,23 @@ affect the queue (Redis transport removed in 6.0).
 
 Console → SMTP → Resend auto-scaling. No template engine: render the body yourself.
 
+### Settings from the database (not `.env`)
+
+When admins edit email settings in the app, apply them at runtime — don't
+rewrite `.env` (it fails on read-only hosts such as Fly, and needs a restart
+anyway):
+
+```ts
+await emailClass.reset({
+  strategy: 'smtp',
+  from: { name: settings.fromName, email: settings.fromEmail },
+  smtp: { host, port, secure: port === 465, auth: { user, pass }, timeout: 30000, pool: false },
+});
+```
+
+Call it at boot after loading the saved settings, and again whenever they
+change. `emailClass.reset()` with no argument goes back to the environment.
+
 ### Methods
 
 ```ts
