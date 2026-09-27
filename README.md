@@ -176,7 +176,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 3 | **Security** | CSRF, rate limiting, AES-256-GCM, input sanitization | — |
 | 4 | **Error** | HTTP errors with semantic types + middleware | — |
 | 5 | **Cache** | Memory → Redis | `REDIS_URL` |
-| 6 | **Storage** | Local → S3/R2 | `AWS_S3_BUCKET` |
+| 6 | **Storage** | Local → S3 (R2 / MinIO via endpoint) | `AWS_S3_BUCKET` / `S3_ENDPOINT` |
 | 7 | **Queue** | Memory → Database | `DATABASE_URL` / `BLOOM_QUEUE_TRANSPORT` |
 | 8 | **Email** | Console → SMTP → Resend | `RESEND_API_KEY` |
 | 9 | **Logger** | Console + rotating file | `BLOOM_LOGGER_*` |

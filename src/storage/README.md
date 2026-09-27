@@ -3,7 +3,8 @@
 [![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> Ultra-simple file storage that just works with automatic Local/S3/R2 strategy
+> Ultra-simple file storage that just works with automatic Local/S3 strategy
+> (S3 covers Cloudflare R2, Wasabi and MinIO through `S3_ENDPOINT`)
 
 **One function** returns a storage system with automatic strategy detection.
 Zero configuration needed, production-ready cloud integration by default, with
@@ -16,7 +17,7 @@ built-in CDN support and cost optimization.
 - **⚡ One Function** - Just `storageClass.get()`, everything else is automatic
 - **☁️ Auto Strategy** - Cloud env vars → Distributed, No vars → Local
 - **🔧 Zero Configuration** - Smart defaults for everything
-- **💰 Cost Optimized** - R2 prioritized for zero egress fees
+- **🔌 Any S3-Compatible Store** - AWS S3, Cloudflare R2, Wasabi, MinIO via `S3_ENDPOINT`
 - **🌍 CDN Ready** - Automatic CDN URL generation
 - **🔒 Security Built-in** - File type validation, size limits, signed URLs
 - **⚖️ Scales Perfectly** - Development → Production with no code changes
@@ -54,16 +55,14 @@ const files = await storage.list('avatars/');
 ### Cloud Storage (Production)
 
 ```bash
-# Cloudflare R2 (Recommended - Zero egress fees)
-CLOUDFLARE_R2_BUCKET=my-bucket
-CLOUDFLARE_ACCOUNT_ID=account123
-CLOUDFLARE_R2_ACCESS_KEY_ID=access_key
-CLOUDFLARE_R2_SECRET_ACCESS_KEY=secret_key
-
-# OR AWS S3 / S3-Compatible
+# AWS S3
 AWS_S3_BUCKET=my-bucket
 AWS_ACCESS_KEY_ID=access_key
 AWS_SECRET_ACCESS_KEY=secret_key
+
+# Cloudflare R2 / Wasabi / MinIO: same variables plus an endpoint
+S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+AWS_REGION=auto
 ```
 
 ```typescript
@@ -90,9 +89,9 @@ Environment variables determine storage backend:
 # (no cloud env vars)
 → Local Strategy: ./uploads/ directory
 
-# Production Cloud (Priority: R2 → S3 → Local)
-CLOUDFLARE_R2_BUCKET=bucket → R2 (zero egress fees)
-AWS_S3_BUCKET=bucket        → S3 (AWS/Wasabi/MinIO)
+# Production Cloud (Priority: S3 → Local)
+AWS_S3_BUCKET=bucket        → S3 (AWS)
++ S3_ENDPOINT=https://...   → S3 strategy against R2 / Wasabi / MinIO
 # No cloud vars              → Local (with warning)
 ```
 
@@ -145,8 +144,8 @@ const { key, url } = await storageClass.upload(buffer, {
 const { data, contentType } = await storageClass.download('file.jpg');
 
 // ✅ Strategy detection
-const strategy = storageClass.getStrategy(); // 'local' | 's3' | 'r2'
-const isCloud = storageClass.hasCloudStorage(); // true if S3/R2
+const strategy = storageClass.getStrategy(); // 'local' | 's3'
+const isCloud = storageClass.hasCloudStorage(); // true if S3 (any endpoint)
 ```
 
 ### **Error Handling (Copy This Pattern)**
@@ -336,7 +335,7 @@ BLOOM_STORAGE_MAX_SIZE=52428800  # 50MB limit
 
 ### **Production Checklist**
 
-- ✅ **Cloud Storage**: Set `AWS_S3_BUCKET` or `CLOUDFLARE_R2_BUCKET`
+- ✅ **Cloud Storage**: Set `AWS_S3_BUCKET` (plus `S3_ENDPOINT` for R2, Wasabi or MinIO)
 - ✅ **File Types**: Set `BLOOM_STORAGE_ALLOWED_TYPES` (never use `*`)
 - ✅ **Size Limits**: Set reasonable `BLOOM_STORAGE_MAX_SIZE`
 - ✅ **CDN**: Set `BLOOM_STORAGE_CDN_URL` for performance
@@ -407,7 +406,8 @@ await storage.copy('source.jpg', 'backup.jpg');
 const url = storage.url('file.jpg');
 // Local:  /uploads/file.jpg
 // S3:     https://bucket.s3.region.amazonaws.com/file.jpg
-// R2:     https://cdn.example.com/file.jpg
+// Custom endpoint: <S3_ENDPOINT>/<bucket>/file.jpg
+// With BLOOM_STORAGE_CDN_URL: https://cdn.example.com/file.jpg (set this for R2)
 
 // Signed URLs (temporary access)
 const signedUrl = await storage.signedUrl('private.pdf', 3600); // 1 hour
@@ -449,8 +449,8 @@ const { data, contentType } = await storageClass.download('file.jpg');
 
 ```typescript
 // Debug info
-storageClass.getStrategy(); // 'local' | 's3' | 'r2'
-storageClass.hasCloudStorage(); // true if S3/R2 configured
+storageClass.getStrategy(); // 'local' | 's3'
+storageClass.hasCloudStorage(); // true if S3 configured
 storageClass.isLocal(); // true if using local storage
 storageClass.getConfig(); // Current configuration
 storageClass.getStats(); // Usage statistics
@@ -782,24 +782,21 @@ export class BackupManager {
 ### Strategy Selection (Auto-detected)
 
 ```bash
-# Priority order: R2 → S3 → Local
+# Priority order: S3 → Local
+BLOOM_STORAGE_STRATEGY=s3                      # Optional override: local|s3
 
-# Cloudflare R2 (Highest priority - zero egress fees)
-CLOUDFLARE_R2_BUCKET=my-bucket
-CLOUDFLARE_ACCOUNT_ID=account_id
-CLOUDFLARE_R2_ACCESS_KEY_ID=access_key
-CLOUDFLARE_R2_SECRET_ACCESS_KEY=secret_key
-CLOUDFLARE_R2_CDN_URL=https://cdn.example.com  # Optional CDN
-
-# AWS S3 / S3-Compatible (Second priority)
-AWS_S3_BUCKET=my-bucket
+# AWS S3 / S3-Compatible
+AWS_S3_BUCKET=my-bucket                        # or S3_BUCKET
 AWS_ACCESS_KEY_ID=access_key
 AWS_SECRET_ACCESS_KEY=secret_key
-AWS_REGION=us-east-1                           # Default: us-east-1
+AWS_REGION=us-east-1                           # Default: us-east-1 (or S3_REGION)
+# S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY are accepted as alternatives
 
-# S3-Compatible Services (Wasabi, MinIO, etc.)
-S3_ENDPOINT=https://s3.wasabisys.com           # Custom endpoint
-S3_FORCE_PATH_STYLE=true                       # For MinIO
+# Cloudflare R2, Wasabi, MinIO, DigitalOcean Spaces: the S3 strategy with an endpoint
+S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+AWS_REGION=auto                                # R2 uses "auto"
+S3_FORCE_PATH_STYLE=true                       # MinIO needs path-style URLs
+BLOOM_STORAGE_CDN_URL=https://files.example.com  # Public URL base (R2 custom domain)
 
 # Local Storage (Fallback - no cloud vars needed)
 BLOOM_STORAGE_DIR=./uploads                    # Default: ./uploads
@@ -841,15 +838,15 @@ const storage = storageClass.get();
 ```bash
 # Cloud storage required
 NODE_ENV=production
-CLOUDFLARE_R2_BUCKET=prod-assets
-# ... other cloud credentials
+AWS_S3_BUCKET=prod-assets
+# ... credentials, plus S3_ENDPOINT for R2 / Wasabi / MinIO
 ```
 
 ```typescript
 const storage = storageClass.get();
-// Strategy: R2 or S3 (distributed)
+// Strategy: S3 (AWS or any S3-compatible endpoint)
 // URLs: https://cdn.example.com/file.jpg
-// Features: CDN delivery, signed URLs, zero egress (R2)
+// Features: CDN delivery, signed URLs
 ```
 
 ### **Scaling Pattern**
@@ -859,10 +856,10 @@ const storage = storageClass.get();
 // No env vars needed - works immediately
 
 // Month 1: Add cloud storage
-// Set CLOUDFLARE_R2_BUCKET - zero code changes
+// Set AWS_S3_BUCKET (+ S3_ENDPOINT for R2) - zero code changes
 
 // Year 1: Add CDN
-// Set CLOUDFLARE_R2_CDN_URL - automatic CDN delivery
+// Set BLOOM_STORAGE_CDN_URL - automatic CDN delivery
 ```
 
 ## 🧪 Testing
@@ -929,7 +926,6 @@ describe('Storage with Local Strategy', () => {
 
 - **Local Strategy**: ~1ms per operation (filesystem I/O)
 - **S3 Strategy**: ~50-200ms per operation (network + AWS)
-- **R2 Strategy**: ~50-200ms per operation (network + Cloudflare)
 - **CDN URLs**: ~1ms generation (no network calls)
 - **Memory Usage**: <5MB baseline per strategy
 
@@ -938,7 +934,7 @@ describe('Storage with Local Strategy', () => {
 | Provider          | Storage    | Egress   | CDN        | Best For                    |
 | ----------------- | ---------- | -------- | ---------- | --------------------------- |
 | **Local**         | Free       | Free     | None       | Development, single server  |
-| **Cloudflare R2** | $0.015/GB  | **FREE** | Included   | High-bandwidth, global apps |
+| **Cloudflare R2** (S3 + endpoint) | $0.015/GB  | **FREE** | Included   | High-bandwidth, global apps |
 | **AWS S3**        | $0.023/GB  | $0.09/GB | Extra cost | Enterprise, AWS ecosystem   |
 | **Wasabi**        | $0.0059/GB | FREE     | Extra cost | Archive, backup storage     |
 

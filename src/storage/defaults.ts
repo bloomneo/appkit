@@ -6,7 +6,8 @@
  * @llm-rule WHEN: App startup - need to configure storage system and connection strategy
  * @llm-rule AVOID: Calling multiple times - expensive environment parsing, use lazy loading in get()
  * @llm-rule NOTE: Called once at startup, cached globally for performance
- * @llm-rule NOTE: Auto-detects Local vs S3 vs R2 based on environment variables
+ * @llm-rule NOTE: Auto-detects Local vs S3 based on environment variables. R2, Wasabi and
+ *   MinIO use the S3 strategy with S3_ENDPOINT.
  */
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
@@ -30,20 +31,10 @@ export interface S3Config {
   cdnUrl?: string;
 }
 
-export interface R2Config {
-  bucket: string;
-  accountId: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  cdnUrl?: string;
-  signedUrlExpiry: number;
-}
-
 export interface StorageConfig {
-  strategy: 'local' | 's3' | 'r2';
+  strategy: 'local' | 's3';
   local?: LocalConfig;
   s3?: S3Config;
-  r2?: R2Config;
   environment: {
     isDevelopment: boolean;
     isProduction: boolean;
@@ -56,7 +47,7 @@ export interface StorageConfig {
  * Gets smart defaults using environment variables with auto-strategy detection
  * @llm-rule WHEN: App startup to get production-ready storage configuration
  * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
- * @llm-rule NOTE: Auto-detects strategy: S3/R2 env vars → Cloud, nothing → Local
+ * @llm-rule NOTE: Auto-detects strategy: S3 env vars → S3, nothing → Local
  */
 export function getSmartDefaults(): StorageConfig {
   validateEnvironment();
@@ -82,7 +73,8 @@ export function getSmartDefaults(): StorageConfig {
       createDirs: process.env.BLOOM_STORAGE_CREATE_DIRS !== 'false',
     },
     
-    // S3 configuration (only used when strategy is 's3')
+    // S3 configuration (only used when strategy is 's3'). S3_ENDPOINT points it
+    // at any S3-compatible service: Cloudflare R2, Wasabi, MinIO, DO Spaces.
     s3: {
       bucket: process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || '',
       region: process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1',
@@ -93,16 +85,7 @@ export function getSmartDefaults(): StorageConfig {
       signedUrlExpiry: parseInt(process.env.BLOOM_STORAGE_SIGNED_EXPIRY || '3600'), // 1 hour
       cdnUrl: process.env.BLOOM_STORAGE_CDN_URL,
     },
-    
-    // R2 configuration (only used when strategy is 'r2')
-    r2: {
-      bucket: process.env.CLOUDFLARE_R2_BUCKET || '',
-      accountId: process.env.CLOUDFLARE_ACCOUNT_ID || '',
-      accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
-      secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
-      cdnUrl: process.env.CLOUDFLARE_R2_CDN_URL,
-      signedUrlExpiry: parseInt(process.env.BLOOM_STORAGE_SIGNED_EXPIRY || '3600'), // 1 hour
-    },
+
     
     // Environment information
     environment: {
@@ -118,18 +101,13 @@ export function getSmartDefaults(): StorageConfig {
  * Auto-detect storage strategy from environment variables
  * @llm-rule WHEN: Determining which storage strategy to use automatically
  * @llm-rule AVOID: Manual strategy selection - environment detection handles most cases
- * @llm-rule NOTE: Priority: R2 → S3 → Local (R2 has zero egress fees)
+ * @llm-rule NOTE: Priority: S3 → Local. R2/Wasabi/MinIO are S3 with S3_ENDPOINT.
  */
-function detectStorageStrategy(): 'local' | 's3' | 'r2' {
+function detectStorageStrategy(): 'local' | 's3' {
   // Explicit override wins (for testing/debugging)
   const explicit = process.env.BLOOM_STORAGE_STRATEGY?.toLowerCase();
-  if (explicit && ['local', 's3', 'r2'].includes(explicit)) {
-    return explicit as any;
-  }
-
-  // Auto-detection logic - prioritize R2 for cost savings
-  if (process.env.CLOUDFLARE_R2_BUCKET) {
-    return 'r2'; // Cloudflare R2 - zero egress fees
+  if (explicit === 'local' || explicit === 's3') {
+    return explicit;
   }
 
   if (process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || process.env.S3_ENDPOINT) {
@@ -141,7 +119,7 @@ function detectStorageStrategy(): 'local' | 's3' | 'r2' {
     console.warn(
       `[@bloomneo/appkit/storage] No cloud storage configured in production. ` +
       `Using local filesystem which may not scale. ` +
-      `Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for cloud storage. See: ${DOCS_URL}#environment-variables`
+      `Set AWS_S3_BUCKET (plus S3_ENDPOINT for R2, Wasabi or MinIO) for cloud storage. See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -188,9 +166,12 @@ function parseAllowedTypes(): string[] {
 function validateEnvironment(): void {
   // Validate storage strategy if explicitly set
   const strategy = process.env.BLOOM_STORAGE_STRATEGY;
-  if (strategy && !['local', 's3', 'r2'].includes(strategy.toLowerCase())) {
+  if (strategy && !['local', 's3'].includes(strategy.toLowerCase())) {
+    const hint = strategy.toLowerCase() === 'r2'
+      ? ' The R2 strategy was removed in 6.0; use "s3" with S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com.'
+      : '';
     throw new Error(
-      `[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_STRATEGY: "${strategy}". Must be "local", "s3", or "r2". See: ${DOCS_URL}#environment-variables`
+      `[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_STRATEGY: "${strategy}". Must be "local" or "s3".${hint} See: ${DOCS_URL}#environment-variables`
     );
   }
 
@@ -201,11 +182,6 @@ function validateEnvironment(): void {
   // Validate S3 configuration if S3 strategy detected
   if (shouldValidateS3()) {
     validateS3Config();
-  }
-
-  // Validate R2 configuration if R2 strategy detected
-  if (shouldValidateR2()) {
-    validateR2Config();
   }
 
   // Validate local configuration if local strategy
@@ -233,13 +209,6 @@ function validateEnvironment(): void {
  */
 function shouldValidateS3(): boolean {
   return !!(process.env.AWS_S3_BUCKET || process.env.S3_BUCKET || process.env.S3_ENDPOINT);
-}
-
-/**
- * Check if R2 validation is needed
- */
-function shouldValidateR2(): boolean {
-  return !!process.env.CLOUDFLARE_R2_BUCKET;
 }
 
 /**
@@ -279,30 +248,6 @@ function validateS3Config(): void {
 }
 
 /**
- * Validates R2 configuration
- */
-function validateR2Config(): void {
-  const bucket = process.env.CLOUDFLARE_R2_BUCKET;
-  if (!bucket) {
-    throw new Error(`[@bloomneo/appkit/storage] R2 bucket name required. Set CLOUDFLARE_R2_BUCKET environment variable. See: ${DOCS_URL}#environment-variables`);
-  }
-
-  if (!isValidBucketName(bucket)) {
-    throw new Error(`[@bloomneo/appkit/storage] Invalid R2 bucket name: "${bucket}". Must be 3-63 characters, lowercase. See: ${DOCS_URL}#environment-variables`);
-  }
-
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const accessKey = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
-  const secretKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-
-  if (!accountId || !accessKey || !secretKey) {
-    throw new Error(
-      `[@bloomneo/appkit/storage] R2 credentials required. Set CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID, and CLOUDFLARE_R2_SECRET_ACCESS_KEY environment variables. See: ${DOCS_URL}#environment-variables`
-    );
-  }
-}
-
-/**
  * Validates local configuration
  */
 function validateLocalConfig(): void {
@@ -332,12 +277,12 @@ function validateProductionConfig(): void {
     console.warn(
       `[@bloomneo/appkit/storage] Using local storage in production. ` +
       `Files will only exist on single server instance. ` +
-      `Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for distributed storage. See: ${DOCS_URL}#environment-variables`
+      `Set AWS_S3_BUCKET (plus S3_ENDPOINT for R2, Wasabi or MinIO) for distributed storage. See: ${DOCS_URL}#environment-variables`
     );
   }
 
   // Warn about missing CDN in production
-  const cdnUrl = process.env.BLOOM_STORAGE_CDN_URL || process.env.CLOUDFLARE_R2_CDN_URL;
+  const cdnUrl = process.env.BLOOM_STORAGE_CDN_URL;
   if (!cdnUrl && strategy !== 'local') {
     console.warn(
       `[@bloomneo/appkit/storage] No CDN URL configured in production. ` +
@@ -347,7 +292,7 @@ function validateProductionConfig(): void {
 }
 
 /**
- * Validates bucket name format (S3/R2 compatible)
+ * Validates bucket name format (S3-compatible)
  */
 function isValidBucketName(name: string): boolean {
   if (name.length < 3 || name.length > 63) return false;
@@ -392,5 +337,5 @@ function validateNumericEnv(name: string, min: number, max: number): void {
  */
 export function hasCloudStorage(): boolean {
   const strategy = detectStorageStrategy();
-  return strategy === 's3' || strategy === 'r2';
+  return strategy === 's3';
 }

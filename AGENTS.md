@@ -51,7 +51,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | `securityClass` | `from '@bloomneo/appkit/security'` | CSRF, rate limiting, encryption, sanitization |
 | `errorClass` | `from '@bloomneo/appkit/error'` | HTTP errors with semantic types |
 | `cacheClass` | `from '@bloomneo/appkit/cache'` | Memory → Redis auto-scaling |
-| `storageClass` | `from '@bloomneo/appkit/storage'` | Local → S3/R2 auto-scaling |
+| `storageClass` | `from '@bloomneo/appkit/storage'` | Local → S3 (R2 / MinIO via `S3_ENDPOINT`) |
 | `queueClass` | `from '@bloomneo/appkit/queue'` | Memory → Database (Postgres) jobs |
 | `emailClass` | `from '@bloomneo/appkit/email'` | Console → SMTP → Resend |
 | `loggerClass` | `from '@bloomneo/appkit/logger'` | Structured logs to console + rotating file |
@@ -136,7 +136,7 @@ BLOOM_DB_TENANT=auto                   # → multi-tenant mode
   when crossing tenants deliberately. Single-tenant apps keep using `get()`.
 - **Never hand-roll rate limiting.** Use `security.requests(maxRequests, windowMs)`.
 - **Never write a custom file-upload-to-S3 wrapper.** `storage.put()` /
-  `storage.get()` / `storage.url()` handle local + S3 + R2 with the same API.
+  `storage.get()` / `storage.url()` handle local + S3 (and S3-compatible endpoints) with the same API.
 - **Never read `process.env.X` directly** in business code. Go through
   `config.get('section.key')` so the value is validated and typed.
 - **Never `throw new Error(...)` in a route handler.** Use `error.badRequest(...)`,

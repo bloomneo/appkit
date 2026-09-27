@@ -3,7 +3,7 @@ name: appkit-storage
 description: >-
   Use when writing code that uploads, downloads, or generates presigned URLs
   for files via `@bloomneo/appkit/storage`. Covers the `storageClass.get()`
-  pattern, Local → S3 → R2 strategy auto-detection, and the standard
+  pattern, Local → S3 strategy auto-detection (R2 / MinIO via `S3_ENDPOINT`), and the standard
   `put/get/delete/list` surface.
 ---
 
@@ -11,7 +11,8 @@ description: >-
 
 Single-entry file storage: `storageClass.get()` returns a storage instance
 scoped to the active strategy. Strategy is auto-detected: local filesystem
-unless AWS S3 or Cloudflare R2 env vars are set.
+unless S3 env vars are set. Cloudflare R2, Wasabi and MinIO use the S3
+strategy with `S3_ENDPOINT`.
 
 ## Canonical flow
 
@@ -33,19 +34,18 @@ const file = await storage.get('avatars/42.png');
 // Delete
 await storage.delete('avatars/42.png');
 
-// Presigned URL (S3/R2 only)
-const url = await storage.getSignedUrl('avatars/42.png', 3600);
+// Presigned URL (S3 only)
+const url = await storage.signedUrl('avatars/42.png', 3600);
 ```
 
 ## Strategy auto-detection
 
 | Env | Strategy |
 |---|---|
-| `CLOUDFLARE_R2_BUCKET` | Cloudflare R2 |
-| `AWS_S3_BUCKET` / `S3_BUCKET` / `S3_ENDPOINT` | AWS S3 (or S3-compatible) |
+| `AWS_S3_BUCKET` / `S3_BUCKET` / `S3_ENDPOINT` | S3 (AWS, or R2 / Wasabi / MinIO with `S3_ENDPOINT`) |
 | none | Local filesystem (default `./uploads`) |
 
-Override: `BLOOM_STORAGE_STRATEGY=local|s3|r2`.
+Override: `BLOOM_STORAGE_STRATEGY=local|s3`. There is no `r2` strategy (removed in 6.0).
 
 ## Public API
 
@@ -57,9 +57,9 @@ storage.get(path)                             // download
 storage.delete(path)
 storage.list(prefix?)                         // → StorageFile[]
 storage.exists(path)                          // → boolean
-storage.getSignedUrl(path, expirySeconds?)    // S3/R2 only
-storage.getUrl(path)                          // public URL
-storage.copy(from, to) / storage.move(from, to)
+storage.signedUrl(path, expirySeconds?)       // S3 only
+storage.url(path)                             // public URL
+storage.copy(from, to)
 ```
 
 ### storageClass
@@ -69,7 +69,7 @@ storageClass.get(overrides?)                  // → Storage
 storageClass.upload(path, data, options?)     // shortcut: get().put(...)
 storageClass.download(path)                   // shortcut: get().get(...)
 storageClass.reset(newConfig?)                // tests only
-storageClass.getStrategy()                    // 'local' | 's3' | 'r2'
+storageClass.getStrategy()                    // 'local' | 's3'
 storageClass.hasCloudStorage()                // → boolean
 storageClass.isLocal()                        // → boolean
 storageClass.getStats()                       // → { strategy, totalFiles?, totalSize? }
@@ -87,14 +87,9 @@ S3 / S3-compatible:
 - `AWS_S3_BUCKET` (or `S3_BUCKET`) — required
 - `AWS_REGION` / `S3_REGION` — default `us-east-1`
 - `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY`
-- `S3_ENDPOINT` — for S3-compatible providers (MinIO, etc.)
+- `S3_ENDPOINT` — for S3-compatible providers: R2 (`https://<account>.r2.cloudflarestorage.com`, with `AWS_REGION=auto`), Wasabi, MinIO
 - `S3_FORCE_PATH_STYLE=true` — for MinIO
-- `BLOOM_STORAGE_CDN_URL` — if files are served via CDN
-
-R2:
-- `CLOUDFLARE_R2_BUCKET` + `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_R2_ACCESS_KEY_ID` + `CLOUDFLARE_R2_SECRET_ACCESS_KEY`
-- `CLOUDFLARE_R2_CDN_URL`
+- `BLOOM_STORAGE_CDN_URL` — public URL base (CDN, or the R2 custom domain)
 
 Shared:
 - `BLOOM_STORAGE_SIGNED_EXPIRY` — default 3600 seconds

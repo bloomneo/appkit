@@ -54,6 +54,7 @@ const BANNED: Banned[] = [
   // 6.0.0 — removed features inside kept modules. See MIGRATION-6.md.
   { pattern: /\bBLOOM_LOGGER_(HTTP|WEBHOOK|DB)_\w+|\bBLOOM_LOGGER_DATABASE\b/, now: 'removed in 6.0 — logger has console + file only; collect stdout or the log file (MIGRATION-6.md)' },
   { pattern: /\bBLOOM_QUEUE_REDIS_\w+|BLOOM_QUEUE_TRANSPORT\s*=\s*['"]?redis\b/, now: 'removed in 6.0 — queue transports are memory and database (MIGRATION-6.md)' },
+  { pattern: /\bCLOUDFLARE_R2_\w+|\bR2_BUCKET\b|BLOOM_STORAGE_STRATEGY\s*=\s*['"]?r2\b/, now: 'removed in 6.0 — use the S3 strategy with S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com (MIGRATION-6.md)' },
 
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },

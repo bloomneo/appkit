@@ -3,7 +3,7 @@
  *
  * Modules:    auth + security + storage + queue + error + logger
  * Required:   BLOOM_AUTH_SECRET
- * Optional:   AWS_S3_BUCKET | R2_BUCKET (else local disk),
+ * Optional:   AWS_S3_BUCKET (+ S3_ENDPOINT for R2/MinIO; else local disk),
  *             DATABASE_URL (database-backed queue, else in-process)
  *
  * Flow:

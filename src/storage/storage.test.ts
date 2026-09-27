@@ -124,3 +124,47 @@ describe('Public API surface — drift check', () => {
     expect(typeof (s as any).has).not.toBe('function');
   });
 });
+
+describe('S3-compatible endpoints replace the R2 strategy (6.0)', () => {
+  const withEnv = (env: Record<string, string | undefined>, fn: () => void) => {
+    const saved: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(env)) {
+      saved[k] = process.env[k];
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    try {
+      fn();
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  };
+
+  it('reads S3_ENDPOINT and S3_FORCE_PATH_STYLE into the s3 strategy config', async () => {
+    const { getSmartDefaults } = await import('./defaults.js');
+    withEnv({
+      AWS_S3_BUCKET: 'my-bucket',
+      AWS_ACCESS_KEY_ID: 'test-key',
+      AWS_SECRET_ACCESS_KEY: 'test-secret',
+      S3_ENDPOINT: 'https://abc123.r2.cloudflarestorage.com',
+      S3_FORCE_PATH_STYLE: 'true',
+      BLOOM_STORAGE_STRATEGY: undefined,
+    }, () => {
+      const config = getSmartDefaults();
+      expect(config.strategy).toBe('s3');
+      expect(config.s3?.endpoint).toBe('https://abc123.r2.cloudflarestorage.com');
+      expect(config.s3?.forcePathStyle).toBe(true);
+      expect((config as any).r2).toBeUndefined();
+    });
+  });
+
+  it('rejects BLOOM_STORAGE_STRATEGY=r2 with a pointer to S3_ENDPOINT', async () => {
+    const { getSmartDefaults } = await import('./defaults.js');
+    withEnv({ BLOOM_STORAGE_STRATEGY: 'r2' }, () => {
+      expect(() => getSmartDefaults()).toThrow(/S3_ENDPOINT/);
+    });
+  });
+});

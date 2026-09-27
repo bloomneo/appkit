@@ -23,6 +23,9 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   longer selects a queue transport; the queue uses memory, or the database
   when `DATABASE_URL` is set or `BLOOM_QUEUE_TRANSPORT=database`.
   `BLOOM_QUEUE_TRANSPORT=redis` throws with a pointer to `database`.
+- Storage R2 strategy (556 lines) and `CLOUDFLARE_R2_*` / `CLOUDFLARE_ACCOUNT_ID`
+  detection. The S3 strategy already takes `S3_ENDPOINT` (and
+  `S3_FORCE_PATH_STYLE` for MinIO), which covers R2, Wasabi and MinIO.
 
 ### Changed
 

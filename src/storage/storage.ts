@@ -3,14 +3,13 @@
  * @module @bloomneo/appkit/storage
  * @file src/storage/storage.ts
  * 
- * @llm-rule WHEN: Building apps that need file storage with automatic Local/S3/R2 selection
+ * @llm-rule WHEN: Building apps that need file storage with automatic Local/S3 selection
  * @llm-rule AVOID: Using directly - always get instance via storageClass.get()
- * @llm-rule NOTE: Auto-detects Local vs S3 vs R2 based on environment variables
+ * @llm-rule NOTE: Auto-detects Local vs S3 based on environment variables (R2/Wasabi/MinIO via S3_ENDPOINT)
  */
 
 import { LocalStrategy } from './strategies/local.js';
 import { S3Strategy } from './strategies/s3.js';
-import { R2Strategy } from './strategies/r2.js';
 import type { StorageConfig } from './defaults.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
@@ -46,7 +45,7 @@ export interface PutOptions {
  */
 export class StorageClass {
   public config: StorageConfig;
-  private strategy: LocalStrategy | S3Strategy | R2Strategy;
+  private strategy: LocalStrategy | S3Strategy;
   private connected: boolean = false;
 
   constructor(config: StorageConfig) {
@@ -56,17 +55,15 @@ export class StorageClass {
 
   /**
    * Creates appropriate strategy based on configuration
-   * @llm-rule WHEN: Storage initialization - selects Local, S3, or R2 based on environment
+   * @llm-rule WHEN: Storage initialization - selects Local or S3 based on environment
    * @llm-rule AVOID: Manual strategy creation - configuration handles strategy selection
    */
-  private createStrategy(): LocalStrategy | S3Strategy | R2Strategy {
+  private createStrategy(): LocalStrategy | S3Strategy {
     switch (this.config.strategy) {
       case 'local':
         return new LocalStrategy(this.config);
       case 's3':
         return new S3Strategy(this.config);
-      case 'r2':
-        return new R2Strategy(this.config);
       default:
         throw new Error(`[@bloomneo/appkit/storage] Unknown storage strategy: ${this.config.strategy}. See: ${DOCS_URL}#environment-variables`);
     }
@@ -81,7 +78,7 @@ export class StorageClass {
     if (this.connected) return;
 
     try {
-      // Strategy-specific connection (S3/R2 connect, Local creates dirs)
+      // Strategy-specific connection (S3 connects, Local creates dirs)
       if ('connect' in this.strategy) {
         await (this.strategy as any).connect();
       }
@@ -362,7 +359,7 @@ export class StorageClass {
       maxFileSize = this.config.local.maxFileSize;
       allowedTypes = this.config.local.allowedTypes;
     } else {
-      // S3 and R2 use global config or defaults
+      // S3 uses global config or defaults
       maxFileSize = 52428800; // 50MB default for cloud
       allowedTypes = ['*']; // Allow all for cloud storage
     }
@@ -442,7 +439,7 @@ export class StorageClass {
     if (this.config.strategy === 'local' && this.config.local) {
       maxSize = this.config.local.maxFileSize;
     }
-    // S3 and R2 use default limit for now
+    // S3 uses the default limit for now
 
     if (buffer.length > maxSize) {
       const maxMB = Math.round(maxSize / 1048576);
@@ -508,7 +505,7 @@ export class StorageClass {
     if (this.config.strategy === 'local' && this.config.local) {
       allowedTypes = this.config.local.allowedTypes;
     } else {
-      // S3 and R2 allow all types by default (filtering done at app level)
+      // S3 allows all types by default (filtering done at app level)
       allowedTypes = ['*'];
     }
 

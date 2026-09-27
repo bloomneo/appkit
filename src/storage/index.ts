@@ -1,10 +1,10 @@
 /**
- * Ultra-simple file storage that just works with automatic Local/S3/R2 strategy
+ * Ultra-simple file storage that just works with automatic Local/S3 strategy
  * @module @bloomneo/appkit/storage
  * @file src/storage/index.ts
  * 
  * @llm-rule WHEN: Building apps that need file storage with zero configuration
- * @llm-rule AVOID: Complex storage setups - this auto-detects Local/S3/R2 from environment
+ * @llm-rule AVOID: Complex storage setups - this auto-detects Local/S3 from environment
  * @llm-rule NOTE: Uses storageClass.get() pattern like auth - get() → storage.put() → distributed
  * @llm-rule NOTE: Common pattern - storageClass.get() → storage.put() → storage.url() → served
  */
@@ -66,7 +66,7 @@ export interface PutOptions {
 
 /**
  * Get storage instance - the only function you need to learn
- * Strategy auto-detected from environment (S3/R2 env vars → Cloud, nothing → Local)
+ * Strategy auto-detected from environment (S3 env vars → Cloud, nothing → Local)
  * @llm-rule WHEN: Need file storage in any part of your app - this is your main entry point
  * @llm-rule AVOID: Creating StorageClass directly - always use this function
  * @llm-rule NOTE: Typical flow - get() → storage.put() → storage.url() → file served
@@ -116,7 +116,7 @@ function reset(newConfig: Partial<StorageConfig> = {}): Storage {
 
 /**
  * Get active storage strategy for debugging
- * @llm-rule WHEN: Debugging or health checks to see which strategy is active (Local vs S3 vs R2)
+ * @llm-rule WHEN: Debugging or health checks to see which strategy is active (Local vs S3)
  * @llm-rule AVOID: Using for application logic - storage should be transparent
  */
 function getStrategy(): string {
@@ -146,7 +146,7 @@ function getConfig(): {
  */
 function hasCloudStorage(): boolean {
   const strategy = getStrategy();
-  return strategy === 's3' || strategy === 'r2';
+  return strategy === 's3';
 }
 
 /**
@@ -171,14 +171,14 @@ function validateConfig(): void {
       console.warn(
         '[Bloomneo AppKit] Using local storage in production. ' +
         'Files will only exist on single server instance. ' +
-        'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for distributed storage.'
+        'Set AWS_S3_BUCKET (plus S3_ENDPOINT for R2, Wasabi or MinIO) for distributed storage.'
       );
     }
     
     if (process.env.NODE_ENV === 'production' && !hasCloudStorage()) {
       console.warn(
         '[Bloomneo AppKit] No cloud storage configured in production. ' +
-        'Set AWS_S3_BUCKET or CLOUDFLARE_R2_BUCKET for scalable file storage.'
+        'Set AWS_S3_BUCKET (plus S3_ENDPOINT for R2, Wasabi or MinIO) for scalable file storage.'
       );
     }
   } catch (error) {

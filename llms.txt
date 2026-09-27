@@ -397,7 +397,8 @@ Set `REDIS_URL` to auto-upgrade from memory to Redis. No code changes needed.
 
 ## Module 6 — Storage (`@bloomneo/appkit/storage`)
 
-Local → S3/R2 auto-scaling. Same API across all providers.
+Local → S3 auto-scaling. Same API across all providers. S3 covers any
+S3-compatible store (Cloudflare R2, Wasabi, MinIO) through `S3_ENDPOINT`.
 
 ### Methods
 
@@ -414,7 +415,12 @@ await storage.signedUrl(key, expiresIn?: number): Promise<string>  // presigned
 await storage.copy(sourceKey: string, destKey: string): Promise<string>
 ```
 
-Set `AWS_S3_BUCKET` (or `R2_BUCKET`) to auto-upgrade from local disk to cloud.
+Set `AWS_S3_BUCKET` (+ `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) to
+auto-upgrade from local disk to cloud. For Cloudflare R2, Wasabi or MinIO add
+`S3_ENDPOINT` (R2: `https://<account>.r2.cloudflarestorage.com` with
+`AWS_REGION=auto`; MinIO: also `S3_FORCE_PATH_STYLE=true`). Set
+`BLOOM_STORAGE_CDN_URL` to the public URL base. There is no separate R2
+strategy (removed in 6.0).
 
 ---
 
@@ -701,7 +707,8 @@ verifyClass.reset() / verifyClass.disconnectAll()
 | `BLOOM_SECURITY_CSRF_SECRET` | CSRF token signing (min 32 chars) | recommended |
 | `BLOOM_SECURITY_ENCRYPTION_KEY` | AES-256-GCM key (64 hex chars) | recommended |
 | `REDIS_URL` | Distributed cache | optional |
-| `AWS_S3_BUCKET` | Cloud storage | optional |
+| `AWS_S3_BUCKET` | Cloud storage (S3) | optional |
+| `S3_ENDPOINT` / `S3_FORCE_PATH_STYLE` | S3-compatible endpoint (R2, Wasabi, MinIO) | optional |
 | `BLOOM_DB_TENANT` | `auto` enables multi-tenant filtering | optional |
 | `RESEND_API_KEY` | Production email | optional |
 | `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` | SMTP email | optional |

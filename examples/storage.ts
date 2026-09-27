@@ -5,7 +5,7 @@
  *
  * Strategy auto-selection:
  *   • AWS_S3_BUCKET set    → S3
- *   • R2_BUCKET set        → Cloudflare R2 (S3-compatible)
+ *     + S3_ENDPOINT        → same strategy against Cloudflare R2, Wasabi or MinIO
  *   • neither              → Local disk
  *
  * Run: tsx examples/storage.ts

@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/storage
  * @file src/storage/strategies/s3.ts
  * 
- * @llm-rule WHEN: App has AWS_S3_BUCKET or S3_ENDPOINT env vars for distributed cloud storage
+ * @llm-rule WHEN: App has AWS_S3_BUCKET (plus S3_ENDPOINT for R2, Wasabi, MinIO) for cloud storage
  * @llm-rule AVOID: Manual S3 setup - this handles AWS, Wasabi, MinIO, DigitalOcean Spaces automatically
  * @llm-rule NOTE: Production-ready with retry logic, signed URLs, CDN support, automatic MIME detection
  */
@@ -67,7 +67,8 @@ export class S3Strategy implements StorageStrategy {
         maxAttempts: 3, // Built-in retry logic
       };
 
-      // Configure for S3-compatible services (Wasabi, MinIO, etc.)
+      // Configure for S3-compatible services (Cloudflare R2, Wasabi, MinIO, etc.).
+      // MinIO needs S3_FORCE_PATH_STYLE=true.
       if (this.endpoint) {
         clientConfig.endpoint = this.endpoint;
         clientConfig.forcePathStyle = s3Config.forcePathStyle;
@@ -119,6 +120,7 @@ export class S3Strategy implements StorageStrategy {
     
     const hostname = new URL(this.endpoint).hostname.toLowerCase();
     
+    if (hostname.endsWith('r2.cloudflarestorage.com')) return 'Cloudflare R2';
     if (hostname.includes('wasabi')) return 'Wasabi';
     if (hostname.includes('digitalocean')) return 'DigitalOcean Spaces';
     if (hostname.includes('minio') || hostname.includes('localhost')) return 'MinIO';
@@ -312,7 +314,8 @@ export class S3Strategy implements StorageStrategy {
 
     // Generate S3 public URL
     if (this.endpoint) {
-      // Custom endpoint (Wasabi, MinIO, etc.)
+      // Custom endpoint (R2, Wasabi, MinIO, etc.). Set BLOOM_STORAGE_CDN_URL for
+      // R2, whose API endpoint does not serve public objects.
       const baseUrl = this.endpoint.endsWith('/') ? this.endpoint : this.endpoint + '/';
       return `${baseUrl}${this.bucket}/${key}`;
     }
