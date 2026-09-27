@@ -154,7 +154,7 @@ export class PrismaAdapter {
 
     // Which models carry the tenant field. Prisma exposes its data model at
     // runtime; if it ever stops doing so, scope every model (fail closed).
-    const runtimeModels: Record<string, { fields: Array<{ name: string }> }> | undefined =
+    const runtimeModels: Record<string, { fields: Array<{ name: string; type?: string }> }> | undefined =
       (client as any)._runtimeDataModel?.models;
     const hasField = (model: string | undefined): boolean => {
       if (!model) return false;
@@ -162,10 +162,30 @@ export class PrismaAdapter {
       return def ? def.fields.some((f) => f.name === field) : true;
     };
 
-    const force = (data: any, tenantId: string) =>
+    /*
+     * The tenant id travels as a string (token claim, set_config), but the
+     * column may be an Int or BigInt — bloomneo-cloud's customerId. Prisma
+     * rejects `customerId: "1"`, so convert to the column's type, and refuse
+     * an id that isn't one rather than let it match by accident.
+     */
+    const typed = (model: string, tenantId: string): string | number | bigint => {
+      const type = runtimeModels?.[model]?.fields.find((f) => f.name === field)?.type;
+      if (type !== 'Int' && type !== 'BigInt') return tenantId;
+      if (!/^-?\d+$/.test(tenantId)) {
+        throw createDatabaseError(
+          `${model}.${field} is ${type}, but the tenant id "${tenantId}" is not an integer`,
+          500,
+          { code: 'DATABASE_TENANT_ID_TYPE' },
+          'multi-tenant-mode',
+        );
+      }
+      return type === 'BigInt' ? BigInt(tenantId) : Number(tenantId);
+    };
+
+    const force = (data: any, tenantId: unknown) =>
       data && typeof data === 'object' ? { ...data, [field]: tenantId } : data;
-    const scopeUnique = (where: any, tenantId: string) => ({ ...(where || {}), [field]: tenantId });
-    const scopeMany = (where: any, tenantId: string) =>
+    const scopeUnique = (where: any, tenantId: unknown) => ({ ...(where || {}), [field]: tenantId });
+    const scopeMany = (where: any, tenantId: unknown) =>
       where && Object.keys(where).length ? { AND: [{ [field]: tenantId }, where] } : { [field]: tenantId };
 
     const UNIQUE = new Set(['findUnique', 'findUniqueOrThrow', 'update', 'delete']);
@@ -180,9 +200,9 @@ export class PrismaAdapter {
         $allModels: {
           async $allOperations({ model, operation, args, query }: any) {
             if (!hasField(model)) return query(args);
-            const { tenantId, bypass } = resolve();
+            const { tenantId: rawTenantId, bypass } = resolve();
             if (bypass) return query(args);
-            if (!tenantId) {
+            if (!rawTenantId) {
               // A shared client used outside database.tenant() / the request
               // context. Refusing is the only safe answer: there is no tenant
               // to filter by, and unfiltered is every tenant.
@@ -194,6 +214,7 @@ export class PrismaAdapter {
                 'multi-tenant-mode',
               );
             }
+            const tenantId = typed(model, String(rawTenantId));
             const a = { ...(args || {}) };
 
             if (UNIQUE.has(operation)) a.where = scopeUnique(a.where, tenantId);

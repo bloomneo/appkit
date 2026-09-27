@@ -38,6 +38,11 @@ export interface VerifyOptions {
   paths?: string[];
   /** Extra path segments never to probe (health checks, webhooks). */
   exclude?: string[];
+  /**
+   * Headers sent with every request — e.g. `{ 'X-Frontend-Key': key }` for a
+   * Bloom app whose API refuses requests without its frontend key.
+   */
+  headers?: Record<string, string>;
   /** Milliseconds per request before giving up. Default 5000. */
   timeoutMs?: number;
   /**

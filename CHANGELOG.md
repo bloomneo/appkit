@@ -10,6 +10,8 @@ upgrade guide, with a replacement for every removal, is
 
 
 - **Child-table policies** (after rc.0): `rlsPolicyStatements({ table, via: { parent, foreignKey, parentKey?, column? } })` scopes a table through its parent row; `column: false` for grandchildren relies on the parent's own policy. Integration-tested on Postgres: reads, cross-tenant inserts refused, null parents hidden, bypass sees all.
+
+- **Found by the bloomneo-cloud pilot (after rc.1):** the tenant middleware writes the tenant id in the column's type (an `Int`/`BigInt` tenant column gets a number; a non-integer id is refused with `DATABASE_TENANT_ID_TYPE`). `verifyClass` takes `headers` (e.g. the app's `X-Frontend-Key`), records a slow or unreachable endpoint as skipped instead of aborting the run, and does not report an unauthenticated 200 on a feature the app declares public. `createApiRouter`'s `/api` index marks `isPublic` routers with `public: true`.
 ### Added
 
 - **`@bloomneo/appkit/server`** (also exported from the package root).

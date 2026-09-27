@@ -62,6 +62,7 @@ export class VerifierClass {
         const res = await fetch(options.baseUrl.replace(/\/$/, '') + path, {
           method: init.method ?? 'GET',
           headers: {
+            ...(options.headers ?? {}),
             ...(init.token ? { authorization: `Bearer ${init.token}` } : {}),
             ...(init.body ? { 'content-type': 'application/json' } : {}),
           },
@@ -72,6 +73,13 @@ export class VerifierClass {
         let json: any = null;
         try { json = JSON.parse(text); } catch { /* non-JSON is fine */ }
         return { status: res.status, json, text };
+      } catch (err) {
+        // A slow or unreachable endpoint is a check that did not run: record
+        // it (so the run is not a pass) and carry on with the others.
+        const why = (err as Error)?.name === 'AbortError' ? `timed out after ${timeoutMs}ms` : String((err as Error)?.message ?? err);
+        const note = `${init.method ?? 'GET'} ${path}: ${why}`;
+        if (!skipped.includes(note)) skipped.push(note);
+        return { status: 0, json: null, text: '' };
       } finally {
         clearTimeout(timer);
       }
@@ -105,10 +113,14 @@ export class VerifierClass {
     }
 
     // ── 3. Unauthenticated probe ──────────────────────────────────────────
+    // Features the app declares public (isPublic, or contracts with auth:
+    // 'public') are meant to answer without credentials; they are still
+    // probed across tenants below.
+    const declaredPublic = await this.declaredPublic(request);
     for (const path of paths) {
       const res = await request(path);
       checks++;
-      if (res.status === 200) {
+      if (res.status === 200 && !declaredPublic.has(path)) {
         findings.push({
           kind: 'unauthenticated-read',
           actor: 'anonymous',
@@ -251,6 +263,21 @@ export class VerifierClass {
     return endpoints
       .filter((p): p is string => typeof p === 'string')
       .filter((p) => !skip.some((s) => p.includes(s)));
+  }
+
+  /** `/api/<feature>` paths the app's index marks public. Empty if it can't say. */
+  private async declaredPublic(
+    request: (path: string, init?: any) => Promise<{ status: number; json: any }>,
+  ): Promise<Set<string>> {
+    const res = await request('/api');
+    const routes: unknown = res.json?.endpoints?.routes;
+    const out = new Set<string>();
+    if (!Array.isArray(routes)) return out;
+    for (const r of routes as Array<{ feature?: string; path?: string; auth?: unknown; public?: boolean }>) {
+      if (r.public && r.path) out.add(r.path);
+      if (r.auth === 'public' && r.path) out.add(r.path);
+    }
+    return out;
   }
 
   /**

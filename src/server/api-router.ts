@@ -45,6 +45,8 @@ export interface DiscoveredEndpoint {
   method?: string;
   path: string;
   auth?: RouteContract['auth'];
+  /** Plain routers only: the file declares `export const isPublic = true`. */
+  public?: true;
 }
 
 export async function createApiRouter(options: ApiRouterOptions): Promise<any> {
@@ -116,7 +118,7 @@ export async function createApiRouter(options: ApiRouterOptions): Promise<any> {
       );
     }
     router.use(`/${feature}`, exported);
-    endpoints.push({ feature, path: `/api/${feature}` });
+    endpoints.push({ feature, path: `/api/${feature}`, ...(PUBLIC.test(source) ? { public: true as const } : {}) });
     log.info(`  /api/${feature} -> ${main}`);
   }
 

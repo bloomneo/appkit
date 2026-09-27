@@ -122,7 +122,7 @@ describe('createApiRouter', () => {
     const index = await request(app2).get('/api');
     expect(index.body.endpoints.routes).toEqual(
       expect.arrayContaining([
-        { feature: 'legacy', path: '/api/legacy' },
+        { feature: 'legacy', path: '/api/legacy', public: true },
         { feature: 'plans', method: 'GET', path: '/api/plans/top', auth: 'public' },
       ]),
     );

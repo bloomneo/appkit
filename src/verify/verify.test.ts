@@ -163,7 +163,7 @@ describe('safety rails', () => {
    * row. It counts the DELETEs it receives, which is what the default run
    * must never send.
    */
-  async function leakyServer() {
+  async function leakyServer(requireKey?: string) {
     const { createServer } = await import('node:http');
     const rows: Record<string, string> = {
       'a@x.test': '11111111-1111-4111-8111-111111111111',
@@ -179,6 +179,7 @@ describe('safety rails', () => {
       let raw = '';
       req.on('data', (c) => (raw += c));
       req.on('end', () => {
+        if (requireKey && req.headers['x-frontend-key'] !== requireKey) return send(403, { error: 'Frontend access key required' });
         if (req.method === 'POST' && req.url === '/api/auth/login') {
           return send(200, { token: JSON.parse(raw).email });
         }
@@ -215,6 +216,61 @@ describe('safety rails', () => {
       expect(state.deletes).toBeGreaterThan(0);
       expect(report.destructive).toBe(true);
       expect(report.findings.some((f) => f.kind === 'cross-tenant-delete')).toBe(true);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('sends options.headers with every request (a Bloom app behind its frontend key)', async () => {
+    const { server, baseUrl } = await leakyServer('k-123');
+    try {
+      const blind = await verifyClass.get().run({ baseUrl, identities, paths: ['/api/notes'] });
+      expect(blind.findings).toEqual([]);
+      expect(blind.ok).toBe(false); // could not even log in: inconclusive, never a pass
+      const keyed = await verifyClass.get().run({ baseUrl, identities, paths: ['/api/notes'], headers: { 'X-Frontend-Key': 'k-123' } });
+      expect(keyed.findings.some((f) => f.kind === 'cross-tenant-read')).toBe(true);
+    } finally {
+      server.close();
+    }
+  });
+
+  it('a slow endpoint is skipped and named, and the run goes on (never a pass)', async () => {
+    const { createServer } = await import('node:http');
+    const server = createServer((req, res) => {
+      if (req.url === '/api/slow') return; // never answers
+      res.writeHead(401, { 'content-type': 'application/json' });
+      res.end('{}');
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`;
+    try {
+      const report = await verifyClass.get().run({ baseUrl, identities, paths: ['/api/slow', '/api/fast'], timeoutMs: 200 });
+      expect(report.ok).toBe(false);
+      expect(report.skipped.some((s) => s.includes('GET /api/slow: timed out after 200ms'))).toBe(true);
+    } finally {
+      server.closeAllConnections?.();
+      server.close();
+    }
+  });
+
+  it('does not report an unauthenticated 200 on a feature the app declares public', async () => {
+    const { createServer } = await import('node:http');
+    const server = createServer((req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (req.url === '/api') {
+        return res.end(JSON.stringify({ endpoints: { features: ['/api/open', '/api/leak'], routes: [
+          { feature: 'open', path: '/api/open', public: true },
+          { feature: 'leak', path: '/api/leak' },
+        ] } }));
+      }
+      res.end('[]');
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    const baseUrl = `http://127.0.0.1:${(server.address() as any).port}`;
+    try {
+      const report = await verifyClass.get().run({ baseUrl, identities, paths: ['/api/open', '/api/leak'] });
+      const anon = report.findings.filter((f) => f.kind === 'unauthenticated-read').map((f) => f.path);
+      expect(anon).toEqual(['/api/leak']);
     } finally {
       server.close();
     }

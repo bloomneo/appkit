@@ -748,6 +748,8 @@ can legitimately see, then replays every id against every other identity
 (GET / PATCH, and DELETE with `allowDestructive: true`) and flags anything that isn't a 404. No per-app
 manifest of routes or fixtures — add a feature and it is covered next run.
 
+`headers` is sent with every request (a Bloom app needs `{ 'X-Frontend-Key': key }`). A slow or unreachable endpoint is listed in `skipped` and the run continues; features the app's `/api` index marks public are not reported for unauthenticated reads.
+
 | Finding | Meaning |
 |---|---|
 | `cross-tenant-read` | GET on another tenant's id returned 200 |
