@@ -70,6 +70,11 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
 
 ### Changed
 
+- The database module has one `DatabaseError` (an `AppKitError`, with a
+  `code` and `statusCode`); the second, plain-`Error` class in `defaults.ts`
+  is gone, and its last nine plain throws now carry codes. The typed-errors
+  test now covers `src/database` too.
+
 - Released in lockstep with appkit, uikit and bloom on one shared version.
 - Build output (`dist/`) is no longer committed; it is built in CI and by
   `prepublishOnly`.

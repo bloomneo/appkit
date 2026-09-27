@@ -22,6 +22,7 @@
  * reported, and the tenant only ever comes from the verified token.
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { DatabaseError } from './errors.js';
 
 /** What the database sees in `app.tenant_id` during a deliberate bypass. */
 export const BYPASS_TOKEN = '__BYPASS__';
@@ -158,7 +159,9 @@ export function rlsPolicyStatements(options: RlsPolicyOptions): string[] {
     ['schema', options.schema ?? 'public'],
   ] as const) {
     if (!IDENT.test(value)) {
-      throw new TypeError(`rlsPolicySql: ${label} "${value}" is not a plain SQL identifier`);
+      throw new DatabaseError(`[@bloomneo/appkit/database] rlsPolicySql: ${label} "${value}" is not a plain SQL identifier`, {
+        code: 'DATABASE_INVALID_IDENTIFIER',
+      });
     }
   }
   const table = options.schema ? `${quote(options.schema)}.${quote(options.table)}` : quote(options.table);

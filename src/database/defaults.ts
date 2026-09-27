@@ -16,6 +16,8 @@
  * @llm-rule NOTE: All tenant tables MUST have tenant_id text field (nullable)
  */
 
+import { DatabaseError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
 
 function validateDatabaseUrl(url: string): boolean {
@@ -35,21 +37,6 @@ function validateDatabaseUrl(url: string): boolean {
   ].some(protocol => url.startsWith(protocol));
 }
 
-class DatabaseError extends Error {
-  statusCode: number;
-  details: any;
-
-  constructor(message: string, statusCode = 500, details: any = null) {
-    super(message);
-    this.name = 'DatabaseError';
-    this.statusCode = statusCode;
-    this.details = details;
-
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, DatabaseError);
-    }
-  }
-}
 
 export function createDatabaseError(
   message: string,
@@ -58,7 +45,11 @@ export function createDatabaseError(
   anchor = 'environment-variables'
 ): DatabaseError {
   const prefixed = `[@bloomneo/appkit/database] ${message}. See: ${DOCS_URL}#${anchor}`;
-  return new DatabaseError(prefixed, statusCode, details);
+  return new DatabaseError(prefixed, {
+    code: (details && typeof details === 'object' && 'code' in details && String((details as any).code)) || 'DATABASE_ERROR',
+    statusCode,
+    details,
+  });
 }
 
 function detectProvider(url: string): string {

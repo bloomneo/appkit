@@ -46,11 +46,10 @@ function sourceFiles(dir: string): string[] {
 }
 
 describe('no plain Error throws in src/**', () => {
-  it('every throw uses an AppKitError subclass (src/database excluded)', () => {
+  it('every throw uses an AppKitError subclass', () => {
     const offenders: string[] = [];
     for (const file of sourceFiles(SRC)) {
       const rel = relative(SRC, file).split('\\').join('/');
-      if (rel.startsWith('database/')) continue;
       readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
         if (/\b(throw|reject\()\s*new\s+(Type|Range)?Error\s*\(/.test(line)) {
           offenders.push(`src/${rel}:${i + 1}: ${line.trim()}`);
