@@ -155,17 +155,14 @@ function getWorkerEnabled(isDevelopment: boolean): boolean {
     return workerEnv.toLowerCase() === 'true';
   }
   
-  // Auto-detection based on environment
-  if (isDevelopment) {
-    return true; // Development: process jobs in same process
-  }
-  
-  // Production: only enable if explicitly set or in worker-specific deployments
-  const isWorkerDeployment = process.env.DYNO?.includes('worker') || // Heroku
-                             process.env.CONTAINER_NAME?.includes('worker') || // Docker
-                             process.env.SERVICE_NAME?.includes('worker'); // K8s
-  
-  return isWorkerDeployment || false;
+  // On by default, in production too. A Bloom app is one process (or a pm2
+  // cluster of identical ones) that both serves and works; the database
+  // transport hands each job to exactly one of them. It used to be off in
+  // production unless a worker-looking env var was set, so queue.add() and
+  // repeat() stored jobs that silently never ran. Web-only replicas opt out
+  // with BLOOM_QUEUE_WORKER=false.
+  void isDevelopment;
+  return true;
 }
 
 /**

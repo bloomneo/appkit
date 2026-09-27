@@ -347,6 +347,8 @@ describe('database transport: a repeating slot is scheduled once', () => {
     t.config = { maxAttempts: 3, defaultPriority: 0 };
     t.db = {
       queueJob: {
+        // null: exercise the race path (the insert collides), not the pre-check.
+        findUnique: async () => null,
         create: async ({ data }: any) => {
           if (data.id === 'boom') throw Object.assign(new Error('connection lost'), { code: 'P1001' });
           if (inserted.includes(data.id)) throw Object.assign(new Error('Unique constraint failed on the fields: (`id`)'), { code: 'P2002' });
@@ -358,5 +360,31 @@ describe('database transport: a repeating slot is scheduled once', () => {
     await expect(t.schedule('repeat:uptime:100', 'uptime', {}, 1000)).resolves.toBeUndefined();
     expect(inserted).toEqual(['repeat:uptime:100']);
     await expect(t.schedule('boom', 'uptime', {}, 1000)).rejects.toThrow(/connection lost/);
+  });
+});
+
+describe('database transport: calls wait for initialisation', () => {
+  it('a schedule() made during boot waits for the client instead of failing', async () => {
+    const { DatabaseTransport } = await import('./transports/database.js');
+    const inserted: string[] = [];
+    const t: any = Object.create(DatabaseTransport.prototype);
+    t.config = { maxAttempts: 3, defaultPriority: 0 };
+    t.ready = new Promise<void>((resolve) =>
+      setTimeout(() => {
+        t.db = { queueJob: { findUnique: async () => null, create: async ({ data }: any) => { inserted.push(data.id); } } };
+        resolve();
+      }, 50),
+    );
+    await t.schedule('repeat:x:1', 'x', {}, 1000); // before the client exists
+    expect(inserted).toEqual(['repeat:x:1']);
+  });
+
+  it('a transport that failed to start says why', async () => {
+    const { DatabaseTransport } = await import('./transports/database.js');
+    const t: any = Object.create(DatabaseTransport.prototype);
+    t.config = { maxAttempts: 3, defaultPriority: 0 };
+    t.ready = Promise.resolve();
+    t.initError = new Error('QueueJob table not found');
+    await expect(t.schedule('a', 'x', {}, 1000)).rejects.toThrow(/did not start: QueueJob table not found/);
   });
 });

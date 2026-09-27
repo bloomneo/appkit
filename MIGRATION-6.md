@@ -144,6 +144,15 @@ Nothing below was used by any of the four production apps (counted
   no argument goes back to the environment). Use it instead of rewriting
   `.env`, which fails on read-only hosts.
 
+## Queue: jobs run by default
+
+`queue.process()` handlers now run in production without `BLOOM_QUEUE_WORKER=true`
+(it used to be off unless a worker-looking env var was set, so jobs silently
+never ran). If you run separate web and worker processes, set
+`BLOOM_QUEUE_WORKER=false` on the web ones. `queue.repeat()` is idempotent
+across pm2 workers and restarts, so an "only instance 0 schedules" guard can
+go.
+
 ## Changed
 
 ### Every appkit error is an `AppKitError`

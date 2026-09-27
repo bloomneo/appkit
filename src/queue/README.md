@@ -98,7 +98,7 @@ any context run with no tenant, as before.
 # Minimal setup for production
 DATABASE_URL=postgres://user:pass@host/db
 BLOOM_QUEUE_CONCURRENCY=10
-BLOOM_QUEUE_WORKER=true
+# Every process works jobs by default (6.0); BLOOM_QUEUE_WORKER=false opts a web-only replica out.
 ```
 
 ```typescript
@@ -161,7 +161,7 @@ DATABASE_URL=postgres://user:pass@host/db     # Enables Database transport
 BLOOM_QUEUE_TRANSPORT=database                # Manual override: memory|database
 
 # Worker configuration
-BLOOM_QUEUE_WORKER=true                       # Enable job processing
+BLOOM_QUEUE_WORKER=false                      # Opt out of processing (default: on, every environment)
 BLOOM_QUEUE_CONCURRENCY=10                    # Jobs processed simultaneously (1-100)
 
 # Service identification (used in log context)
@@ -672,13 +672,13 @@ await queue.add('process-payment', { orderId: 123, amount: 99.99 });
 ### Deployment Patterns
 
 ```bash
-# Single server with database queue
+# Single server, or a pm2 cluster of identical processes: nothing to set.
+# Each job goes to exactly one process; repeat() keeps one series across them.
 DATABASE_URL=postgres://...
-BLOOM_QUEUE_WORKER=true
 
-# Separate worker processes
+# Separate web and worker processes
 DATABASE_URL=postgres://...
-BLOOM_QUEUE_WORKER=true    # Only in worker processes
+BLOOM_QUEUE_WORKER=false   # In the web-only processes
 ```
 
 ## 🎯 When to Use What

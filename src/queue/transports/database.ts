@@ -58,7 +58,24 @@ export class DatabaseTransport implements Transport {
    */
   constructor(config: QueueConfig) {
     this.config = config;
-    this.initialize();
+    // Methods wait on this: an add() or repeat() at boot used to run before
+    // the client existed ("Cannot read properties of undefined").
+    this.ready = this.initialize();
+  }
+
+  private ready: Promise<void>;
+  private initError: Error | null = null;
+
+  /** The Prisma client once initialisation finished, or the reason it didn't. */
+  private async client(): Promise<any> {
+    await this.ready;
+    if (!this.db) {
+      throw new QueueError(
+        `[@bloomneo/appkit/queue] The database transport did not start: ${this.initError?.message ?? 'no database client'}. See: ${DOCS_URL}#database-transport`,
+        { code: 'QUEUE_TRANSPORT_NOT_READY', cause: this.initError ?? undefined },
+      );
+    }
+    return this.db;
   }
 
   /**
@@ -84,6 +101,7 @@ export class DatabaseTransport implements Transport {
         this.setupHealthCheck();
       }
     } catch (error) {
+      this.initError = error as Error;
       console.error('[@bloomneo/appkit/queue] Database transport initialization failed:', (error as Error).message);
     }
   }
@@ -95,7 +113,7 @@ export class DatabaseTransport implements Transport {
    */
   async add(id: string, jobType: string, data: JobData, options: JobOptions): Promise<void> {
     try {
-      await this.db.queueJob.create({
+      await (await this.client()).queueJob.create({
         data: {
           id,
           queue: jobType,
@@ -131,7 +149,12 @@ export class DatabaseTransport implements Transport {
     try {
       const runAt = new Date(Date.now() + delay);
       
-      await this.db.queueJob.create({
+      const db = await this.client();
+      // A repeating slot scheduled again (another worker, a restart) is
+      // already there: skip it quietly. The unique-id catch below covers the
+      // race; this keeps the common case out of Prisma's error log.
+      if (await db.queueJob.findUnique({ where: { id }, select: { id: true } })) return;
+      await db.queueJob.create({
         data: {
           id,
           queue: jobType,
@@ -198,10 +221,10 @@ export class DatabaseTransport implements Transport {
         completed,
         failed,
       ] = await Promise.all([
-        this.db.queueJob.count({ where: { ...where, status: 'pending' } }),
-        this.db.queueJob.count({ where: { ...where, status: 'processing' } }),
-        this.db.queueJob.count({ where: { ...where, status: 'completed' } }),
-        this.db.queueJob.count({ where: { ...where, status: 'failed' } }),
+        (await this.client()).queueJob.count({ where: { ...where, status: 'pending' } }),
+        (await this.client()).queueJob.count({ where: { ...where, status: 'processing' } }),
+        (await this.client()).queueJob.count({ where: { ...where, status: 'completed' } }),
+        (await this.client()).queueJob.count({ where: { ...where, status: 'failed' } }),
       ]);
 
       return {
@@ -233,7 +256,7 @@ export class DatabaseTransport implements Transport {
         where.queue = jobType;
         }
         
-        const jobs = await this.db.queueJob.findMany({
+        const jobs = await (await this.client()).queueJob.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -253,7 +276,7 @@ export class DatabaseTransport implements Transport {
    */
   async retry(jobId: string): Promise<void> {
     try {
-      const job = await this.db.queueJob.findUnique({
+      const job = await (await this.client()).queueJob.findUnique({
         where: { id: jobId },
       });
 
@@ -266,7 +289,7 @@ export class DatabaseTransport implements Transport {
       }
 
       // Reset job for retry
-      await this.db.queueJob.update({
+      await (await this.client()).queueJob.update({
         where: { id: jobId },
         data: {
           status: 'pending',
@@ -289,7 +312,7 @@ export class DatabaseTransport implements Transport {
    */
   async remove(jobId: string): Promise<void> {
     try {
-      const job = await this.db.queueJob.findUnique({
+      const job = await (await this.client()).queueJob.findUnique({
         where: { id: jobId },
       });
 
@@ -301,7 +324,7 @@ export class DatabaseTransport implements Transport {
         throw new QueueError(`[@bloomneo/appkit/queue] Cannot remove active job ${jobId}. See: ${DOCS_URL}#managing-jobs`, { code: 'QUEUE_INVALID_JOB_STATE' });
       }
 
-      await this.db.queueJob.delete({
+      await (await this.client()).queueJob.delete({
         where: { id: jobId },
       });
       
@@ -320,7 +343,7 @@ export class DatabaseTransport implements Transport {
       const cutoff = new Date(Date.now() - grace);
       const dbStatus = this.mapStatusToDb(status);
       
-      await this.db.queueJob.deleteMany({
+      await (await this.client()).queueJob.deleteMany({
         where: {
           status: dbStatus,
           AND: [

@@ -16,6 +16,8 @@ upgrade guide, with a replacement for every removal, is
 - **`queue.repeat()` is idempotent** (after rc.3, found moving bloomneo-cloud's schedulers onto jobs): each occurrence is keyed by its wall-clock slot (`repeat:<type>:<slot>`), and a transport keeps only the first schedule of a slot (Postgres: the primary-key collision, Prisma `P2002`). Every pm2 worker calling `repeat()` at boot, and every restart while the next occurrence is queued, now share one series; before, each added its own, so a 5-minute check ran once per worker per deploy. Missed slots after downtime are skipped, not replayed.
 
 - **Queue in tenant mode** (after rc.3): the database transport takes its client in a named system scope. Before, `get()` refused it in tenant mode, `initialize()` only logged the error, and the queue silently never started in a multi-tenant app. Changing a `repeat()` interval now ends the old series (its occurrence doesn't continue) instead of running both.
+
+- **The queue works jobs by default in production** (after rc.3). It used to process only with `BLOOM_QUEUE_WORKER=true` or a Heroku/Docker/Kubernetes "worker" name, so `queue.add()` / `repeat()` stored jobs that silently never ran on a plain pm2 app. Set `BLOOM_QUEUE_WORKER=false` on web-only replicas. The database transport also waits for its client before any call (a `repeat()` at boot used to fail with "Cannot read properties of undefined"), and skips an already-scheduled slot without a Prisma error log.
 ### Added
 
 - **`@bloomneo/appkit/server`** (also exported from the package root).
