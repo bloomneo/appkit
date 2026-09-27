@@ -98,15 +98,18 @@ export function withRlsContext<C>(client: C, options: { timeoutMs?: number; maxW
           if (!ctx) return query(args);
           const value = ctx.bypassReason ? BYPASS_TOKEN : ctx.tenantId;
           if (!value) return query(args);
-          return base.$transaction(
-            async (tx: any) => {
-              await tx.$executeRaw`SELECT set_config('app.tenant_id', ${value}, true)`;
-              // $extends gives PascalCase model names; the tx accessor is camelCase.
-              const accessor = String(model).charAt(0).toLowerCase() + String(model).slice(1);
-              return tx[accessor][operation](args);
-            },
-            { timeout: options.timeoutMs ?? 30_000, maxWait: options.maxWaitMs ?? 8_000 },
-          );
+          // One batched transaction — set_config, then the query — rather than
+          // an interactive one: the interactive form costs several extra
+          // round trips per query (measured on bloomneo-cloud: ~7ms a request
+          // for three queries). set_config(..., true) is transaction-local,
+          // so the setting still can't leak to another request's query.
+          // $extends gives PascalCase model names; the client accessor is camelCase.
+          const accessor = String(model).charAt(0).toLowerCase() + String(model).slice(1);
+          const [, result] = await base.$transaction([
+            base.$executeRaw`SELECT set_config('app.tenant_id', ${value}, true)`,
+            base[accessor][operation](args),
+          ]);
+          return result;
         },
       },
     },

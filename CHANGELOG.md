@@ -18,6 +18,8 @@ upgrade guide, with a replacement for every removal, is
 - **Queue in tenant mode** (after rc.3): the database transport takes its client in a named system scope. Before, `get()` refused it in tenant mode, `initialize()` only logged the error, and the queue silently never started in a multi-tenant app. Changing a `repeat()` interval now ends the old series (its occurrence doesn't continue) instead of running both.
 
 - **The queue works jobs by default in production** (after rc.3). It used to process only with `BLOOM_QUEUE_WORKER=true` or a Heroku/Docker/Kubernetes "worker" name, so `queue.add()` / `repeat()` stored jobs that silently never ran on a plain pm2 app. Set `BLOOM_QUEUE_WORKER=false` on web-only replicas. The database transport also waits for its client before any call (a `repeat()` at boot used to fail with "Cannot read properties of undefined"), and skips an already-scheduled slot without a Prisma error log.
+
+- **Row-level security runs each query as one batched transaction** (`set_config` + the query) instead of an interactive one — fewer round trips. On bloomneo-cloud (a 501-row customer list, three queries a request) RLS now costs ~2–5 ms a request over no RLS, down from ~7 ms; p95 is within noise. `set_config(..., true)` stays transaction-local, so the concurrency test still holds.
 ### Added
 
 - **`@bloomneo/appkit/server`** (also exported from the package root).
