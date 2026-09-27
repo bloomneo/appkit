@@ -4,7 +4,7 @@
  * Modules:    auth + security + storage + queue + error + logger
  * Required:   BLOOM_AUTH_SECRET
  * Optional:   AWS_S3_BUCKET | R2_BUCKET (else local disk),
- *             BLOOM_QUEUE_DB (else in-process queue)
+ *             DATABASE_URL (database-backed queue, else in-process)
  *
  * Flow:
  *   1. POST /upload → rate-limit (security.requests) → auth required

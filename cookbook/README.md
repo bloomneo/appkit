@@ -23,7 +23,7 @@ Copy `examples/.env.example` to `.env` and fill in:
 - `DATABASE_URL` — required by any recipe that persists state
 - `BLOOM_SECURITY_ENCRYPTION_KEY` — required by `api-key-service.ts`
 - `BLOOM_DB_TENANT=auto` — enables row-level multi-tenancy in `multi-tenant-saas.ts`
-- `REDIS_URL` — upgrades cache/event/queue transports from in-process to distributed
+- `REDIS_URL` — upgrades the cache from in-process to Redis
 
 ## Running
 

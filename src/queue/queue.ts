@@ -5,12 +5,11 @@
  * 
  * @llm-rule WHEN: Building queue instances - called via queueClass.get(), not directly
  * @llm-rule AVOID: Creating QueueClass directly - always use queueClass.get() for proper setup
- * @llm-rule NOTE: Auto-detects and switches between Memory, Redis, Database transports
+ * @llm-rule NOTE: Auto-detects and switches between Memory and Database transports
  */
 
 import { randomUUID } from 'crypto';
 import { MemoryTransport } from './transports/memory.js';
-import { RedisTransport } from './transports/redis.js';
 import { DatabaseTransport } from './transports/database.js';
 import type { QueueConfig } from './defaults.js';
 import type { JobData, JobOptions, JobHandler, ProcessOptions, Queue, QueueStats, JobInfo, JobStatus } from './index.js';
@@ -68,13 +67,6 @@ export class QueueClass implements Queue {
   private initializeTransport(): Transport {
     try {
       switch (this.config.transport) {
-        case 'redis':
-          if (!this.config.redis.url) {
-            console.warn('[@bloomneo/appkit/queue] Redis transport selected but REDIS_URL not available, falling back to memory');
-            return new MemoryTransport(this.config);
-          }
-          return new RedisTransport(this.config);
-
         case 'database':
           if (!this.config.database.url) {
             console.warn('[@bloomneo/appkit/queue] Database transport selected but DATABASE_URL not available, falling back to memory');
@@ -155,7 +147,7 @@ export class QueueClass implements Queue {
   /**
    * Run a job on a repeating interval.
    *
-   * Durability equals the transport's durability: on Redis or Database the
+   * Durability equals the transport's durability: on the database transport the
    * next occurrence is a real scheduled job that survives a restart, because
    * the continuation travels in the payload rather than in process memory.
    * On the memory transport it dies with the process — the same as

@@ -14,8 +14,8 @@ processing.
 ## 🚀 Why Choose This?
 
 - **⚡ One Function** - Just `queueClass.get()`, everything else is automatic
-- **🔄 Auto-Transport Detection** - Memory → Redis → Database based on
-  environment
+- **🔄 Auto-Transport Detection** - Memory in development, database (Postgres)
+  when `DATABASE_URL` is set
 - **🔧 Zero Configuration** - Smart defaults for everything
 - **🔁 Built-in Retry Logic** - Exponential backoff with jitter
 - **📊 Production Monitoring** - Stats, health checks, job tracking
@@ -31,9 +31,7 @@ npm install @bloomneo/appkit
 ## 🏃‍♂️ Quick Start (30 seconds)
 
 ```bash
-# Optional: Set environment variables for production
-echo "REDIS_URL=redis://localhost:6379" > .env
-# OR
+# Optional: a database makes the queue durable
 echo "DATABASE_URL=postgres://user:pass@localhost/db" > .env
 ```
 
@@ -65,7 +63,6 @@ await queue.schedule('reminder', { userId: 123 }, 24 * 60 * 60 * 1000); // 24 ho
 ## ✨ What You Get Instantly
 
 - **✅ Memory Queue** - Development (no dependencies)
-- **✅ Redis Queue** - Production distributed (auto-detected from `REDIS_URL`)
 - **✅ Database Queue** - Persistent storage (auto-detected from `DATABASE_URL`)
 - **✅ Automatic Retry** - 3 attempts with exponential backoff
 - **✅ Job Scheduling** - Delayed execution with persistence
@@ -80,16 +77,17 @@ The queue **automatically detects** what you need:
 | Environment Variable | Transport Used | What You Get              |
 | -------------------- | -------------- | ------------------------- |
 | _Nothing_            | Memory         | Development queuing       |
-| `REDIS_URL`          | Redis          | Distributed production    |
-| `DATABASE_URL`       | Database       | Persistent simple storage |
+| `DATABASE_URL`       | Database       | Persistent storage        |
 
-**Set environment variables, get enterprise features. No code changes.**
+`BLOOM_QUEUE_TRANSPORT=database` (or `memory`) forces the choice.
+`REDIS_URL` does not select a queue transport; the Redis transport was removed
+in 6.0. It still switches the cache to Redis.
 
 ## 🏢 Production Ready
 
 ```bash
 # Minimal setup for production
-REDIS_URL=redis://localhost:6379
+DATABASE_URL=postgres://user:pass@host/db
 BLOOM_QUEUE_CONCURRENCY=10
 BLOOM_QUEUE_WORKER=true
 ```
@@ -98,7 +96,7 @@ BLOOM_QUEUE_WORKER=true
 // Same code, production features
 const queue = queueClass.get();
 await queue.add('webhook', { url: 'https://api.example.com', data: payload });
-// → Redis distributed queue
+// → Postgres-backed queue (survives restarts)
 // → 10 concurrent workers
 // → Automatic retry with backoff
 // → Stats and monitoring
@@ -134,7 +132,7 @@ await queue.clean(status, grace?);               // Clean old jobs
 
 ```typescript
 queueClass.getActiveTransport(); // See which transport is running
-queueClass.hasTransport('redis'); // Check specific transport
+queueClass.hasTransport('database'); // Check specific transport
 queueClass.getConfig(); // Debug configuration
 queueClass.getHealth(); // Health status
 await queueClass.disconnectAll(); // Close transports + reset singleton (teardown / SIGTERM)
@@ -149,10 +147,9 @@ queueClass.reset(overrides?); // Reset with new config (testing)
 ### Basic Setup
 
 ```bash
-# Transport selection (auto-detected: REDIS_URL → redis, DATABASE_URL → database, else → memory)
-REDIS_URL=redis://localhost:6379              # Enables Redis transport
+# Transport selection (auto-detected: DATABASE_URL → database, else → memory)
 DATABASE_URL=postgres://user:pass@host/db     # Enables Database transport
-BLOOM_QUEUE_TRANSPORT=memory                  # Manual override: memory|redis|database
+BLOOM_QUEUE_TRANSPORT=database                # Manual override: memory|database
 
 # Worker configuration
 BLOOM_QUEUE_WORKER=true                       # Enable job processing
@@ -190,11 +187,6 @@ BLOOM_QUEUE_MAX_STALLED=1                     # Max times a job can stall before
 # Memory Transport (Development)
 BLOOM_QUEUE_MEMORY_MAX_JOBS=1000              # Max jobs in memory
 BLOOM_QUEUE_MEMORY_CLEANUP=30000              # Cleanup interval
-
-# Redis Transport (Production)
-BLOOM_QUEUE_REDIS_PREFIX=myapp                # Redis key prefix (default: queue)
-BLOOM_QUEUE_REDIS_RETRIES=3                   # Connection retries (default: 3)
-BLOOM_QUEUE_REDIS_FAILOVER_DELAY=100          # Retry delay on failover in ms (default: 100)
 
 # Database Transport (Simple Persistent)
 BLOOM_QUEUE_DB_TABLE=queue_jobs               # Table name
@@ -644,7 +636,6 @@ describe('Queue Tests', () => {
 ## 🚀 Performance
 
 - **Memory Transport**: 10,000+ jobs/second
-- **Redis Transport**: 1,000+ jobs/second (network dependent)
 - **Database Transport**: 100+ jobs/second (database dependent)
 - **Startup Time**: < 100ms for any transport
 - **Memory Usage**: < 10MB baseline
@@ -659,7 +650,7 @@ const queue = queueClass.get();
 await queue.add('process-payment', { orderId: 123, amount: 99.99 });
 
 // Development: Memory queue (no setup)
-// Production: Redis queue (distributed workers)
+// Production: database queue (DATABASE_URL)
 ```
 
 ### Transport Comparison
@@ -667,8 +658,7 @@ await queue.add('process-payment', { orderId: 123, amount: 99.99 });
 | Transport    | Best For             | Persistence | Distribution | Setup        |
 | ------------ | -------------------- | ----------- | ------------ | ------------ |
 | **Memory**   | Development, Testing | ❌          | ❌           | None         |
-| **Redis**    | Production, Scale    | ✅          | ✅           | Redis server |
-| **Database** | Simple Persistent    | ✅          | ⚠️           | Existing DB  |
+| **Database** | Production           | ✅          | ⚠️           | Existing DB  |
 
 ### Deployment Patterns
 
@@ -677,13 +667,8 @@ await queue.add('process-payment', { orderId: 123, amount: 99.99 });
 DATABASE_URL=postgres://...
 BLOOM_QUEUE_WORKER=true
 
-# Distributed with Redis
-REDIS_URL=redis://...
-BLOOM_QUEUE_WORKER=true
-BLOOM_QUEUE_CONCURRENCY=20
-
 # Separate worker processes
-REDIS_URL=redis://...
+DATABASE_URL=postgres://...
 BLOOM_QUEUE_WORKER=true    # Only in worker processes
 ```
 
@@ -692,8 +677,7 @@ BLOOM_QUEUE_WORKER=true    # Only in worker processes
 ### Transport Selection
 
 - **Memory**: Development, testing, single-process apps
-- **Redis**: Production, multiple workers, high throughput
-- **Database**: Simple persistence, existing DB infrastructure
+- **Database**: Production persistence on the database you already run
 
 ### Job Types
 

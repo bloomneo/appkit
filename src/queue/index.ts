@@ -6,7 +6,7 @@
  * @llm-rule WHEN: Building apps that need background job processing
  * @llm-rule AVOID: Complex queue setups with multiple libraries - this handles everything automatically
  * @llm-rule NOTE: Uses queueClass.get() pattern like other modules - get() → queue.add() → queue.process() → done
- * @llm-rule NOTE: Auto-detects transports: Memory (dev) → Redis (REDIS_URL) → Database (DATABASE_URL)
+ * @llm-rule NOTE: Auto-detects transports: Memory (dev) → Database (DATABASE_URL, or BLOOM_QUEUE_TRANSPORT=database)
  * @llm-rule NOTE: Common pattern - queueClass.get() → queue.add() → queue.process() → automatic retry + dead letter queue
  */
 
@@ -114,7 +114,7 @@ export type JobStatus = 'waiting' | 'active' | 'completed' | 'failed' | 'delayed
 
 /**
  * Get queuing instance - the only function you need to learn
- * Transport auto-detection: Memory → Redis → Database based on environment
+ * Transport auto-detection: Memory → Database based on environment
  * @llm-rule WHEN: Starting any background job operation - this is your main entry point
  * @llm-rule AVOID: Creating QueueClass directly - always use this function
  * @llm-rule NOTE: Typical flow - get() → queue.add() → queue.process() → automatic handling
@@ -149,7 +149,7 @@ function reset(newConfig: Partial<QueueConfig> = {}): Queue {
 
 /**
  * Get active transport type for debugging
- * @llm-rule WHEN: Need to see which transport is running (memory, redis, database)
+ * @llm-rule WHEN: Need to see which transport is running (memory, database)
  * @llm-rule AVOID: Using for business logic - this is for debugging only
  */
 function getActiveTransport(): string {

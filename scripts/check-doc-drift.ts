@@ -53,6 +53,7 @@ const BANNED: Banned[] = [
 
   // 6.0.0 — removed features inside kept modules. See MIGRATION-6.md.
   { pattern: /\bBLOOM_LOGGER_(HTTP|WEBHOOK|DB)_\w+|\bBLOOM_LOGGER_DATABASE\b/, now: 'removed in 6.0 — logger has console + file only; collect stdout or the log file (MIGRATION-6.md)' },
+  { pattern: /\bBLOOM_QUEUE_REDIS_\w+|BLOOM_QUEUE_TRANSPORT\s*=\s*['"]?redis\b/, now: 'removed in 6.0 — queue transports are memory and database (MIGRATION-6.md)' },
 
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },

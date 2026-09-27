@@ -19,6 +19,10 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   vars (`BLOOM_LOGGER_DATABASE`, `BLOOM_LOGGER_DB_*`, `BLOOM_LOGGER_HTTP_*`,
   `BLOOM_LOGGER_WEBHOOK_*`). Console and file remain. The logger no longer
   reads or validates `DATABASE_URL`.
+- Queue Redis transport (887 lines) and `BLOOM_QUEUE_REDIS_*`. `REDIS_URL` no
+  longer selects a queue transport; the queue uses memory, or the database
+  when `DATABASE_URL` is set or `BLOOM_QUEUE_TRANSPORT=database`.
+  `BLOOM_QUEUE_TRANSPORT=redis` throws with a pointer to `database`.
 
 ### Changed
 

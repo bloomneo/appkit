@@ -177,7 +177,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 4 | **Error** | HTTP errors with semantic types + middleware | — |
 | 5 | **Cache** | Memory → Redis | `REDIS_URL` |
 | 6 | **Storage** | Local → S3/R2 | `AWS_S3_BUCKET` |
-| 7 | **Queue** | Memory → Redis → DB | `REDIS_URL` / `BLOOM_QUEUE_DB` |
+| 7 | **Queue** | Memory → Database | `DATABASE_URL` / `BLOOM_QUEUE_TRANSPORT` |
 | 8 | **Email** | Console → SMTP → Resend | `RESEND_API_KEY` |
 | 9 | **Logger** | Console + rotating file | `BLOOM_LOGGER_*` |
 | 10 | **Config** | Type-safe env var access | — |
@@ -199,7 +199,7 @@ DATABASE_URL=postgresql://localhost/myapp
 # → Memory cache, local file storage, console logs, console email
 
 # Month 6 — production (just add env vars, no code changes)
-REDIS_URL=redis://prod-cache:6379         # → distributed cache + queue
+REDIS_URL=redis://prod-cache:6379         # → distributed cache
 AWS_S3_BUCKET=prod-assets                 # → cloud storage + CDN
 RESEND_API_KEY=re_production_key          # → professional email
 BLOOM_DB_TENANT=auto                      # → multi-tenant filtering

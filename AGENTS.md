@@ -52,7 +52,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | `errorClass` | `from '@bloomneo/appkit/error'` | HTTP errors with semantic types |
 | `cacheClass` | `from '@bloomneo/appkit/cache'` | Memory → Redis auto-scaling |
 | `storageClass` | `from '@bloomneo/appkit/storage'` | Local → S3/R2 auto-scaling |
-| `queueClass` | `from '@bloomneo/appkit/queue'` | Memory → Redis → DB scaling |
+| `queueClass` | `from '@bloomneo/appkit/queue'` | Memory → Database (Postgres) jobs |
 | `emailClass` | `from '@bloomneo/appkit/email'` | Console → SMTP → Resend |
 | `loggerClass` | `from '@bloomneo/appkit/logger'` | Structured logs to console + rotating file |
 | `configClass` | `from '@bloomneo/appkit/config'` | Environment-driven config |
@@ -99,7 +99,7 @@ BLOOM_SECURITY_ENCRYPTION_KEY=<64 hex>     # AES-256-GCM key
 Optional (auto-scaling kicks in when set):
 
 ```bash
-REDIS_URL=redis://...                  # → distributed cache + queue
+REDIS_URL=redis://...                  # → distributed cache
 AWS_S3_BUCKET=...                      # → cloud storage
 RESEND_API_KEY=re_...                  # → professional email
 BLOOM_DB_TENANT=auto                   # → multi-tenant mode

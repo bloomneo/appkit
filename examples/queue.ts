@@ -3,10 +3,11 @@
  *
  * Runnable tour of the @bloomneo/appkit/queue module.
  *
- * Transport auto-selection (highest-priority match wins):
- *   • REDIS_URL set                               → Redis
- *   • BLOOM_QUEUE_DB=true  + DATABASE_URL set     → Database
- *   • neither                                     → in-process Memory
+ * Transport auto-selection:
+ *   • BLOOM_QUEUE_TRANSPORT=memory|database       → forced
+ *   • DATABASE_URL set                            → Database (Postgres)
+ *   • otherwise                                   → in-process Memory
+ * REDIS_URL does not affect the queue (the Redis transport was removed in 6.0).
  *
  * Run: tsx examples/queue.ts
  */

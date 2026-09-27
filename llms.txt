@@ -420,7 +420,8 @@ Set `AWS_S3_BUCKET` (or `R2_BUCKET`) to auto-upgrade from local disk to cloud.
 
 ## Module 7 — Queue (`@bloomneo/appkit/queue`)
 
-Memory → Redis → DB auto-scaling background jobs.
+Background jobs: in-process memory by default, a database table (Postgres) when
+`DATABASE_URL` is set or `BLOOM_QUEUE_TRANSPORT=database`.
 
 ### Methods
 
@@ -453,7 +454,8 @@ await queue.retry(jobId: string)
 await queue.remove(jobId: string)
 ```
 
-Memory by default; Redis when `REDIS_URL` is set.
+Memory by default; database when `DATABASE_URL` is set. `REDIS_URL` does not
+affect the queue (Redis transport removed in 6.0).
 
 ---
 
@@ -698,7 +700,7 @@ verifyClass.reset() / verifyClass.disconnectAll()
 | `DATABASE_URL` | Prisma connection string | yes |
 | `BLOOM_SECURITY_CSRF_SECRET` | CSRF token signing (min 32 chars) | recommended |
 | `BLOOM_SECURITY_ENCRYPTION_KEY` | AES-256-GCM key (64 hex chars) | recommended |
-| `REDIS_URL` | Distributed cache + queue + events | optional |
+| `REDIS_URL` | Distributed cache | optional |
 | `AWS_S3_BUCKET` | Cloud storage | optional |
 | `BLOOM_DB_TENANT` | `auto` enables multi-tenant filtering | optional |
 | `RESEND_API_KEY` | Production email | optional |

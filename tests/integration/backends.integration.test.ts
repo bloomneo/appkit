@@ -72,50 +72,6 @@ describe.skipIf(!REDIS)('cache: Memory → Redis is real', () => {
 });
 if (!REDIS) announce('cache→Redis', 'APPKIT_TEST_REDIS_URL');
 
-/* ────────────────────────────── Queue → Redis ────────────────────────────── */
-
-describe.skipIf(!REDIS)('queue: Redis transport is real', () => {
-  afterAll(async () => {
-    const { queueClass } = await import('../../src/queue/index.js');
-    await queueClass.disconnectAll();
-  });
-
-  it('processes a job through an actual Redis queue', async () => {
-    process.env.REDIS_URL = REDIS;
-    process.env.BLOOM_QUEUE_TRANSPORT = 'redis';
-    const { queueClass } = await import('../../src/queue/index.js');
-    const queue = queueClass.get();
-
-    const seen: unknown[] = [];
-    queue.process('integration-job', async (data) => { seen.push(data); });
-    await queue.add('integration-job', { n: 1 });
-
-    await new Promise((r) => setTimeout(r, 1500));
-    expect(seen).toContainEqual({ n: 1 });
-  });
-
-  it('a repeat series survives across a fresh queue instance', async () => {
-    // The whole point of repeat() over setInterval: the continuation lives in
-    // the payload, so a restart does not end the series.
-    process.env.REDIS_URL = REDIS;
-    process.env.BLOOM_QUEUE_TRANSPORT = 'redis';
-    const { queueClass } = await import('../../src/queue/index.js');
-
-    const first = queueClass.get();
-    await first.repeat('integration-repeat', { tick: true }, 1000, { startDelay: 1000 });
-    await queueClass.disconnectAll();
-
-    const second = queueClass.get();
-    const runs: unknown[] = [];
-    second.process('integration-repeat', async (d) => { runs.push(d); });
-
-    await new Promise((r) => setTimeout(r, 2500));
-    expect(runs.length).toBeGreaterThan(0);
-    second.cancelRepeat('integration-repeat');
-  });
-});
-if (!REDIS) announce('queue→Redis', 'APPKIT_TEST_REDIS_URL');
-
 /* ──────────────────────── Database → Postgres + SQLite ───────────────────── */
 
 describe.skipIf(!POSTGRES)('database: Postgres is real', () => {

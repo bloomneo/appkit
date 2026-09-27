@@ -181,15 +181,16 @@ describe('shared env vars are validated only when used (regression — 4.2.1)', 
     });
   });
 
-  it('ignores a malformed REDIS_URL when the queue is not on Redis', () => {
-    withEnv({ REDIS_URL: 'http://nope', BLOOM_QUEUE_TRANSPORT: 'memory', DATABASE_URL: undefined }, () => {
+  it('ignores REDIS_URL entirely — it never selects a queue transport (6.0)', () => {
+    withEnv({ REDIS_URL: 'http://nope', BLOOM_QUEUE_TRANSPORT: undefined, DATABASE_URL: undefined }, () => {
       expect(() => getSmartDefaults()).not.toThrow();
+      expect(getSmartDefaults().transport).toBe('memory');
     });
   });
 
-  it('still rejects a malformed REDIS_URL when the queue uses it', () => {
-    withEnv({ REDIS_URL: 'http://nope', BLOOM_QUEUE_TRANSPORT: 'redis', DATABASE_URL: undefined }, () => {
-      expect(() => getSmartDefaults()).toThrow(/Invalid REDIS_URL/);
+  it('rejects BLOOM_QUEUE_TRANSPORT=redis with a pointer to the database transport', () => {
+    withEnv({ BLOOM_QUEUE_TRANSPORT: 'redis', DATABASE_URL: undefined }, () => {
+      expect(() => getSmartDefaults()).toThrow(/removed in 6\.0/);
     });
   });
 });

@@ -12,7 +12,7 @@ const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.
 
 export interface QueueConfig {
   // Transport selection (auto-detected)
-  transport: 'memory' | 'redis' | 'database';
+  transport: 'memory' | 'database';
   
   // Direct environment access (no complex config objects)
   concurrency: number;
@@ -29,13 +29,6 @@ export interface QueueConfig {
   memory: {
     maxJobs: number;
     cleanupInterval: number;
-  };
-  
-  redis: {
-    url: string | null;
-    keyPrefix: string;
-    maxRetriesPerRequest: number;
-    retryDelayOnFailover: number;
   };
   
   database: {
@@ -102,14 +95,6 @@ export function getSmartDefaults(): QueueConfig {
       cleanupInterval: parseInt(process.env.BLOOM_QUEUE_MEMORY_CLEANUP || '30000'),
     },
     
-    // Redis transport config - direct env access
-    redis: {
-      url: process.env.REDIS_URL || null,
-      keyPrefix: process.env.BLOOM_QUEUE_REDIS_PREFIX || 'queue',
-      maxRetriesPerRequest: parseInt(process.env.BLOOM_QUEUE_REDIS_RETRIES || '3'),
-      retryDelayOnFailover: parseInt(process.env.BLOOM_QUEUE_REDIS_FAILOVER_DELAY || '100'),
-    },
-    
     // Database transport config - direct env access
     database: {
       url: process.env.DATABASE_URL || null,
@@ -140,18 +125,15 @@ export function getSmartDefaults(): QueueConfig {
  * @llm-rule WHEN: Need to determine which transport to use automatically
  * @llm-rule AVOID: Manual transport selection - auto-detection handles most cases correctly
  */
-function getTransport(): 'memory' | 'redis' | 'database' {
+function getTransport(): 'memory' | 'database' {
   // Manual override wins (like auth module pattern)
   const manual = process.env.BLOOM_QUEUE_TRANSPORT?.toLowerCase();
-  if (manual === 'memory' || manual === 'redis' || manual === 'database') {
+  if (manual === 'memory' || manual === 'database') {
     return manual;
   }
   
-  // Auto-detection logic (production-first)
-  if (process.env.REDIS_URL) {
-    return 'redis'; // Best for production - persistent, distributed
-  }
-  
+  // Auto-detection. REDIS_URL does not select a queue transport (the Redis
+  // transport was removed in 6.0); it only affects the cache.
   if (process.env.DATABASE_URL) {
     return 'database'; // Good for simple setups - persistent, familiar
   }
@@ -210,19 +192,17 @@ export function validateEnvironment(): void {
 
   // Validate transport selection
   const transport = process.env.BLOOM_QUEUE_TRANSPORT;
-  if (transport && !['memory', 'redis', 'database'].includes(transport)) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_TRANSPORT: "${transport}". Must be: memory, redis, database. See: ${DOCS_URL}#environment-variables`);
+  if (transport && !['memory', 'database'].includes(transport.toLowerCase())) {
+    const hint = transport.toLowerCase() === 'redis'
+      ? ' The Redis queue transport was removed in 6.0; use "database" (Postgres) for a durable queue.'
+      : '';
+    throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_TRANSPORT: "${transport}". Must be: memory, database.${hint} See: ${DOCS_URL}#environment-variables`);
   }
 
-  // Validate ONLY the URL this queue will actually use. REDIS_URL and
-  // DATABASE_URL are shared across modules, so validating one the queue never
-  // touches turns an unrelated app's config into an import-time crash.
+  // Validate ONLY the URL this queue will actually use. DATABASE_URL is shared
+  // across modules, so validating it when the queue never touches it turns an
+  // unrelated app's config into an import-time crash.
   const resolvedTransport = getTransport();
-
-  const redisUrl = process.env.REDIS_URL;
-  if (resolvedTransport === 'redis' && redisUrl && !isValidRedisUrl(redisUrl)) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid REDIS_URL: "${redisUrl}". Must be valid Redis connection string. See: ${DOCS_URL}#environment-variables`);
-  }
 
   const dbUrl = process.env.DATABASE_URL;
   if (resolvedTransport === 'database' && dbUrl && !isValidDatabaseUrl(dbUrl)) {
@@ -252,18 +232,6 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
     throw new Error(`[@bloomneo/appkit/queue] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`);
-  }
-}
-
-/**
- * Validate Redis URL format
- */
-function isValidRedisUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'redis:' || parsed.protocol === 'rediss:';
-  } catch {
-    return false;
   }
 }
 

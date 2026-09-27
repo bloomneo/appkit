@@ -3,7 +3,7 @@ name: appkit-queue
 description: >-
   Use when writing code that adds, processes, or schedules background jobs via
   `@bloomneo/appkit/queue`. Covers `queueClass.get()`, the
-  Memory → Redis → Database transport auto-detection, and the
+  Memory → Database transport auto-detection, and the
   `disconnectAll()` teardown pattern.
 ---
 
@@ -36,11 +36,11 @@ queue.process('send-email', async (data) => {
 
 | Env | Transport |
 |---|---|
-| `REDIS_URL` set | Redis (production) |
-| `DATABASE_URL` set (no Redis) | Database table |
+| `DATABASE_URL` set | Database table (Postgres) |
 | unset | In-process Memory (dev default) |
 
-Override explicitly: `BLOOM_QUEUE_TRANSPORT=redis`.
+Override explicitly: `BLOOM_QUEUE_TRANSPORT=database` or `memory`. `REDIS_URL`
+does not select a queue transport; the Redis transport was removed in 6.0.
 
 ## Worker mode — jobs don't process by default
 
@@ -82,7 +82,7 @@ queue.close()                                  // → Promise<void> (instance-le
 queueClass.get(overrides?)                    // → Queue
 queueClass.disconnectAll()                    // teardown — canonical
 queueClass.reset(newConfig?)                  // close + reinitialize (tests only)
-queueClass.getActiveTransport()               // 'memory' | 'redis' | 'database' | 'none'
+queueClass.getActiveTransport()               // 'memory' | 'database' | 'none'
 queueClass.hasTransport(name)                 // → boolean
 queueClass.getConfig()                        // → diagnostic object
 queueClass.getHealth()                        // → { status, transport, message? }
@@ -90,8 +90,8 @@ queueClass.getHealth()                        // → { status, transport, messag
 
 ## Env vars
 
-- `REDIS_URL` / `DATABASE_URL` — pick transport
-- `BLOOM_QUEUE_TRANSPORT` — force `memory` / `redis` / `database`
+- `DATABASE_URL` — selects the database transport
+- `BLOOM_QUEUE_TRANSPORT` — force `memory` / `database`
 - `BLOOM_QUEUE_WORKER=true` — enable the processing loop on this process
 - `BLOOM_QUEUE_CONCURRENCY` — default 5 (dev) / 10 (prod)
 - `BLOOM_QUEUE_MAX_ATTEMPTS` — default 3

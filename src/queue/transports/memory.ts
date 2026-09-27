@@ -3,7 +3,7 @@
  * @module @bloomneo/appkit/queue
  * @file src/queue/transports/memory.ts
  * 
- * @llm-rule WHEN: Development mode or when no Redis/Database available
+ * @llm-rule WHEN: Development mode or when no database is configured
  * @llm-rule AVOID: Production use - jobs lost on restart, no persistence
  * @llm-rule NOTE: Perfect for development and testing - fast, simple, no external dependencies
  */
