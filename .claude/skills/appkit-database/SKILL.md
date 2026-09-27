@@ -74,6 +74,10 @@ Verified against `src/database/index.ts`.
 await databaseClass.get(req?)                  // client (throws unscoped in tenant mode)
 await databaseClass.tenant(req, fn)            // scoped callback
 await databaseClass.bypass(reason, fn)         // unscoped callback, logged
+databaseClass.context()                        // Express middleware: tenant for the whole request
+databaseClass.onBypass(listener)               // audit hook; returns unsubscribe
+databaseClass.rlsPolicyStatements({ table })   // Postgres policy SQL (BLOOM_DB_TENANT=rls)
+databaseClass.rlsPolicySql({ table })          // same, one string (for migration files)
 await databaseClass.getTenants()               // unfiltered client (admin)
 await databaseClass.health()
 await databaseClass.list() / .exists(id) / .create(id) / .delete(id)

@@ -29,6 +29,16 @@ interface TenantMiddlewareOptions {
   fieldName?: string;
 }
 
+/**
+ * The tenant for one operation. `bypass` skips the filter (a deliberate,
+ * reported cross-tenant read); neither set means no tenant, which fails
+ * closed.
+ */
+export interface TenantResolution {
+  tenantId?: string;
+  bypass?: boolean;
+}
+
 interface PrismaClient {
   $connect: () => Promise<void>;
   $disconnect: () => Promise<void>;
@@ -133,10 +143,14 @@ export class PrismaAdapter {
    */
   async applyTenantMiddleware(
     client: PrismaClient,
-    tenantId: string,
+    tenant: string | (() => TenantResolution),
     options: TenantMiddlewareOptions = {}
   ): Promise<PrismaClient> {
     const field = options.fieldName || 'tenant_id';
+    // A fixed tenant (a per-tenant client) or a resolver read on every
+    // operation (one client shared by all tenants, tenant from the request
+    // context).
+    const resolve: () => TenantResolution = typeof tenant === 'function' ? tenant : () => ({ tenantId: tenant });
 
     // Which models carry the tenant field. Prisma exposes its data model at
     // runtime; if it ever stops doing so, scope every model (fail closed).
@@ -148,10 +162,10 @@ export class PrismaAdapter {
       return def ? def.fields.some((f) => f.name === field) : true;
     };
 
-    const force = (data: any) =>
+    const force = (data: any, tenantId: string) =>
       data && typeof data === 'object' ? { ...data, [field]: tenantId } : data;
-    const scopeUnique = (where: any) => ({ ...(where || {}), [field]: tenantId });
-    const scopeMany = (where: any) =>
+    const scopeUnique = (where: any, tenantId: string) => ({ ...(where || {}), [field]: tenantId });
+    const scopeMany = (where: any, tenantId: string) =>
       where && Object.keys(where).length ? { AND: [{ [field]: tenantId }, where] } : { [field]: tenantId };
 
     const UNIQUE = new Set(['findUnique', 'findUniqueOrThrow', 'update', 'delete']);
@@ -166,23 +180,37 @@ export class PrismaAdapter {
         $allModels: {
           async $allOperations({ model, operation, args, query }: any) {
             if (!hasField(model)) return query(args);
+            const { tenantId, bypass } = resolve();
+            if (bypass) return query(args);
+            if (!tenantId) {
+              // A shared client used outside database.tenant() / the request
+              // context. Refusing is the only safe answer: there is no tenant
+              // to filter by, and unfiltered is every tenant.
+              throw createDatabaseError(
+                `${model}.${operation} ran with no tenant in context. Run it inside ` +
+                  `database.tenant(req, fn), behind database.context(), or in database.bypass('reason', fn)`,
+                500,
+                { code: 'DATABASE_NO_TENANT_CONTEXT' },
+                'multi-tenant-mode',
+              );
+            }
             const a = { ...(args || {}) };
 
-            if (UNIQUE.has(operation)) a.where = scopeUnique(a.where);
-            if (MANY.has(operation)) a.where = scopeMany(a.where);
+            if (UNIQUE.has(operation)) a.where = scopeUnique(a.where, tenantId);
+            if (MANY.has(operation)) a.where = scopeMany(a.where, tenantId);
 
-            if (operation === 'create') a.data = force(a.data);
+            if (operation === 'create') a.data = force(a.data, tenantId);
             if (operation === 'createMany' || operation === 'createManyAndReturn') {
-              a.data = Array.isArray(a.data) ? a.data.map(force) : force(a.data);
+              a.data = Array.isArray(a.data) ? a.data.map((d: any) => force(d, tenantId)) : force(a.data, tenantId);
             }
             if (operation === 'upsert') {
-              a.where = scopeUnique(a.where);
-              a.create = force(a.create);
-              if (a.update && field in a.update) a.update = force(a.update);
+              a.where = scopeUnique(a.where, tenantId);
+              a.create = force(a.create, tenantId);
+              if (a.update && field in a.update) a.update = force(a.update, tenantId);
             }
             if ((operation === 'update' || operation === 'updateMany' || operation === 'updateManyAndReturn')
               && a.data && field in a.data) {
-              a.data = force(a.data);
+              a.data = force(a.data, tenantId);
             }
 
             return query(a);
@@ -458,6 +486,21 @@ export class PrismaAdapter {
    * Load Prisma client for specific app
    */
   private async _loadPrismaClientForApp(appName: string): Promise<PrismaClientConstructor> {
+    // An explicit client wins: apps whose schema sets a custom generator
+    // `output` point BLOOM_PRISMA_CLIENT at it (a path or module specifier).
+    const explicit = process.env.BLOOM_PRISMA_CLIENT;
+    if (explicit) {
+      const target = explicit.startsWith('.') || explicit.startsWith('/')
+        ? `file://${path.resolve(explicit)}`
+        : explicit;
+      const mod: any = await import(target);
+      const Ctor = mod.PrismaClient ?? mod.default?.PrismaClient;
+      if (!Ctor) {
+        throw createDatabaseError(`BLOOM_PRISMA_CLIENT (${explicit}) does not export PrismaClient`, 500, null, 'environment-variables');
+      }
+      return Ctor;
+    }
+
     // First try discovered apps
     const apps = await this.discoverApps();
     const app = apps.find((a) => a.name === appName);

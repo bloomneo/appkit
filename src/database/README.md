@@ -121,12 +121,52 @@ applied, but that its absence is enumerable.
 | `DATABASE_NO_TENANT` | `tenant()` ran but nothing resolved — most often the login token has no `tenantId` claim. |
 | `DATABASE_TENANT_MODE_OFF` | `tenant()` called in a single-tenant app. Use `get()`. |
 | `DATABASE_BYPASS_NO_REASON` | `bypass()` without a specific reason. An unexplained bypass is indistinguishable from a forgotten scope. |
+| `DATABASE_NO_TENANT_CONTEXT` | A scoped client was used outside `tenant()`, `context()` or `bypass()`, so there is no tenant to filter by. |
 
 Put the claim in the token at login and the whole thing composes:
 
 ```ts
 auth.generateLoginToken({ userId: user.id, role: user.role, level: user.level, tenantId: user.firmId });
 ```
+
+## 🧱 Row-level security
+
+`auto` filters in the app: every Prisma model operation gets
+`tenant_id = <tenant>`. `rls` adds the database's own check: each operation
+runs in a short transaction that first sets `app.tenant_id`, and a Postgres
+policy on each tenant table only shows (and only accepts) that tenant's rows.
+The policy also covers raw SQL run in the transaction, and code that forgot
+the filter. Outside any context `app.tenant_id` is unset and the policy
+returns nothing — it fails closed.
+
+```ts
+// 1. Once per tenant table, in a migration:
+for (const sql of database.rlsPolicyStatements({ table: 'invoices' })) {
+  await db.$executeRawUnsafe(sql);
+}
+
+// 2. Bind the tenant for a whole request (after the login check):
+router.use(auth.requireLoginToken(), database.context());
+//    …then any database call in the request is scoped, including get():
+const db = await databaseClass.get();
+await db.invoice.findMany();              // only this tenant's invoices
+
+// 3. Audit every deliberate cross-tenant read:
+database.onBypass(({ reason }) => audit.log('tenant.bypass', { reason }));
+```
+
+- One client serves every tenant; the tenant for each operation comes from the
+  request context, so concurrent requests never mix.
+- One transaction per operation (not per request), so parallel reads in a
+  request still run in parallel.
+- The setting is transaction-local (`set_config(..., true)`), so it is safe
+  behind pgbouncer in transaction pooling.
+- `BLOOM_DB_TENANT_COLUMN` names the tenant column (default `tenant_id`).
+- Superusers and roles with `BYPASSRLS` skip policies. Connect the app as an
+  ordinary role. A backup role needs `BYPASSRLS` (and `CONNECT`), or
+  `pg_dump` fails on every table with a policy.
+- `BLOOM_PRISMA_CLIENT` points appkit at a Prisma client generated to a
+  custom `output` path.
 
 ## 🎯 Core API
 

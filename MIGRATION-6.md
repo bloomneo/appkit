@@ -39,6 +39,14 @@ Nothing below was used by any of the four production apps (counted
 | `email.sendTemplate()` and its built-in `welcome` / `reset` templates | Render `html` / `text` in the app (template literal, React Email, MJML) and call `email.send()` |
 | Declared dependencies appkit no longer imports: `ioredis`, `pg`, `mysql2`, `sqlite`, `sqlite3`, `mongoose`, `bull`, `memcached`, `@sendgrid/mail`, `mailgun.js`, `@aws-sdk/client-ses`, and the optional peers `express-session`, `fastify`, `@fastify/*`, `multer` | If your app imports any of these itself, add it to your own `package.json` |
 
+## Added
+
+- **Row-level security** (`BLOOM_DB_TENANT=rls`): `database.context()`
+  middleware, `database.rlsPolicyStatements()` / `rlsPolicySql()`,
+  `database.onBypass()`, `currentTenant()`, `BLOOM_DB_TENANT_COLUMN`,
+  `BLOOM_PRISMA_CLIENT`. Apps that built this themselves (midhuna's
+  `shared/prisma.ts` + `shared/rls.ts`) can delete their copy.
+
 ## Changed
 
 ### Every appkit error is an `AppKitError`

@@ -12,6 +12,29 @@
 
 import { PrismaAdapter } from './adapters/prisma.js';
 import { AppKitError } from '../internal/errors.js';
+import {
+  tenantStore,
+  tenantModeOn,
+  rlsModeOn,
+  tenantColumn,
+  withRlsContext,
+  reportBypass,
+  onBypass,
+  currentTenant,
+  rlsPolicySql,
+  rlsPolicyStatements,
+  BYPASS_TOKEN,
+} from './tenancy.js';
+
+export {
+  onBypass,
+  currentTenant,
+  rlsPolicySql,
+  rlsPolicyStatements,
+  BYPASS_TOKEN,
+  tenantStore,
+} from './tenancy.js';
+export type { TenantContext, BypassListener, RlsPolicyOptions } from './tenancy.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
 
@@ -120,6 +143,49 @@ async function createClient(url: string, tenantId: string | null = null): Promis
   }
 }
 
+// One client per database URL serves every tenant: the tenant for each
+// operation comes from the request context (tenantStore), not the client.
+const contextClients = new Map<string, Promise<DatabaseClientUnion>>();
+
+function contextClient(url: string): Promise<DatabaseClientUnion> {
+  let pending = contextClients.get(url);
+  if (!pending) {
+    pending = (async () => {
+      const adapter = new PrismaAdapter({ url });
+      const base: any = await adapter.createClient({ url });
+      let client: any = await adapter.applyTenantMiddleware(
+        base,
+        () => {
+          const ctx = tenantStore.getStore();
+          if (!ctx) return {};
+          if (ctx.bypassReason) return { bypass: true };
+          return { tenantId: ctx.tenantId };
+        },
+        { fieldName: tenantColumn() },
+      );
+      if (rlsModeOn()) client = withRlsContext(client);
+      client._appKit = true;
+      client._url = url;
+      return client;
+    })();
+    // A failed connection must not be cached forever.
+    pending.catch(() => contextClients.delete(url));
+    contextClients.set(url, pending);
+  }
+  return pending;
+}
+
+function requireUrl(): string {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new DatabaseError(
+      `[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`,
+      { code: 'DATABASE_MISSING_URL' },
+    );
+  }
+  return url;
+}
+
 /**
  * Main database API - ultra-simple like auth module
  */
@@ -146,6 +212,12 @@ export const databaseClass = {
       );
     }
 
+    // Inside database.tenant(), database.bypass() or behind database.context(),
+    // the shared context client is already scoped to this request.
+    if (tenantModeOn() && currentTenant()) {
+      return await contextClient(requireUrl());
+    }
+
     const tenantId = detectTenant(req);
 
     // 5.0: in tenant mode, get() may no longer hand back an unscoped client.
@@ -157,8 +229,8 @@ export const databaseClass = {
     // silent leak into a loud error at the one call site responsible.
     //
     // Deliberate cross-tenant work goes through bypass(), which is greppable.
-    const tenantModeOn = process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false';
-    if (tenantModeOn && !tenantId) {
+    const tenantMode = tenantModeOn();
+    if (tenantMode && !tenantId) {
       throw new DatabaseError(
         `[@bloomneo/appkit/database] BLOOM_DB_TENANT is enabled but no tenant resolved for this call. ` +
           `Use database.tenant(req, db => ...) for request-scoped queries, or ` +
@@ -204,12 +276,12 @@ export const databaseClass = {
       );
     }
 
-    const tenantModeOn = process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false';
+    const tenantMode = tenantModeOn();
 
     // Two different mistakes, two different messages. Telling a single-tenant
     // app "no tenant resolved" sends them hunting for a missing claim when the
     // real answer is that they never needed this method.
-    if (!tenantModeOn) {
+    if (!tenantMode) {
       throw new DatabaseError(
         `[@bloomneo/appkit/database] database.tenant() requires multi-tenant mode, but BLOOM_DB_TENANT ` +
           `is not enabled. Single-tenant apps should use databaseClass.get() — it is unrestricted ` +
@@ -241,8 +313,34 @@ export const databaseClass = {
       );
     }
 
-    const client = await createClient(url, tenantId);
-    return await fn(client);
+    const client = await contextClient(url);
+    // Await INSIDE run(): Prisma queries are lazy thenables that start when
+    // awaited, so `db => db.x.findMany()` returned out of the context would
+    // run with no tenant at all.
+    return await tenantStore.run({ tenantId }, async () => await fn(client));
+  },
+
+  /**
+   * Express middleware: every database call for the rest of this request runs
+   * in the caller's tenant, whether it goes through tenant(), get() or a
+   * client captured earlier. Mount after auth.requireLoginToken().
+   *
+   * A request without a tenant claim gets no context, so tenant-scoped
+   * queries in it fail closed.
+   *
+   * ```ts
+   * router.use(auth.requireLoginToken(), database.context());
+   * ```
+   *
+   * @llm-rule WHEN: Tenant-scoped route groups in a multi-tenant app
+   * @llm-rule NOTE: With BLOOM_DB_TENANT=rls this also sets app.tenant_id for Postgres policies
+   */
+  context() {
+    return (req: any, _res: any, next: (err?: unknown) => void) => {
+      const tenantId = detectTenant(req);
+      if (!tenantId) return next();
+      tenantStore.run({ tenantId }, () => next());
+    };
   },
 
   /**
@@ -284,14 +382,33 @@ export const databaseClass = {
       );
     }
 
-    if (process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false') {
-      // Deliberately not the logger module — database must not depend on it.
-      console.warn(`[@bloomneo/appkit/database] tenant bypass: ${reason}`);
+    if (!tenantModeOn()) {
+      const client = await createClient(url, null);
+      return await fn(client);
     }
 
-    const client = await createClient(url, null);
-    return await fn(client);
+    // Deliberately not the logger module — database must not depend on it.
+    console.warn(`[@bloomneo/appkit/database] tenant bypass: ${reason}`);
+    reportBypass(reason);
+    const client = await contextClient(url);
+    return await tenantStore.run({ bypassReason: reason }, async () => await fn(client));
   },
+
+  /**
+   * Subscribe to bypasses — write an audit-log row for each one.
+   * Returns an unsubscribe function.
+   *
+   * ```ts
+   * database.onBypass(({ reason }) => audit.log('tenant.bypass', { reason }));
+   * ```
+   */
+  onBypass,
+
+  /** SQL that enables tenant isolation on a table (idempotent). See rlsPolicyStatements. */
+  rlsPolicySql,
+
+  /** The same SQL as one statement per string, for Prisma's $executeRawUnsafe. */
+  rlsPolicyStatements,
 
   /**
    * Get all tenants data (admin access - no tenant filtering)
@@ -440,8 +557,17 @@ export const databaseClass = {
       );
     }
 
+    for (const [url, pending] of contextClients) {
+      disconnectPromises.push(
+        pending
+          .then((client) => this._closeConnection(client))
+          .catch((error: any) => console.warn(`[@bloomneo/appkit/database] Disconnect warning for "${url}":`, error.message)),
+      );
+    }
+
     await Promise.all(disconnectPromises);
     connections.clear();
+    contextClients.clear();
 
   },
   
