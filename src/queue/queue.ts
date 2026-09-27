@@ -69,8 +69,14 @@ export class QueueClass implements Queue {
   private transport: Transport;
   private transportType: string;
   private isClosing = false;
-  /** Job types with an active repeat series. cancelRepeat() removes one. */
-  private repeating = new Set<string>();
+  /**
+   * Job types with an active repeat series, and the interval registered for
+   * each. cancelRepeat() removes one. An occurrence whose interval no longer
+   * matches (the app now calls repeat() with a different one) does not
+   * continue — so changing an interval replaces the series instead of running
+   * the old one alongside it.
+   */
+  private repeating = new Map<string, number>();
 
   constructor(config: QueueConfig) {
     this.config = config;
@@ -207,7 +213,7 @@ export class QueueClass implements Queue {
       );
     }
 
-    this.repeating.add(jobType);
+    this.repeating.set(jobType, everyMs);
 
     /*
      * Occurrences are keyed by their slot on the wall clock (runAt / everyMs),
@@ -246,7 +252,7 @@ export class QueueClass implements Queue {
 
   /** Job types currently set to repeat, for health checks. */
   getRepeating(): string[] {
-    return [...this.repeating];
+    return [...this.repeating.keys()];
   }
 
   /**
@@ -458,7 +464,7 @@ export class QueueClass implements Queue {
       const repeat = (data as Record<string, any> | null)?.[REPEAT_KEY] as
         | { everyMs: number; slot?: number }
         | undefined;
-      if (repeat && this.repeating.has(jobType) && !this.isClosing) {
+      if (repeat && this.repeating.get(jobType) === repeat.everyMs && !this.isClosing) {
         try {
           // The next slot after this one — or, after downtime, the next one
           // still in the future (missed slots are skipped, not replayed).

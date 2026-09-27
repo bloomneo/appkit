@@ -288,6 +288,21 @@ describe('repeat() — recurring jobs (5.1)', () => {
     q.cancelRepeat('backup-watch');
   });
 
+  it('changing the interval ends the old series instead of running both', async () => {
+    const q = queueClass.get();
+    const transport = (q as any).transport;
+    let runs = 0;
+    q.process('retick', async () => { runs++; });
+    await q.repeat('retick', {}, 1000, { startDelay: 1000 });
+    await q.repeat('retick', {}, 60_000); // the app now wants a slower series
+    await new Promise((r) => setTimeout(r, 2400));
+    // The 1s occurrence ran once and did not continue; only the 60s one is queued.
+    expect(runs).toBe(1);
+    const queued = [...transport.jobs.values()].filter((j: any) => j.type === 'retick' && j.status !== 'completed');
+    expect(queued.map((j: any) => j.data.__appkitRepeat.everyMs)).toEqual([60_000]);
+    q.cancelRepeat('retick');
+  });
+
   it('a cancelled series stops enqueuing successors', async () => {
     const q = queueClass.get();
     await q.repeat('short-lived', {}, 1000, { startDelay: 1000 });

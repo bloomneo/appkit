@@ -14,6 +14,8 @@ upgrade guide, with a replacement for every removal, is
 - **Found by the bloomneo-cloud pilot (after rc.1):** the tenant middleware writes the tenant id in the column's type (an `Int`/`BigInt` tenant column gets a number; a non-integer id is refused with `DATABASE_TENANT_ID_TYPE`). `verifyClass` takes `headers` (e.g. the app's `X-Frontend-Key`), records a slow or unreachable endpoint as skipped instead of aborting the run, and does not report an unauthenticated 200 on a feature the app declares public. `createApiRouter`'s `/api` index marks `isPublic` routers with `public: true`.
 
 - **`queue.repeat()` is idempotent** (after rc.3, found moving bloomneo-cloud's schedulers onto jobs): each occurrence is keyed by its wall-clock slot (`repeat:<type>:<slot>`), and a transport keeps only the first schedule of a slot (Postgres: the primary-key collision, Prisma `P2002`). Every pm2 worker calling `repeat()` at boot, and every restart while the next occurrence is queued, now share one series; before, each added its own, so a 5-minute check ran once per worker per deploy. Missed slots after downtime are skipped, not replayed.
+
+- **Queue in tenant mode** (after rc.3): the database transport takes its client in a named system scope. Before, `get()` refused it in tenant mode, `initialize()` only logged the error, and the queue silently never started in a multi-tenant app. Changing a `repeat()` interval now ends the old series (its occurrence doesn't continue) instead of running both.
 ### Added
 
 - **`@bloomneo/appkit/server`** (also exported from the package root).

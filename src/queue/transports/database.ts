@@ -13,6 +13,7 @@ import type { Transport } from '../queue.js';
 import type { QueueConfig } from '../defaults.js';
 import type { JobData, JobOptions, JobHandler, QueueStats, JobInfo, JobStatus } from '../index.js';
 import { QueueError } from '../errors.js';
+import { tenantStore } from '../../database/tenancy.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 
@@ -67,8 +68,13 @@ export class DatabaseTransport implements Transport {
    */
   private async initialize(): Promise<void> {
     try {
-      // Get the database client
-      this.db = await database.get();
+      // The jobs table spans every tenant (each job carries its own tenant
+      // and runs inside it). In tenant mode get() refuses a caller with no
+      // tenant, so the transport takes its client in a named system scope —
+      // before this, the queue silently never started in a multi-tenant app.
+      this.db = await tenantStore.run({ bypassReason: 'queue transport: the jobs table spans every tenant' }, () =>
+        database.get(),
+      );
       
       await this.ensureTableExists();
       
