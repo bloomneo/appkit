@@ -10,6 +10,7 @@
 export { route, contractRouter, CONTRACT_ROUTER } from './route.js';
 export type { ContractRoute, ContractHandler, HandlerContext } from './route.js';
 export { createApiRouter } from './api-router.js';
+export { requestId } from './request-id.js';
 export type { ApiRouterOptions, DiscoveredEndpoint } from './api-router.js';
 export { isTenantScoped } from './contract.js';
 export type { RouteContract, RouteAuth, StandardSchema, Params, Query, Body, Response } from './contract.js';

@@ -8,6 +8,9 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
 
 ### Added
 
+- `requestId()` middleware in `@bloomneo/appkit/server`; logger lines written
+  inside a request carry `req=<id>` automatically.
+
 - **Jobs keep their tenant:** a job queued inside a tenant context runs its
   handler in that tenant (or bypass); the marker is stripped from `data`.
 - **Per-tenant cache keys** inside a tenant context. Storage keys are left to

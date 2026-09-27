@@ -756,6 +756,10 @@ production, a response that doesn't match `contract.response` is logged.
 - `createApiRouter` answers `GET /api` with every endpoint (what `verifyClass`
   probes), answers unmatched `/api/*` with a JSON 404, and warns at boot about
   unguarded features, unmounted `*.route.ts` siblings, and load failures.
+- `requestId()` middleware (mount first): reuses a safe incoming
+  `X-Request-Id` or makes one, echoes it, sets `req.requestId` and
+  `req.requestMetadata.requestId`, and every logger line written while
+  handling the request gets `req=<id>`.
 - Errors are `ServerError` (`instanceof AppKitError`).
 
 ---

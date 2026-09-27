@@ -137,3 +137,33 @@ const made: string[] = [];
 afterAll(() => {
   for (const d of made) rmSync(d, { recursive: true, force: true });
 });
+
+describe('requestId()', () => {
+  it('sets and echoes an id, keeps a safe incoming one, and log lines inside the request carry it', async () => {
+    const { requestId } = await import('./index.js');
+    const { loggerClass } = await import('../logger/index.js');
+    const { currentRequestId } = await import('../internal/request-context.js');
+    const seen: Array<string | undefined> = [];
+    const app3 = express();
+    app3.use(requestId());
+    app3.get('/x', async (req, res) => {
+      await Promise.resolve();
+      seen.push(currentRequestId());
+      loggerClass.get('t');
+      res.json({ id: req.requestId, meta: req.requestMetadata?.requestId });
+    });
+
+    const fresh = await request(app3).get('/x');
+    expect(fresh.headers['x-request-id']).toMatch(/^[a-f0-9-]{8}$/);
+    expect(fresh.body.id).toBe(fresh.headers['x-request-id']);
+    expect(fresh.body.meta).toBe(fresh.headers['x-request-id']);
+
+    const kept = await request(app3).get('/x').set('X-Request-Id', 'edge-123');
+    expect(kept.headers['x-request-id']).toBe('edge-123');
+    const unsafe = await request(app3).get('/x').set('X-Request-Id', 'bad id with spaces');
+    expect(unsafe.headers['x-request-id']).not.toBe('bad id with spaces');
+
+    expect(seen).toEqual([fresh.body.id, 'edge-123', unsafe.body.id]);
+    expect(currentRequestId()).toBeUndefined();
+  });
+});

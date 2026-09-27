@@ -14,6 +14,7 @@ import type { LoggingConfig } from './defaults.js';
 import type { LogMeta, Logger } from './index.js';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { currentRequestId } from '../internal/request-context.js';
 
 const LOG_LEVELS = {
   error: 0,
@@ -792,11 +793,15 @@ export class LoggerClass implements Logger {
       return;
     }
 
+    // Inside a request (requestId() middleware), every line names it — the
+    // same `req=` the request log line uses — unless the caller set its own.
+    const requestId = currentRequestId();
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       message: message || '',
       ...this.defaultMeta,
+      ...(requestId ? { req: requestId } : {}),
       ...meta,
     };
 

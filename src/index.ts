@@ -80,7 +80,7 @@ export { mcpClass } from './mcp/index.js';
 /** Tenant-isolation verifier — proves an app does not leak across tenants. */
 export { verifyClass } from './verify/index.js';
 /** API side of a Bloom app: route contracts and feature discovery. Also at @bloomneo/appkit/server. */
-export { route, contractRouter, createApiRouter, ServerError } from './server/index.js';
+export { route, contractRouter, createApiRouter, requestId, ServerError } from './server/index.js';
 
 // Unified error types — every typed error below extends AppKitError, so
 // consumers can `catch (err) { if (err instanceof AppKitError) ... }` once
