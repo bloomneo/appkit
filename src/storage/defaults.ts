@@ -10,6 +10,8 @@
  *   MinIO use the S3 strategy with S3_ENDPOINT.
  */
 
+import { StorageError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 
 export interface LocalConfig {
@@ -170,8 +172,9 @@ function validateEnvironment(): void {
     const hint = strategy.toLowerCase() === 'r2'
       ? ' The R2 strategy was removed in 6.0; use "s3" with S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com.'
       : '';
-    throw new Error(
-      `[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_STRATEGY: "${strategy}". Must be "local" or "s3".${hint} See: ${DOCS_URL}#environment-variables`
+    throw new StorageError(
+      `[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_STRATEGY: "${strategy}". Must be "local" or "s3".${hint} See: ${DOCS_URL}#environment-variables`,
+      { code: 'STORAGE_INVALID_STRATEGY' }
     );
   }
 
@@ -225,25 +228,26 @@ function shouldValidateLocal(): boolean {
 function validateS3Config(): void {
   const bucket = process.env.AWS_S3_BUCKET || process.env.S3_BUCKET;
   if (!bucket) {
-    throw new Error(`[@bloomneo/appkit/storage] S3 bucket name required. Set AWS_S3_BUCKET or S3_BUCKET environment variable. See: ${DOCS_URL}#environment-variables`);
+    throw new StorageError(`[@bloomneo/appkit/storage] S3 bucket name required. Set AWS_S3_BUCKET or S3_BUCKET environment variable. See: ${DOCS_URL}#environment-variables`, { code: 'STORAGE_MISSING_CONFIG' });
   }
 
   if (!isValidBucketName(bucket)) {
-    throw new Error(`[@bloomneo/appkit/storage] Invalid S3 bucket name: "${bucket}". Must be 3-63 characters, lowercase, no dots. See: ${DOCS_URL}#environment-variables`);
+    throw new StorageError(`[@bloomneo/appkit/storage] Invalid S3 bucket name: "${bucket}". Must be 3-63 characters, lowercase, no dots. See: ${DOCS_URL}#environment-variables`, { code: 'STORAGE_INVALID_CONFIG' });
   }
 
   const accessKey = process.env.AWS_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY_ID;
   const secretKey = process.env.AWS_SECRET_ACCESS_KEY || process.env.S3_SECRET_ACCESS_KEY;
 
   if (!accessKey || !secretKey) {
-    throw new Error(
-      `[@bloomneo/appkit/storage] S3 credentials required. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. See: ${DOCS_URL}#environment-variables`
+    throw new StorageError(
+      `[@bloomneo/appkit/storage] S3 credentials required. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. See: ${DOCS_URL}#environment-variables`,
+      { code: 'STORAGE_MISSING_CONFIG' }
     );
   }
 
   const endpoint = process.env.S3_ENDPOINT;
   if (endpoint && !isValidUrl(endpoint)) {
-    throw new Error(`[@bloomneo/appkit/storage] Invalid S3 endpoint: "${endpoint}". Must be a valid URL. See: ${DOCS_URL}#environment-variables`);
+    throw new StorageError(`[@bloomneo/appkit/storage] Invalid S3 endpoint: "${endpoint}". Must be a valid URL. See: ${DOCS_URL}#environment-variables`, { code: 'STORAGE_INVALID_CONFIG' });
   }
 }
 
@@ -261,7 +265,7 @@ function validateLocalConfig(): void {
 
   const baseUrl = process.env.BLOOM_STORAGE_BASE_URL;
   if (baseUrl && !baseUrl.startsWith('/') && !isValidUrl(baseUrl)) {
-    throw new Error(`[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_BASE_URL: "${baseUrl}". Must be a path or valid URL. See: ${DOCS_URL}#environment-variables`);
+    throw new StorageError(`[@bloomneo/appkit/storage] Invalid BLOOM_STORAGE_BASE_URL: "${baseUrl}". Must be a path or valid URL. See: ${DOCS_URL}#environment-variables`, { code: 'STORAGE_INVALID_CONFIG' });
   }
 }
 
@@ -324,8 +328,9 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
-    throw new Error(
-      `[@bloomneo/appkit/storage] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`
+    throw new StorageError(
+      `[@bloomneo/appkit/storage] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`,
+      { code: 'STORAGE_INVALID_CONFIG' }
     );
   }
 }

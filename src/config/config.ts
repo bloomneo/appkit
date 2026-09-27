@@ -8,6 +8,8 @@
  * @llm-rule NOTE: Uses UPPER_SNAKE_CASE convention (DATABASE_HOST → config.get('database.host'))
  */
 
+import { ConfigError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/config/README.md';
 
 export class ConfigClass {
@@ -77,8 +79,9 @@ export class ConfigClass {
   getRequired<T = any>(path: string): T {
     const value = this.get<T>(path);
     if (value === undefined) {
-      throw new Error(
-        `[@bloomneo/appkit/config] Missing required configuration: "${path}". Set environment variable: ${this.pathToEnvVar(path)}. See: ${DOCS_URL}#startup-validation`
+      throw new ConfigError(
+        `[@bloomneo/appkit/config] Missing required configuration: "${path}". Set environment variable: ${this.pathToEnvVar(path)}. See: ${DOCS_URL}#startup-validation`,
+        { code: 'CONFIG_MISSING' }
       );
     }
     return value;

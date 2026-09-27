@@ -12,6 +12,7 @@ import { ResendStrategy } from './strategies/resend.js';
 import { SmtpStrategy } from './strategies/smtp.js';
 import { ConsoleStrategy } from './strategies/console.js';
 import type { EmailConfig } from './defaults.js';
+import { EmailError } from './errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 
@@ -76,8 +77,9 @@ export class EmailClass {
       case 'console':
         return new ConsoleStrategy(this.config);
       default:
-        throw new Error(
-          `[@bloomneo/appkit/email] Unknown email strategy: "${this.config.strategy}". Must be "resend", "smtp", or "console". See: ${DOCS_URL}#environment-variables`
+        throw new EmailError(
+          `[@bloomneo/appkit/email] Unknown email strategy: "${this.config.strategy}". Must be "resend", "smtp", or "console". See: ${DOCS_URL}#environment-variables`,
+          { code: 'EMAIL_INVALID_STRATEGY' }
         );
     }
   }
@@ -236,20 +238,23 @@ export class EmailClass {
    */
   private validateEmailData(data: EmailData): void {
     if (!data.to) {
-      throw new Error(
-        `[@bloomneo/appkit/email] Email "to" field is required. See: ${DOCS_URL}#complete-api`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] Email "to" field is required. See: ${DOCS_URL}#complete-api`,
+        { code: 'EMAIL_INVALID_MESSAGE' }
       );
     }
 
     if (!data.subject) {
-      throw new Error(
-        `[@bloomneo/appkit/email] Email "subject" field is required. See: ${DOCS_URL}#complete-api`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] Email "subject" field is required. See: ${DOCS_URL}#complete-api`,
+        { code: 'EMAIL_INVALID_MESSAGE' }
       );
     }
 
     if (!data.text && !data.html) {
-      throw new Error(
-        `[@bloomneo/appkit/email] Email must have either "text" or "html" content. See: ${DOCS_URL}#complete-api`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] Email must have either "text" or "html" content. See: ${DOCS_URL}#complete-api`,
+        { code: 'EMAIL_INVALID_MESSAGE' }
       );
     }
 
@@ -258,8 +263,9 @@ export class EmailClass {
     for (const recipient of recipients) {
       const email = typeof recipient === 'string' ? recipient : recipient.email;
       if (!this.isValidEmail(email)) {
-        throw new Error(
-          `[@bloomneo/appkit/email] Invalid "to" email address: "${email}". See: ${DOCS_URL}#common-mistakes`
+        throw new EmailError(
+          `[@bloomneo/appkit/email] Invalid "to" email address: "${email}". See: ${DOCS_URL}#common-mistakes`,
+          { code: 'EMAIL_INVALID_ADDRESS' }
         );
       }
     }
@@ -268,8 +274,9 @@ export class EmailClass {
     if (data.from) {
       const fromEmail = typeof data.from === 'string' ? data.from : data.from.email;
       if (!this.isValidEmail(fromEmail)) {
-        throw new Error(
-          `[@bloomneo/appkit/email] Invalid "from" email address: "${fromEmail}". See: ${DOCS_URL}#common-mistakes`
+        throw new EmailError(
+          `[@bloomneo/appkit/email] Invalid "from" email address: "${fromEmail}". See: ${DOCS_URL}#common-mistakes`,
+          { code: 'EMAIL_INVALID_ADDRESS' }
         );
       }
     }

@@ -10,6 +10,7 @@
 
 import type { EmailStrategy, EmailData, EmailResult, EmailAddress, EmailAttachment } from '../email.js';
 import type { EmailConfig } from '../defaults.js';
+import { EmailError } from '../errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 
@@ -34,8 +35,9 @@ export class ResendStrategy implements EmailStrategy {
     this.timeout = config.resend!.timeout;
 
     if (!this.apiKey) {
-      throw new Error(
-        `[@bloomneo/appkit/email] Resend API key is required. Set RESEND_API_KEY environment variable. See: ${DOCS_URL}#resend-recommended`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] Resend API key is required. Set RESEND_API_KEY environment variable. See: ${DOCS_URL}#resend-recommended`,
+        { code: 'EMAIL_MISSING_CONFIG' }
       );
     }
   }
@@ -241,8 +243,9 @@ export class ResendStrategy implements EmailStrategy {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({})) as any;
-      throw new Error(
-        `[@bloomneo/appkit/email] Resend API error (${response.status}): ${errorData.message || response.statusText}`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] Resend API error (${response.status}): ${errorData.message || response.statusText}`,
+        { code: 'EMAIL_SEND_FAILED' }
       );
     }
 
@@ -268,7 +271,7 @@ export class ResendStrategy implements EmailStrategy {
       clearTimeout(timeoutId);
       
       if (error.name === 'AbortError') {
-        throw new Error(`[@bloomneo/appkit/email] Resend API request timeout after ${this.timeout}ms`);
+        throw new EmailError(`[@bloomneo/appkit/email] Resend API request timeout after ${this.timeout}ms`, { code: 'EMAIL_TIMEOUT' });
       }
       
       throw error;

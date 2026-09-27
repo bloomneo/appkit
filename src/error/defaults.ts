@@ -8,6 +8,8 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 
+import { AppKitError } from '../internal/errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/error/README.md';
 
 export interface ErrorMessages {
@@ -88,16 +90,18 @@ function validateEnvironment(): void {
   // Validate BLOOM_ERROR_STACK (essential for security)
   const errorStack = process.env.BLOOM_ERROR_STACK;
   if (errorStack && !['true', 'false'].includes(errorStack.toLowerCase())) {
-    throw new Error(
-      `[@bloomneo/appkit/error] Invalid BLOOM_ERROR_STACK: "${errorStack}". Must be "true" or "false". See: ${DOCS_URL}#environment-variables`
+    throw new AppKitError(
+      `[@bloomneo/appkit/error] Invalid BLOOM_ERROR_STACK: "${errorStack}". Must be "true" or "false". See: ${DOCS_URL}#environment-variables`,
+      { module: 'error', code: 'ERROR_INVALID_CONFIG' }
     );
   }
 
   // Validate BLOOM_ERROR_LOG (essential for debugging)
   const errorLog = process.env.BLOOM_ERROR_LOG;
   if (errorLog && !['true', 'false'].includes(errorLog.toLowerCase())) {
-    throw new Error(
-      `[@bloomneo/appkit/error] Invalid BLOOM_ERROR_LOG: "${errorLog}". Must be "true" or "false". See: ${DOCS_URL}#environment-variables`
+    throw new AppKitError(
+      `[@bloomneo/appkit/error] Invalid BLOOM_ERROR_LOG: "${errorLog}". Must be "true" or "false". See: ${DOCS_URL}#environment-variables`,
+      { module: 'error', code: 'ERROR_INVALID_CONFIG' }
     );
   }
 

@@ -28,6 +28,7 @@ import {
   type AppConfig,
   type ConfigValue,
 } from './defaults.js';
+import { ConfigError } from './errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/config/README.md';
 
@@ -46,8 +47,9 @@ let globalConfig: ConfigClass | null = null;
 function get(overrides: ConfigValue = {}): ConfigClass {
   if (globalConfig) {
     if (overrides && Object.keys(overrides).length > 0) {
-      throw new Error(
-        `[@bloomneo/appkit/config] configClass.get() overrides are only applied on first call. Use configClass.reset(newConfig) to rebuild with new config. See: ${DOCS_URL}#configuration`
+      throw new ConfigError(
+        `[@bloomneo/appkit/config] configClass.get() overrides are only applied on first call. Use configClass.reset(newConfig) to rebuild with new config. See: ${DOCS_URL}#configuration`,
+        { code: 'CONFIG_OVERRIDES_IGNORED' }
       );
     }
     return globalConfig;
@@ -148,8 +150,9 @@ function validateRequired(paths: string[]): void {
   
   if (missing.length > 0) {
     const envVars = missing.map(path => path.split('.').join('_').toUpperCase());
-    throw new Error(
-      `[@bloomneo/appkit/config] Missing required configuration: ${missing.join(', ')}. Set environment variables: ${envVars.join(', ')}. See: ${DOCS_URL}#startup-validation`
+    throw new ConfigError(
+      `[@bloomneo/appkit/config] Missing required configuration: ${missing.join(', ')}. Set environment variables: ${envVars.join(', ')}. See: ${DOCS_URL}#startup-validation`,
+      { code: 'CONFIG_MISSING' }
     );
   }
 }
@@ -192,6 +195,7 @@ export const configClass = {
 // Re-export types for consumers
 export type { ConfigValue, AppConfig } from './defaults.js';
 export { ConfigClass } from './config.js';
+export { ConfigError } from './errors.js';
 
 // Default export
 export default configClass;

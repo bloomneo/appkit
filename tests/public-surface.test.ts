@@ -218,6 +218,10 @@ describe('AppKitError — unified error base across every typed error', () => {
     ['QueueError',    () => import('../src/index.js').then(m => new m.QueueError('x'))],
     ['LoggerError',   () => import('../src/index.js').then(m => new m.LoggerError('x'))],
     ['StorageError',  () => import('../src/index.js').then(m => new m.StorageError('x'))],
+    ['McpError',      () => import('../src/index.js').then(m => new m.McpError('x'))],
+    ['AuthError',     () => import('../src/index.js').then(m => new m.AuthError('x'))],
+    ['ConfigError',   () => import('../src/index.js').then(m => new m.ConfigError('x'))],
+    ['VerifyError',   () => import('../src/index.js').then(m => new m.VerifyError('x'))],
   ])('%s extends AppKitError', async (_name, factory) => {
     const { AppKitError } = await import('../src/index.js');
     const instance = await factory();

@@ -9,6 +9,8 @@
  * @llm-rule NOTE: Auto-detects Resend → SMTP → Console based on environment variables
  */
 
+import { EmailError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 
 export interface ResendConfig {
@@ -204,16 +206,18 @@ function validateEnvironment(): void {
   // Validate email strategy if explicitly set
   const strategy = process.env.BLOOM_EMAIL_STRATEGY;
   if (strategy && !['resend', 'smtp', 'console'].includes(strategy.toLowerCase())) {
-    throw new Error(
-      `[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_STRATEGY: "${strategy}". Must be "resend", "smtp", or "console". See: ${DOCS_URL}#environment-variables`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_STRATEGY: "${strategy}". Must be "resend", "smtp", or "console". See: ${DOCS_URL}#environment-variables`,
+      { code: 'EMAIL_INVALID_STRATEGY' }
     );
   }
 
   // Validate Resend API key format if provided
   const resendApiKey = process.env.RESEND_API_KEY;
   if (resendApiKey && !resendApiKey.startsWith('re_')) {
-    throw new Error(
-      `[@bloomneo/appkit/email] Invalid RESEND_API_KEY format: must start with "re_". See: ${DOCS_URL}#resend-recommended`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] Invalid RESEND_API_KEY format: must start with "re_". See: ${DOCS_URL}#resend-recommended`,
+      { code: 'EMAIL_INVALID_CONFIG' }
     );
   }
 
@@ -226,8 +230,9 @@ function validateEnvironment(): void {
   // Validate FROM email if provided
   const fromEmail = process.env.BLOOM_EMAIL_FROM_EMAIL;
   if (fromEmail && !isValidEmail(fromEmail)) {
-    throw new Error(
-      `[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_FROM_EMAIL: "${fromEmail}". Must be a valid email address. See: ${DOCS_URL}#environment-variables`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_FROM_EMAIL: "${fromEmail}". Must be a valid email address. See: ${DOCS_URL}#environment-variables`,
+      { code: 'EMAIL_INVALID_CONFIG' }
     );
   }
 
@@ -239,8 +244,9 @@ function validateEnvironment(): void {
   // Validate console format if provided
   const consoleFormat = process.env.BLOOM_EMAIL_CONSOLE_FORMAT;
   if (consoleFormat && !['simple', 'detailed'].includes(consoleFormat)) {
-    throw new Error(
-      `[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_CONSOLE_FORMAT: "${consoleFormat}". Must be "simple" or "detailed". See: ${DOCS_URL}#console-development`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] Invalid BLOOM_EMAIL_CONSOLE_FORMAT: "${consoleFormat}". Must be "simple" or "detailed". See: ${DOCS_URL}#console-development`,
+      { code: 'EMAIL_INVALID_CONFIG' }
     );
   }
 
@@ -269,8 +275,9 @@ function validateSmtpConfig(): void {
   const pass = process.env.SMTP_PASS;
 
   if (!host) {
-    throw new Error(
-      `[@bloomneo/appkit/email] SMTP_HOST is required when using SMTP strategy. See: ${DOCS_URL}#smtp-universal`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] SMTP_HOST is required when using SMTP strategy. See: ${DOCS_URL}#smtp-universal`,
+      { code: 'EMAIL_MISSING_CONFIG' }
     );
   }
 
@@ -282,14 +289,16 @@ function validateSmtpConfig(): void {
   }
 
   if (user && !pass) {
-    throw new Error(
-      `[@bloomneo/appkit/email] SMTP_PASS is required when SMTP_USER is set. See: ${DOCS_URL}#smtp-universal`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] SMTP_PASS is required when SMTP_USER is set. See: ${DOCS_URL}#smtp-universal`,
+      { code: 'EMAIL_MISSING_CONFIG' }
     );
   }
 
   if (!user && pass) {
-    throw new Error(
-      `[@bloomneo/appkit/email] SMTP_USER is required when SMTP_PASS is set. See: ${DOCS_URL}#smtp-universal`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] SMTP_USER is required when SMTP_PASS is set. See: ${DOCS_URL}#smtp-universal`,
+      { code: 'EMAIL_MISSING_CONFIG' }
     );
   }
 }
@@ -338,8 +347,9 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
-    throw new Error(
-      `[@bloomneo/appkit/email] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`
+    throw new EmailError(
+      `[@bloomneo/appkit/email] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`,
+      { code: 'EMAIL_INVALID_CONFIG' }
     );
   }
 }
@@ -360,14 +370,16 @@ export function validateProductionRequirements(): void {
     }
 
     if (config.strategy === 'resend' && !config.resend?.apiKey) {
-      throw new Error(
-        `[@bloomneo/appkit/email] Resend strategy selected but RESEND_API_KEY not configured. Set RESEND_API_KEY environment variable for Resend email sending. See: ${DOCS_URL}#resend-recommended`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] Resend strategy selected but RESEND_API_KEY not configured. Set RESEND_API_KEY environment variable for Resend email sending. See: ${DOCS_URL}#resend-recommended`,
+        { code: 'EMAIL_MISSING_CONFIG' }
       );
     }
 
     if (config.strategy === 'smtp' && !config.smtp?.host) {
-      throw new Error(
-        `[@bloomneo/appkit/email] SMTP strategy selected but SMTP_HOST not configured. Set SMTP_HOST environment variable for SMTP email sending. See: ${DOCS_URL}#smtp-universal`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] SMTP strategy selected but SMTP_HOST not configured. Set SMTP_HOST environment variable for SMTP email sending. See: ${DOCS_URL}#smtp-universal`,
+        { code: 'EMAIL_MISSING_CONFIG' }
       );
     }
   }

@@ -10,31 +10,14 @@
  */
 
 import { LoggerClass } from './logger.js';
-import { AppKitError } from '../internal/errors.js';
+import { LoggerError } from './errors.js';
 import { getSmartDefaults } from './defaults.js';
 
 // Global logger instances for performance (like auth module)
 let globalLogger: LoggerClass | null = null;
 const namedLoggers = new Map<string, LoggerClass>();
 
-/**
- * Thrown by logger bootstrap / transport setup. Regular log emit paths do NOT
- * throw (a failed transport is swallowed and reported on console) so consumers
- * don't lose app flow over log-delivery problems. `instanceof AppKitError`
- * also true.
- */
-export class LoggerError extends AppKitError {
-  readonly code: string;
-  constructor(message: string, options?: { code?: string; cause?: unknown }) {
-    super(message, {
-      module: 'logger',
-      code: options?.code ?? 'LOGGER_ERROR',
-      cause: options?.cause,
-    });
-    this.name = 'LoggerError';
-    this.code = options?.code ?? 'LOGGER_ERROR';
-  }
-}
+export { LoggerError } from './errors.js';
 
 export interface LogMeta {
   [key: string]: any;

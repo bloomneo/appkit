@@ -174,6 +174,7 @@ export class ErrorClass {
    * @llm-rule AVOID: Using multiple error handlers - this should be the final middleware
    * @llm-rule NOTE: MIDDLEWARE SETUP: app.use(error.handleErrors()); // Must be LAST
    * @llm-rule NOTE: AUTO-FEATURES: dev vs prod responses, stack trace hiding, error logging
+   * @llm-rule NOTE: STATUS: errors with a statusCode (AppError, SecurityError) keep it; any other error (incl. appkit config/misuse AppKitErrors) is 500, and its message is replaced by messages.serverError in production
    */
   handleErrors(options: ErrorHandlerOptions = {}): ExpressErrorHandler {
     // Use instance config as defaults, allow options to override
@@ -185,29 +186,46 @@ export class ErrorClass {
       ? options.logErrors 
       : this.config.middleware.logErrors;
 
-    return (error: AppError, req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction): void => {
+    const isProduction = this.config.environment?.isProduction ?? process.env.NODE_ENV === 'production';
+    const serverErrorMessage = this.config.messages.serverError;
+
+    return (error: any, req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction): void => {
       // Log errors if enabled
       if (logErrors) {
-        console.error('[@bloomneo/appkit/error] Error:', error.message);
-        if (showStack && error.stack) {
+        console.error('[@bloomneo/appkit/error] Error:', error?.message);
+        if (showStack && error?.stack) {
           console.error('[@bloomneo/appkit/error] Stack:', error.stack);
         }
       }
 
-      // Determine status code
-      const statusCode = error.statusCode || 500;
-      
+      // Typed HTTP errors (AppError, SecurityError's 429/400s, framework errors
+      // that carry a statusCode) keep their status. Everything else — including
+      // appkit configuration/misuse errors (ConfigError, QueueError, ...) — is a
+      // 500: the request did nothing wrong, the server did.
+      const hasHttpStatus = typeof error?.statusCode === 'number' && error.statusCode > 0;
+      const statusCode: number = hasHttpStatus ? error.statusCode : 500;
+
       // Determine error type
-      const errorType = error.type || (statusCode >= 500 ? 'SERVER_ERROR' : 'CLIENT_ERROR');
+      const errorType = error?.type || (statusCode >= 500 ? 'SERVER_ERROR' : 'CLIENT_ERROR');
+
+      // AppError messages are written for the client, so they are always sent.
+      // Any other 5xx message is internal (env var names, file paths, driver
+      // errors) and is replaced in production.
+      const hideMessage = isProduction && statusCode >= 500 && !(error instanceof AppError);
 
       // Build response object
       const response: any = {
         error: errorType,
-        message: error.message || 'An error occurred',
+        message: hideMessage ? serverErrorMessage : error?.message || 'An error occurred',
       };
 
+      // Outside production, name the appkit error so the fix is one search away.
+      if (!isProduction && error instanceof AppKitError && !(error instanceof AppError)) {
+        response.code = error.code;
+      }
+
       // Include stack trace in development
-      if (showStack && error.stack) {
+      if (showStack && error?.stack) {
         response.stack = error.stack;
       }
 

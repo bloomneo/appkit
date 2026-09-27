@@ -10,6 +10,7 @@
 
 import type { StorageStrategy, StorageFile, PutOptions } from '../storage.js';
 import type { StorageConfig } from '../defaults.js';
+import { StorageError } from '../errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 
@@ -34,7 +35,7 @@ export class S3Strategy implements StorageStrategy {
     this.config = config;
     
     if (!config.s3) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 storage configuration missing. See: ${DOCS_URL}#environment-variables`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 storage configuration missing. See: ${DOCS_URL}#environment-variables`, { code: 'STORAGE_MISSING_CONFIG' });
     }
 
     this.bucket = config.s3.bucket;
@@ -89,7 +90,7 @@ export class S3Strategy implements StorageStrategy {
     } catch (error) {
       this.connected = false;
       this.s3Client = null;
-      throw new Error(`[@bloomneo/appkit/storage] S3 storage connection failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 storage connection failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_CONNECT_FAILED', cause: error });
     }
   }
 
@@ -103,10 +104,10 @@ export class S3Strategy implements StorageStrategy {
       await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
     } catch (error: any) {
       if (error.name === 'NotFound') {
-        throw new Error(`[@bloomneo/appkit/storage] S3 bucket not found: ${this.bucket}. See: ${DOCS_URL}#common-issues`);
+        throw new StorageError(`[@bloomneo/appkit/storage] S3 bucket not found: ${this.bucket}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_BUCKET_NOT_FOUND' });
       }
       if (error.name === 'Forbidden') {
-        throw new Error(`[@bloomneo/appkit/storage] S3 bucket access denied: ${this.bucket}. See: ${DOCS_URL}#common-issues`);
+        throw new StorageError(`[@bloomneo/appkit/storage] S3 bucket access denied: ${this.bucket}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_ACCESS_DENIED' });
       }
       throw error;
     }
@@ -136,7 +137,7 @@ export class S3Strategy implements StorageStrategy {
    */
   async put(key: string, data: Buffer, options?: PutOptions): Promise<string> {
     if (!this.connected || !this.s3Client) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_NOT_CONNECTED' });
     }
 
     try {
@@ -172,7 +173,7 @@ export class S3Strategy implements StorageStrategy {
 
       return key;
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 upload failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 upload failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_PUT_FAILED', cause: error });
     }
   }
 
@@ -183,7 +184,7 @@ export class S3Strategy implements StorageStrategy {
    */
   async get(key: string): Promise<Buffer> {
     if (!this.connected || !this.s3Client) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_NOT_CONNECTED' });
     }
 
     try {
@@ -197,7 +198,7 @@ export class S3Strategy implements StorageStrategy {
       const result = await this.s3Client.send(new GetObjectCommand(params));
 
       if (!result.Body) {
-        throw new Error(`[@bloomneo/appkit/storage] S3 object has no body: ${key}. See: ${DOCS_URL}#common-issues`);
+        throw new StorageError(`[@bloomneo/appkit/storage] S3 object has no body: ${key}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_GET_FAILED' });
       }
 
       // Convert stream to buffer
@@ -210,9 +211,9 @@ export class S3Strategy implements StorageStrategy {
       return buffer;
     } catch (error: any) {
       if (error.name === 'NoSuchKey') {
-        throw new Error(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`);
+        throw new StorageError(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_FILE_NOT_FOUND' });
       }
-      throw new Error(`[@bloomneo/appkit/storage] S3 download failed: ${error.message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 download failed: ${error.message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_GET_FAILED', cause: error });
     }
   }
 
@@ -255,7 +256,7 @@ export class S3Strategy implements StorageStrategy {
    */
   async list(prefix: string = ''): Promise<StorageFile[]> {
     if (!this.connected || !this.s3Client) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_NOT_CONNECTED' });
     }
 
     try {
@@ -331,7 +332,7 @@ export class S3Strategy implements StorageStrategy {
    */
   async signedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     if (!this.connected || !this.s3Client) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_NOT_CONNECTED' });
     }
 
     try {
@@ -353,7 +354,7 @@ export class S3Strategy implements StorageStrategy {
 
       return signedUrl;
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 signed URL generation failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 signed URL generation failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_SIGNED_URL_FAILED', cause: error });
     }
   }
 
@@ -393,7 +394,7 @@ export class S3Strategy implements StorageStrategy {
    */
   async copy(sourceKey: string, destKey: string): Promise<string> {
     if (!this.connected || !this.s3Client) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 storage not connected. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_NOT_CONNECTED' });
     }
 
     try {
@@ -413,7 +414,7 @@ export class S3Strategy implements StorageStrategy {
 
       return destKey;
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/storage] S3 copy failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] S3 copy failed: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_COPY_FAILED', cause: error });
     }
   }
 

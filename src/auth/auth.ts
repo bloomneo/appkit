@@ -17,6 +17,7 @@ import {
   validateRoleLevel,
   type AuthConfig,
 } from './defaults.js';
+import { AuthError } from './errors.js';
 
 /**
  * Canonical doc URL appended to runtime errors so devs (and AI agents)
@@ -150,36 +151,37 @@ export class AuthenticationClass {
    */
   private signToken(payload: Omit<JwtPayload, 'iat' | 'exp' | 'iss' | 'aud'>, expiresIn?: string): string {
     if (!payload || typeof payload !== 'object') {
-      throw new Error(`[@bloomneo/appkit/auth] Payload must be an object. See: ${DOCS_URL}#token-generation`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Payload must be an object. See: ${DOCS_URL}#token-generation`, { code: 'AUTH_INVALID_PAYLOAD' });
     }
 
     // Validate based on token type
     if (payload.type === 'login') {
       if (!payload.userId) {
-        throw new Error(`[@bloomneo/appkit/auth] Login token must include userId. Use auth.generateLoginToken({ userId, role, level }). See: ${DOCS_URL}#token-generation`);
+        throw new AuthError(`[@bloomneo/appkit/auth] Login token must include userId. Use auth.generateLoginToken({ userId, role, level }). See: ${DOCS_URL}#token-generation`, { code: 'AUTH_INVALID_PAYLOAD' });
       }
     } else if (payload.type === 'api_key') {
       if (!payload.keyId) {
-        throw new Error(`[@bloomneo/appkit/auth] API token must include keyId. Use auth.generateApiToken({ keyId, role, level }). See: ${DOCS_URL}#token-generation`);
+        throw new AuthError(`[@bloomneo/appkit/auth] API token must include keyId. Use auth.generateApiToken({ keyId, role, level }). See: ${DOCS_URL}#token-generation`, { code: 'AUTH_INVALID_PAYLOAD' });
       }
     } else {
-      throw new Error(`[@bloomneo/appkit/auth] Token type must be "login" or "api_key". Use auth.generateLoginToken() or auth.generateApiToken(). See: ${DOCS_URL}#token-generation`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Token type must be "login" or "api_key". Use auth.generateLoginToken() or auth.generateApiToken(). See: ${DOCS_URL}#token-generation`, { code: 'AUTH_INVALID_PAYLOAD' });
     }
 
     if (!payload.role || !payload.level) {
-      throw new Error(`[@bloomneo/appkit/auth] Payload must include both role and level (e.g. role: 'admin', level: 'tenant'). See: ${DOCS_URL}#role-level-permission-architecture`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Payload must include both role and level (e.g. role: 'admin', level: 'tenant'). See: ${DOCS_URL}#role-level-permission-architecture`, { code: 'AUTH_INVALID_PAYLOAD' });
     }
 
     // Validate role.level exists
     const roleLevel = `${payload.role}.${payload.level}`;
     if (!validateRoleLevel(roleLevel, this.config.roles)) {
-      throw new Error(`[@bloomneo/appkit/auth] Invalid role.level: "${roleLevel}". The default hierarchy ships with user.basic, user.pro, user.max, moderator.review, moderator.approve, moderator.manage, admin.tenant, admin.org, admin.system. To register custom roles, set BLOOM_AUTH_ROLES env var. See: ${DOCS_URL}#role-level-permission-architecture`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Invalid role.level: "${roleLevel}". The default hierarchy ships with user.basic, user.pro, user.max, moderator.review, moderator.approve, moderator.manage, admin.tenant, admin.org, admin.system. To register custom roles, set BLOOM_AUTH_ROLES env var. See: ${DOCS_URL}#role-level-permission-architecture`, { code: 'AUTH_INVALID_ROLE' });
     }
 
     const jwtSecret = this.config.jwt.secret;
     if (!jwtSecret) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] JWT secret required. Set BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#configuration`
+      throw new AuthError(
+        `[@bloomneo/appkit/auth] JWT secret required. Set BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#configuration`,
+        { code: 'AUTH_MISSING_CONFIG' }
       );
     }
 
@@ -191,7 +193,7 @@ export class AuthenticationClass {
         algorithm: this.config.jwt.algorithm as jwt.Algorithm,
       } as jwt.SignOptions);
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/auth] Failed to generate token: ${(error as Error).message}. See: ${DOCS_URL}#token-generation`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Failed to generate token: ${(error as Error).message}. See: ${DOCS_URL}#token-generation`, { code: 'AUTH_TOKEN_SIGN_FAILED', cause: error });
     }
   }
 
@@ -203,13 +205,14 @@ export class AuthenticationClass {
    */
   verifyToken(token: string): JwtPayload {
     if (!token || typeof token !== 'string') {
-      throw new Error(`[@bloomneo/appkit/auth] Token must be a non-empty string. See: ${DOCS_URL}#token-verification`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Token must be a non-empty string. See: ${DOCS_URL}#token-verification`, { code: 'AUTH_INVALID_TOKEN' });
     }
 
     const jwtSecret = this.config.jwt.secret;
     if (!jwtSecret) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] JWT secret required. Set BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#configuration`
+      throw new AuthError(
+        `[@bloomneo/appkit/auth] JWT secret required. Set BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#configuration`,
+        { code: 'AUTH_MISSING_CONFIG' }
       );
     }
 
@@ -220,15 +223,15 @@ export class AuthenticationClass {
 
       // Validate decoded token has required structure
       if (!decoded.role || !decoded.level || !decoded.type) {
-        throw new Error(`[@bloomneo/appkit/auth] Token missing required role, level, or type information. See: ${DOCS_URL}#token-verification`);
+        throw new AuthError(`[@bloomneo/appkit/auth] Token missing required role, level, or type information. See: ${DOCS_URL}#token-verification`, { code: 'AUTH_INVALID_TOKEN' });
       }
 
       // Validate type-specific requirements
       if (decoded.type === 'login' && !decoded.userId) {
-        throw new Error(`[@bloomneo/appkit/auth] Login token missing userId. See: ${DOCS_URL}#token-verification`);
+        throw new AuthError(`[@bloomneo/appkit/auth] Login token missing userId. See: ${DOCS_URL}#token-verification`, { code: 'AUTH_INVALID_TOKEN' });
       }
       if (decoded.type === 'api_key' && !decoded.keyId) {
-        throw new Error(`[@bloomneo/appkit/auth] API token missing keyId. See: ${DOCS_URL}#token-verification`);
+        throw new AuthError(`[@bloomneo/appkit/auth] API token missing keyId. See: ${DOCS_URL}#token-verification`, { code: 'AUTH_INVALID_TOKEN' });
       }
 
       return decoded;
@@ -258,7 +261,7 @@ export class AuthenticationClass {
    */
   async hashPassword(password: string, rounds?: number): Promise<string> {
     if (!password || typeof password !== 'string') {
-      throw new Error(`[@bloomneo/appkit/auth] Password must be a non-empty string. See: ${DOCS_URL}#password-hashing`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Password must be a non-empty string. See: ${DOCS_URL}#password-hashing`, { code: 'AUTH_INVALID_PASSWORD' });
     }
 
     const saltRounds = rounds || this.config.password.saltRounds;
@@ -267,7 +270,7 @@ export class AuthenticationClass {
     try {
       return await bcrypt.hash(password, saltRounds);
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/auth] Password hashing failed: ${(error as Error).message}. See: ${DOCS_URL}#password-hashing`);
+      throw new AuthError(`[@bloomneo/appkit/auth] Password hashing failed: ${(error as Error).message}. See: ${DOCS_URL}#password-hashing`, { code: 'AUTH_HASH_FAILED', cause: error });
     }
   }
 
@@ -386,15 +389,15 @@ export class AuthenticationClass {
   scopedWhere(req: ExpressRequest): { tenantId?: string; clientId?: string } {
     const user = this.getUser(req) as ({ tenantId?: string | null; clientId?: string | null } | null);
     if (!user) {
-      throw new AppKitError(
+      throw new AuthError(
         `[@bloomneo/appkit/auth] scopedWhere() needs an authenticated user. Chain auth.requireLoginToken() before the handler. See: ${DOCS_URL}#role-level-permission-architecture`,
-        { module: 'auth', code: 'AUTH_SCOPE_NO_USER' }
+        { code: 'AUTH_SCOPE_NO_USER' }
       );
     }
     if (!('tenantId' in user)) {
-      throw new AppKitError(
+      throw new AuthError(
         `[@bloomneo/appkit/auth] The login token has no tenantId claim, so its data scope is unknown. Pass tenantId to generateLoginToken() (null for platform accounts). See: ${DOCS_URL}#role-level-permission-architecture`,
-        { module: 'auth', code: 'AUTH_SCOPE_MISSING_CLAIM' }
+        { code: 'AUTH_SCOPE_MISSING_CLAIM' }
       );
     }
 
@@ -463,13 +466,13 @@ export class AuthenticationClass {
    */
   requireUserRoles(requiredRoles: string[]): ExpressMiddleware {
     if (!Array.isArray(requiredRoles) || requiredRoles.length === 0) {
-      throw new Error(`[@bloomneo/appkit/auth] requiredRoles must be a non-empty array. See: ${DOCS_URL}#role-level-permission-architecture`);
+      throw new AuthError(`[@bloomneo/appkit/auth] requiredRoles must be a non-empty array. See: ${DOCS_URL}#role-level-permission-architecture`, { code: 'AUTH_INVALID_ROLE' });
     }
 
     // Validate all roles exist
     for (const role of requiredRoles) {
       if (!validateRoleLevel(role, this.config.roles)) {
-        throw new Error(`[@bloomneo/appkit/auth] Invalid role.level for middleware: "${role}". See: ${DOCS_URL}#role-level-permission-architecture`);
+        throw new AuthError(`[@bloomneo/appkit/auth] Invalid role.level for middleware: "${role}". See: ${DOCS_URL}#role-level-permission-architecture`, { code: 'AUTH_INVALID_ROLE' });
       }
     }
 

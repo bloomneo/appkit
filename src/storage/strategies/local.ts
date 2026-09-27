@@ -13,6 +13,7 @@ import path from 'path';
 import { existsSync, createReadStream, statSync } from 'fs';
 import type { StorageStrategy, StorageFile, PutOptions } from '../storage.js';
 import type { StorageConfig } from '../defaults.js';
+import { StorageError } from '../errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 
@@ -35,7 +36,7 @@ export class LocalStrategy implements StorageStrategy {
     this.config = config;
     
     if (!config.local) {
-      throw new Error(`[@bloomneo/appkit/storage] Local storage configuration missing. See: ${DOCS_URL}#environment-variables`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Local storage configuration missing. See: ${DOCS_URL}#environment-variables`, { code: 'STORAGE_MISSING_CONFIG' });
     }
 
     this.baseDir = path.resolve(config.local.dir);
@@ -85,7 +86,7 @@ export class LocalStrategy implements StorageStrategy {
 
       return key;
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/storage] Failed to store file locally: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Failed to store file locally: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_PUT_FAILED', cause: error });
     }
   }
 
@@ -100,7 +101,7 @@ export class LocalStrategy implements StorageStrategy {
       
       // Check if file exists before reading
       if (!existsSync(filePath)) {
-        throw new Error(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`);
+        throw new StorageError(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_FILE_NOT_FOUND' });
       }
 
       // Read file from disk
@@ -112,7 +113,8 @@ export class LocalStrategy implements StorageStrategy {
 
       return data;
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/storage] Failed to retrieve file locally: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      if (error instanceof StorageError) throw error;
+      throw new StorageError(`[@bloomneo/appkit/storage] Failed to retrieve file locally: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_GET_FAILED', cause: error });
     }
   }
 
@@ -231,7 +233,7 @@ export class LocalStrategy implements StorageStrategy {
 
       // Check source exists
       if (!existsSync(sourcePath)) {
-        throw new Error(`[@bloomneo/appkit/storage] Source file not found: ${sourceKey}. See: ${DOCS_URL}#common-issues`);
+        throw new StorageError(`[@bloomneo/appkit/storage] Source file not found: ${sourceKey}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_FILE_NOT_FOUND' });
       }
 
       // Ensure destination directory exists
@@ -247,7 +249,7 @@ export class LocalStrategy implements StorageStrategy {
 
       return destKey;
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/storage] Failed to copy file locally: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Failed to copy file locally: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_COPY_FAILED', cause: error });
     }
   }
 
@@ -285,7 +287,7 @@ export class LocalStrategy implements StorageStrategy {
         await fs.mkdir(dirPath, { recursive: true });
       }
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/storage] Failed to create directory: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Failed to create directory: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_PUT_FAILED', cause: error });
     }
   }
 
@@ -379,7 +381,7 @@ export class LocalStrategy implements StorageStrategy {
       await fs.writeFile(metaPath, metaContent);
     } catch (error) {
       // Metadata is optional
-      throw new Error(`[@bloomneo/appkit/storage] Failed to write metadata: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Failed to write metadata: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_PUT_FAILED', cause: error });
     }
   }
 

@@ -85,6 +85,9 @@ export { verifyClass } from './verify/index.js';
 // and match anything thrown from any module.
 export { AppKitError } from './internal/errors.js';
 export { TokenError } from './auth/auth.js';
+export { AuthError } from './auth/errors.js';
+export { ConfigError } from './config/errors.js';
+export { VerifyError } from './verify/errors.js';
 export { CacheError } from './cache/cache.js';
 export { AppError } from './error/error.js';
 export { SecurityError } from './security/defaults.js';

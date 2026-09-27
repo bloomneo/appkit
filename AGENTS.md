@@ -252,6 +252,10 @@ Headline renames you will hit:
   are removed. `databaseClass.disconnect()` → `databaseClass.disconnectAll()`.
 - **Error handling:** every typed error now extends `AppKitError`
   (`import { AppKitError } from '@bloomneo/appkit'`) so `catch (err) { if (err instanceof AppKitError) ... }` matches every module.
+  **As of 6.0 every module throws only `AppKitError` subclasses** (`AuthError`,
+  `ConfigError`, `QueueError`, `StorageError`, `EmailError`, `VerifyError`, …)
+  with a stable `err.code` — never a plain `Error` — so do not duck-type
+  appkit errors by message prefix.
 
 Everything added in 4.1 → 5.1 was additive: `mcpClass`, `verifyClass`,
 `tenantId`/`clientId` token claims, `auth.scopedWhere()` and `queue.repeat()`.

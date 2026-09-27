@@ -59,6 +59,19 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
 - Released in lockstep with appkit, uikit and bloom on one shared version.
 - Build output (`dist/`) is no longer committed; it is built in CI and by
   `prepublishOnly`.
+- Every error appkit throws is now an `AppKitError` subclass with a
+  `module` and a stable `code` (e.g. `QUEUE_ADD_FAILED`,
+  `STORAGE_INVALID_KEY`, `AUTH_INVALID_PAYLOAD`). 169 plain `throw new Error`
+  sites (and two timeout rejections) outside `src/database` were converted;
+  messages are unchanged. New classes `AuthError`, `ConfigError` and
+  `VerifyError`, exported from their modules and the package root. A test
+  fails the build if a plain `throw new Error(` returns.
+- `error.handleErrors()`: errors with a `statusCode` (`AppError`,
+  `SecurityError`) keep it; any other error, including appkit
+  configuration/misuse errors, is a 500, and in production its message is
+  replaced by the generic server-error message instead of leaking env var
+  names or driver errors. Outside production the response also carries the
+  appkit `code`. `AppError` responses are unchanged.
 
 ## [5.1.4] - 2026-09-27
 

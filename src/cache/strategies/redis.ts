@@ -10,6 +10,7 @@
 
 import type { CacheStrategy } from '../cache.js';
 import type { CacheConfig } from '../defaults.js';
+import { CacheError } from '../errors.js';
 
 /**
  * Redis cache strategy with enterprise-grade reliability
@@ -95,7 +96,7 @@ export class RedisStrategy implements CacheStrategy {
     } catch (error) {
       this.connected = false;
       this.client = null;
-      throw new Error(`Redis connection failed: ${(error as Error).message}`);
+      throw new CacheError(`Redis connection failed: ${(error as Error).message}`, { code: 'CACHE_CONNECT_FAILED', cause: error });
     }
   }
 
@@ -325,7 +326,7 @@ export class RedisStrategy implements CacheStrategy {
 
     return new Promise<any>((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error(`Redis ${label} timed out after ${ms}ms`));
+        reject(new CacheError(`Redis ${label} timed out after ${ms}ms`, { code: 'CACHE_TIMEOUT' }));
       }, ms);
       op.then(
         (value) => {
@@ -347,7 +348,7 @@ export class RedisStrategy implements CacheStrategy {
     try {
       return JSON.stringify(value);
     } catch (error) {
-      throw new Error(`Failed to serialize value: ${(error as Error).message}`);
+      throw new CacheError(`Failed to serialize value: ${(error as Error).message}`, { code: 'CACHE_INVALID_VALUE', cause: error });
     }
   }
 

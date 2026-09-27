@@ -9,6 +9,8 @@
  * @llm-rule NOTE: Now includes visual error configuration for enhanced developer experience
  */
 
+import { LoggerError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/logger/README.md';
 
 export interface LoggingConfig {
@@ -162,19 +164,19 @@ export function validateEnvironment(): void {
   // Validate log level
   const level = process.env.BLOOM_LOGGER_LEVEL;
   if (level && !['debug', 'info', 'warn', 'error'].includes(level)) {
-    throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_LEVEL: "${level}". Must be: debug, info, warn, error. See: ${DOCS_URL}#environment-variables`);
+    throw new LoggerError(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_LEVEL: "${level}". Must be: debug, info, warn, error. See: ${DOCS_URL}#environment-variables`, { code: 'LOGGER_INVALID_CONFIG' });
   }
 
   // Validate scope
   const scope = process.env.BLOOM_LOGGER_SCOPE;
   if (scope && !['minimal', 'full'].includes(scope.toLowerCase())) {
-    throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_SCOPE: "${scope}". Must be: minimal, full. See: ${DOCS_URL}#environment-variables`);
+    throw new LoggerError(`[@bloomneo/appkit/logger] Invalid BLOOM_LOGGER_SCOPE: "${scope}". Must be: minimal, full. See: ${DOCS_URL}#environment-variables`, { code: 'LOGGER_INVALID_CONFIG' });
   }
 
   // Validate visual errors setting
   const visualErrors = process.env.BLOOM_VISUAL_ERRORS;
   if (visualErrors && !['true', 'false'].includes(visualErrors)) {
-    throw new Error(`[@bloomneo/appkit/logger] Invalid BLOOM_VISUAL_ERRORS: "${visualErrors}". Must be: true, false. See: ${DOCS_URL}#environment-variables`);
+    throw new LoggerError(`[@bloomneo/appkit/logger] Invalid BLOOM_VISUAL_ERRORS: "${visualErrors}". Must be: true, false. See: ${DOCS_URL}#environment-variables`, { code: 'LOGGER_INVALID_CONFIG' });
   }
 
   // Validate numeric values
@@ -191,6 +193,6 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
-    throw new Error(`[@bloomneo/appkit/logger] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`);
+    throw new LoggerError(`[@bloomneo/appkit/logger] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`, { code: 'LOGGER_INVALID_CONFIG' });
   }
 }

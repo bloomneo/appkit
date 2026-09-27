@@ -12,6 +12,7 @@
 
 import { AuthenticationClass } from './auth.js';
 import { getSmartDefaults, validateAuthConfig, type AuthConfig, type RoleHierarchy } from './defaults.js';
+import { AuthError } from './errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/auth/README.md';
 
@@ -29,8 +30,9 @@ let globalAuthentication: AuthenticationClass | null = null;
 function get(overrides: Partial<AuthConfig> = {}): AuthenticationClass {
   if (globalAuthentication) {
     if (overrides && Object.keys(overrides).length > 0) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] authClass.get() overrides are only applied on first call. Use authClass.reset(newConfig) to rebuild with new config. See: ${DOCS_URL}#configuration`
+      throw new AuthError(
+        `[@bloomneo/appkit/auth] authClass.get() overrides are only applied on first call. Use authClass.reset(newConfig) to rebuild with new config. See: ${DOCS_URL}#configuration`,
+        { code: 'AUTH_OVERRIDES_IGNORED' }
       );
     }
     return globalAuthentication;
@@ -120,6 +122,7 @@ export type {
 } from './auth.js';
 
 export { AuthenticationClass, TokenError } from './auth.js';
+export { AuthError } from './errors.js';
 
 // Default export
 export default authClass;

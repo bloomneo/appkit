@@ -10,6 +10,7 @@
 
 import type { EmailStrategy, EmailData, EmailResult, EmailAddress, EmailAttachment } from '../email.js';
 import type { EmailConfig } from '../defaults.js';
+import { EmailError } from '../errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 
@@ -132,8 +133,9 @@ export class SmtpStrategy implements EmailStrategy {
     } catch (error) {
       this.connected = false;
       this.transporter = null;
-      throw new Error(
-        `[@bloomneo/appkit/email] SMTP connection failed: ${(error as Error).message}. See: ${DOCS_URL}#smtp-universal`
+      throw new EmailError(
+        `[@bloomneo/appkit/email] SMTP connection failed: ${(error as Error).message}. See: ${DOCS_URL}#smtp-universal`,
+        { code: 'EMAIL_CONNECT_FAILED', cause: error }
       );
     }
   }

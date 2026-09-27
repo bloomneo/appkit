@@ -62,4 +62,5 @@ export const verifyClass = {
 };
 
 export { VerifierClass };
+export { VerifyError } from './errors.js';
 export type { VerifyOptions, VerifyReport, VerifyFinding, VerifyIdentity, FindingKind };

@@ -11,6 +11,7 @@
 import { LocalStrategy } from './strategies/local.js';
 import { S3Strategy } from './strategies/s3.js';
 import type { StorageConfig } from './defaults.js';
+import { StorageError } from './errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 
@@ -65,7 +66,7 @@ export class StorageClass {
       case 's3':
         return new S3Strategy(this.config);
       default:
-        throw new Error(`[@bloomneo/appkit/storage] Unknown storage strategy: ${this.config.strategy}. See: ${DOCS_URL}#environment-variables`);
+        throw new StorageError(`[@bloomneo/appkit/storage] Unknown storage strategy: ${this.config.strategy}. See: ${DOCS_URL}#environment-variables`, { code: 'STORAGE_INVALID_STRATEGY' });
     }
   }
 
@@ -177,7 +178,7 @@ export class StorageClass {
       return result;
     } catch (error) {
       console.error(`[@bloomneo/appkit/storage] Storage get error for "${key}":`, (error as Error).message);
-      throw new Error(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] File not found: ${key}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_FILE_NOT_FOUND', cause: error });
     }
   }
 
@@ -265,7 +266,7 @@ export class StorageClass {
 
     try {
       if (!this.strategy.signedUrl) {
-        throw new Error(`[@bloomneo/appkit/storage] Signed URLs not supported with ${this.config.strategy} strategy. See: ${DOCS_URL}#common-issues`);
+        throw new StorageError(`[@bloomneo/appkit/storage] Signed URLs not supported with ${this.config.strategy} strategy. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_SIGNED_URL_UNSUPPORTED' });
       }
 
       const url = await this.strategy.signedUrl(key, expiresIn);
@@ -388,26 +389,26 @@ export class StorageClass {
    */
   private validateKey(key: string): void {
     if (!key || typeof key !== 'string') {
-      throw new Error(`[@bloomneo/appkit/storage] Storage key must be a non-empty string. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Storage key must be a non-empty string. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_INVALID_KEY' });
     }
 
     if (key.length > 1024) {
-      throw new Error(`[@bloomneo/appkit/storage] Storage key too long (max 1024 characters). See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Storage key too long (max 1024 characters). See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_INVALID_KEY' });
     }
 
     // Security: prevent path traversal
     if (key.includes('..') || key.includes('//')) {
-      throw new Error(`[@bloomneo/appkit/storage] Storage key contains invalid path components. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Storage key contains invalid path components. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_INVALID_KEY' });
     }
 
     // Normalize separators
     if (key.includes('\\')) {
-      throw new Error(`[@bloomneo/appkit/storage] Storage key must use forward slashes (/) as separators. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Storage key must use forward slashes (/) as separators. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_INVALID_KEY' });
     }
 
     // Remove leading slash for consistency
     if (key.startsWith('/')) {
-      throw new Error(`[@bloomneo/appkit/storage] Storage key should not start with forward slash. See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] Storage key should not start with forward slash. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_INVALID_KEY' });
     }
   }
 
@@ -427,7 +428,7 @@ export class StorageClass {
       return Buffer.from(data, 'utf8');
     }
 
-    throw new Error(`[@bloomneo/appkit/storage] Data must be Buffer, Uint8Array, or string. See: ${DOCS_URL}#common-issues`);
+    throw new StorageError(`[@bloomneo/appkit/storage] Data must be Buffer, Uint8Array, or string. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_INVALID_DATA' });
   }
 
   /**
@@ -444,7 +445,7 @@ export class StorageClass {
     if (buffer.length > maxSize) {
       const maxMB = Math.round(maxSize / 1048576);
       const fileMB = Math.round(buffer.length / 1048576);
-      throw new Error(`[@bloomneo/appkit/storage] File too large: ${fileMB}MB (max: ${maxMB}MB). See: ${DOCS_URL}#common-issues`);
+      throw new StorageError(`[@bloomneo/appkit/storage] File too large: ${fileMB}MB (max: ${maxMB}MB). See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_FILE_TOO_LARGE' });
     }
   }
 
@@ -530,9 +531,10 @@ export class StorageClass {
     });
 
     if (!isAllowed) {
-      throw new Error(
+      throw new StorageError(
         `[@bloomneo/appkit/storage] File type not allowed: ${contentType}. ` +
-        `Allowed types: ${allowedTypes.join(', ')}. See: ${DOCS_URL}#common-issues`
+        `Allowed types: ${allowedTypes.join(', ')}. See: ${DOCS_URL}#common-issues`,
+        { code: 'STORAGE_FILE_TYPE_NOT_ALLOWED' }
       );
     }
   }

@@ -52,7 +52,10 @@ export class SecurityError extends AppKitError {
     statusCode: number = 400,
     details: Record<string, any> = {},
   ) {
-    super(message, { module: 'security', code: `SECURITY_${statusCode}` });
+    super(message, {
+      module: 'security',
+      code: typeof details.code === 'string' ? details.code : `SECURITY_${statusCode}`,
+    });
     this.name = 'SecurityError';
     this.statusCode = statusCode;
     Object.assign(this, details);
@@ -120,8 +123,9 @@ function validateEnvironment(): void {
   if (rateLimit) {
     const rateLimitNum = parseInt(rateLimit);
     if (isNaN(rateLimitNum) || rateLimitNum <= 0) {
-      throw new Error(
-        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_RATE_LIMIT: "${rateLimit}". Must be a positive number. See: ${DOCS_URL}#environment-variables`
+      throw new SecurityError(
+        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_RATE_LIMIT: "${rateLimit}". Must be a positive number. See: ${DOCS_URL}#environment-variables`,
+        500, { code: 'SECURITY_INVALID_CONFIG' }
       );
     }
   }
@@ -130,8 +134,9 @@ function validateEnvironment(): void {
   if (rateWindow) {
     const rateWindowNum = parseInt(rateWindow);
     if (isNaN(rateWindowNum) || rateWindowNum <= 0) {
-      throw new Error(
-        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_RATE_WINDOW: "${rateWindow}". Must be a positive number (milliseconds). See: ${DOCS_URL}#environment-variables`
+      throw new SecurityError(
+        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_RATE_WINDOW: "${rateWindow}". Must be a positive number (milliseconds). See: ${DOCS_URL}#environment-variables`,
+        500, { code: 'SECURITY_INVALID_CONFIG' }
       );
     }
   }
@@ -163,23 +168,25 @@ function validateEnvironment(): void {
  */
 function validateEncryptionKey(key: string): void {
   if (typeof key !== 'string') {
-    throw new Error(`[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY must be a string. See: ${DOCS_URL}#environment-variables`);
+    throw new SecurityError(`[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY must be a string. See: ${DOCS_URL}#environment-variables`, 500, { code: 'SECURITY_INVALID_CONFIG' });
   }
 
   // Check if it's a valid hex string
   if (!/^[0-9a-fA-F]+$/.test(key)) {
-    throw new Error(
+    throw new SecurityError(
       `[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY must be a valid hexadecimal string. ` +
-      `Generate one using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))". See: ${DOCS_URL}#environment-variables`
+      `Generate one using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))". See: ${DOCS_URL}#environment-variables`,
+      500, { code: 'SECURITY_INVALID_CONFIG' }
     );
   }
 
   // Check length (should be 64 hex characters for 32 bytes)
   if (key.length !== 64) {
-    throw new Error(
+    throw new SecurityError(
       `[@bloomneo/appkit/security] BLOOM_SECURITY_ENCRYPTION_KEY must be 64 hex characters (32 bytes). ` +
       `Current length: ${key.length}. ` +
-      `Generate one using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))". See: ${DOCS_URL}#environment-variables`
+      `Generate one using: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))". See: ${DOCS_URL}#environment-variables`,
+      500, { code: 'SECURITY_INVALID_CONFIG' }
     );
   }
 }

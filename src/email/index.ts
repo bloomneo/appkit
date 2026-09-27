@@ -10,7 +10,7 @@
  */
 
 import { EmailClass } from './email.js';
-import { AppKitError } from '../internal/errors.js';
+import { EmailError } from './errors.js';
 import {
   getSmartDefaults,
   validateProductionRequirements,
@@ -21,24 +21,7 @@ import {
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/email/README.md';
 
-/**
- * Thrown by email validation/send paths. `send()` itself returns an
- * EmailResult with `{success,error}` rather than throwing — EmailError fires
- * for config/bootstrap failures that the consumer needs to see at startup.
- * `instanceof AppKitError` also true.
- */
-export class EmailError extends AppKitError {
-  readonly code: string;
-  constructor(message: string, options?: { code?: string; cause?: unknown }) {
-    super(message, {
-      module: 'email',
-      code: options?.code ?? 'EMAIL_ERROR',
-      cause: options?.cause,
-    });
-    this.name = 'EmailError';
-    this.code = options?.code ?? 'EMAIL_ERROR';
-  }
-}
+export { EmailError } from './errors.js';
 
 // Global email instance for performance (like auth module)
 let globalEmail: EmailClass | null = null;

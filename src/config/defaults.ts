@@ -8,6 +8,8 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 
+import { ConfigError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/config/README.md';
 
 export interface ConfigValue {
@@ -272,16 +274,18 @@ export function validateConfig(config: AppConfig): void {
   // Production-specific validations
   if (environment === 'production') {
     if (!config.app.name || config.app.name === 'voila-app') {
-      throw new Error(
-        `[@bloomneo/appkit/config] BLOOM_SERVICE_NAME is required in production. Set environment variable: BLOOM_SERVICE_NAME=your-app-name. See: ${DOCS_URL}#environment-variables`
+      throw new ConfigError(
+        `[@bloomneo/appkit/config] BLOOM_SERVICE_NAME is required in production. Set environment variable: BLOOM_SERVICE_NAME=your-app-name. See: ${DOCS_URL}#environment-variables`,
+        { code: 'CONFIG_MISSING' }
       );
     }
   }
 
   // Port validation
   if (config.app.port && (config.app.port < 1 || config.app.port > 65535)) {
-    throw new Error(
-      `[@bloomneo/appkit/config] Invalid PORT: ${config.app.port}. Must be between 1 and 65535. See: ${DOCS_URL}#environment-variables`
+    throw new ConfigError(
+      `[@bloomneo/appkit/config] Invalid PORT: ${config.app.port}. Must be between 1 and 65535. See: ${DOCS_URL}#environment-variables`,
+      { code: 'CONFIG_INVALID' }
     );
   }
 }

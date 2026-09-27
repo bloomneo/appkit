@@ -9,23 +9,12 @@
  */
 
 import { authClass } from '../auth/index.js';
-import { AppKitError } from '../internal/errors.js';
+import { McpError } from './errors.js';
 import type { McpTool, McpToolDescriptor } from './types.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/mcp/README.md';
 
-export class McpError extends AppKitError {
-  readonly code: string;
-  constructor(message: string, options?: { code?: string; cause?: unknown }) {
-    super(message, {
-      module: 'mcp',
-      code: options?.code ?? 'MCP_ERROR',
-      cause: options?.cause,
-    });
-    this.name = 'McpError';
-    this.code = options?.code ?? 'MCP_ERROR';
-  }
-}
+export { McpError } from './errors.js';
 
 export class McpRegistryClass {
   private readonly tools = new Map<string, McpTool>();

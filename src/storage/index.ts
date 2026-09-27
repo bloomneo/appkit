@@ -10,27 +10,12 @@
  */
 
 import { StorageClass } from './storage.js';
-import { AppKitError } from '../internal/errors.js';
+import { StorageError } from './errors.js';
 import { getSmartDefaults, type StorageConfig } from './defaults.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';
 
-/**
- * Thrown by storage operations (missing creds, invalid key, file not found
- * on get(), upload failures). `instanceof AppKitError` also true.
- */
-export class StorageError extends AppKitError {
-  readonly code: string;
-  constructor(message: string, options?: { code?: string; cause?: unknown }) {
-    super(message, {
-      module: 'storage',
-      code: options?.code ?? 'STORAGE_ERROR',
-      cause: options?.cause,
-    });
-    this.name = 'StorageError';
-    this.code = options?.code ?? 'STORAGE_ERROR';
-  }
-}
+export { StorageError } from './errors.js';
 
 // Global storage instance for performance (like auth module)
 let globalStorage: StorageClass | null = null;
@@ -284,7 +269,7 @@ async function download(key: string): Promise<{ data: Buffer; contentType?: stri
       contentType: ext ? contentTypes[ext] : undefined,
     };
   } catch (error) {
-    throw new Error(`[@bloomneo/appkit/storage] Failed to download file: ${key}. See: ${DOCS_URL}#common-issues`);
+    throw new StorageError(`[@bloomneo/appkit/storage] Failed to download file: ${key}. See: ${DOCS_URL}#common-issues`, { code: 'STORAGE_GET_FAILED' });
   }
 }
 

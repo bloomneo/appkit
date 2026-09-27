@@ -691,9 +691,11 @@ modules are used in the same file (most common case).
 
 ---
 
-## Error Types (4.0.0+)
+## Error Types (4.0.0+; complete in 6.0.0)
 
-Every typed error extends `AppKitError`. Catch once, handle all:
+Every error appkit throws is an `AppKitError` subclass — as of 6.0 there are
+no plain `Error`s left, so apps do not need to duck-type messages. Catch once,
+handle all:
 
 ```ts
 import { AppKitError } from '@bloomneo/appkit';
@@ -706,20 +708,29 @@ try { ... } catch (err) {
 }
 ```
 
+`error.handleErrors()` maps them for you: errors with a `statusCode`
+(`AppError`, `SecurityError`) keep it; every other `AppKitError` (a
+configuration or misuse error) is a 500 whose message is replaced by the
+generic server-error message in production.
+
 ### Codes by module
 
 | Module | Class | Common codes | Fix |
 |---|---|---|---|
+| auth | `AuthError` | `AUTH_MISSING_CONFIG` / `AUTH_WEAK_SECRET` / `AUTH_INVALID_CONFIG` / `AUTH_INVALID_PAYLOAD` / `AUTH_INVALID_ROLE` / `AUTH_INVALID_PASSWORD` / `AUTH_SCOPE_NO_USER` / `AUTH_SCOPE_MISSING_CLAIM` | Fix env / the call site |
 | auth | `TokenError` | `expired` / `not_before` / `invalid` / `malformed` | Refresh or re-issue the token |
-| cache | `CacheError` | `CACHE_GET_FAILED` / `CACHE_SET_FAILED` / `CACHE_INVALID_KEY` / `CACHE_CONNECT_FAILED` | Check Redis connectivity / key format |
+| cache | `CacheError` | `CACHE_GET_FAILED` / `CACHE_SET_FAILED` / `CACHE_INVALID_KEY` / `CACHE_CONNECT_FAILED` / `CACHE_INVALID_CONFIG` | Check Redis connectivity / key format |
+| config | `ConfigError` | `CONFIG_MISSING` / `CONFIG_INVALID` / `CONFIG_OVERRIDES_IGNORED` | Set the named env var |
 | database | `DatabaseError` | `DATABASE_MISSING_URL` / `DATABASE_ERROR` | Set `DATABASE_URL` |
-| email | `EmailError` | `EMAIL_PROD_NO_PROVIDER` / `EMAIL_ERROR` | Set `RESEND_API_KEY` or `SMTP_HOST` in production |
+| email | `EmailError` | `EMAIL_PROD_NO_PROVIDER` / `EMAIL_MISSING_CONFIG` / `EMAIL_INVALID_CONFIG` / `EMAIL_INVALID_STRATEGY` / `EMAIL_SEND_FAILED` | Set `RESEND_API_KEY` or `SMTP_HOST` in production |
 | error | `AppError` | HTTP type string (`BAD_REQUEST`, `NOT_FOUND`, etc.) | Handled by `error.handleErrors()` middleware automatically |
-| logger | `LoggerError` | `LOGGER_ERROR` | Check transport config |
-| queue | `QueueError` | `QUEUE_ERROR` / `QUEUE_HANDLER_TIMEOUT` | Investigate handler; override `{ timeout }` on `process()` if intentional |
-| security | `SecurityError` | `SECURITY_MISSING_CONFIG` / `SECURITY_400` / `SECURITY_403` | Set required env; reject invalid input |
-| storage | `StorageError` | `STORAGE_ERROR` | Check bucket creds / key path |
-| util | `AppKitError` (via `requireProp` / `requireEnv`) | `UTIL_MISSING_PROP` / `UTIL_MISSING_ENV` | Fix the caller |
+| error | `AppKitError` | `ERROR_INVALID_CONFIG` | Fix `BLOOM_ERROR_*` env |
+| logger | `LoggerError` | `LOGGER_INVALID_CONFIG` / `LOGGER_ERROR` | Check `BLOOM_LOGGER_*` / transport config |
+| mcp | `McpError` | `MCP_INVALID_CONFIG` / `MCP_INVALID_TOOL` / `MCP_MISSING_PEER` / `MCP_WEAK_SECRET` | Fix the tool declaration / env |
+| queue | `QueueError` | `QUEUE_ADD_FAILED` / `QUEUE_INVALID_JOB_TYPE` / `QUEUE_INVALID_JOB_DATA` / `QUEUE_JOB_NOT_FOUND` / `QUEUE_FULL` / `QUEUE_HANDLER_TIMEOUT` / `QUEUE_INVALID_CONFIG` | Investigate handler; override `{ timeout }` on `process()` if intentional |
+| security | `SecurityError` | `SECURITY_MISSING_CONFIG` / `SECURITY_INVALID_CONFIG` / `SECURITY_400` / `SECURITY_429` / `SECURITY_500` | Set required env; reject invalid input |
+| storage | `StorageError` | `STORAGE_FILE_NOT_FOUND` / `STORAGE_INVALID_KEY` / `STORAGE_FILE_TOO_LARGE` / `STORAGE_PUT_FAILED` / `STORAGE_MISSING_CONFIG` | Check bucket creds / key path |
+| verify | `VerifyError` | `VERIFY_INVALID_BASE_URL` / `VERIFY_REMOTE_REFUSED` / `VERIFY_INVALID_IDENTITIES` | Point at a local server with two identities |
 
 Every message is prefixed `[@bloomneo/appkit/<module>]` and ends with
 `See: <README anchor URL>` so an agent can fetch the doc section and self-correct.

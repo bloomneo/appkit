@@ -20,6 +20,7 @@ import type {
   VerifyOptions,
   VerifyReport,
 } from './types.js';
+import { VerifyError } from './errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/verify/README.md';
 
@@ -289,32 +290,35 @@ export class VerifierClass {
 
   private validate(options: VerifyOptions): void {
     if (!options?.baseUrl || typeof options.baseUrl !== 'string') {
-      throw new Error(`[@bloomneo/appkit/verify] baseUrl is required. See: ${DOCS_URL}#usage`);
+      throw new VerifyError(`[@bloomneo/appkit/verify] baseUrl is required. See: ${DOCS_URL}#usage`, { code: 'VERIFY_INVALID_BASE_URL' });
     }
     let host: string;
     try {
       host = new URL(options.baseUrl).hostname;
     } catch {
-      throw new Error(`[@bloomneo/appkit/verify] baseUrl is not a valid URL: ${options.baseUrl}. See: ${DOCS_URL}#usage`);
+      throw new VerifyError(`[@bloomneo/appkit/verify] baseUrl is not a valid URL: ${options.baseUrl}. See: ${DOCS_URL}#usage`, { code: 'VERIFY_INVALID_BASE_URL' });
     }
     const local = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host) || host.endsWith('.localhost');
     if (!local && !options.allowRemote) {
-      throw new Error(
+      throw new VerifyError(
         `[@bloomneo/appkit/verify] Refusing to probe ${host}: the verifier logs in as real users and replays ` +
           `writes against other tenants' rows. Point it at a local server, or pass allowRemote: true for a ` +
           `disposable staging deployment. See: ${DOCS_URL}#usage`,
+        { code: 'VERIFY_REMOTE_REFUSED' }
       );
     }
     if (!Array.isArray(options.identities) || options.identities.length < 2) {
-      throw new Error(
+      throw new VerifyError(
         `[@bloomneo/appkit/verify] At least two identities are required — isolation is only ` +
           `observable by comparing tenants. See: ${DOCS_URL}#usage`,
+        { code: 'VERIFY_INVALID_IDENTITIES' }
       );
     }
     for (const identity of options.identities) {
       if (!identity?.label || !identity.email || !identity.password) {
-        throw new Error(
+        throw new VerifyError(
           `[@bloomneo/appkit/verify] Each identity needs label, email and password. See: ${DOCS_URL}#usage`,
+          { code: 'VERIFY_INVALID_IDENTITIES' }
         );
       }
     }

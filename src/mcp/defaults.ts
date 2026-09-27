@@ -8,6 +8,8 @@
  * @llm-rule NOTE: BLOOM_MCP_REQUIRE_AUTH defaults to true; an unauthenticated MCP endpoint is an open API
  */
 
+import { McpError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/mcp/README.md';
 
 export interface McpConfig {
@@ -35,15 +37,17 @@ const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 export function getSmartDefaults(): McpConfig {
   const requireAuthRaw = process.env.BLOOM_MCP_REQUIRE_AUTH;
   if (requireAuthRaw && !['true', 'false'].includes(requireAuthRaw)) {
-    throw new Error(
-      `[@bloomneo/appkit/mcp] Invalid BLOOM_MCP_REQUIRE_AUTH: "${requireAuthRaw}". Must be: true, false. See: ${DOCS_URL}#environment-variables`
+    throw new McpError(
+      `[@bloomneo/appkit/mcp] Invalid BLOOM_MCP_REQUIRE_AUTH: "${requireAuthRaw}". Must be: true, false. See: ${DOCS_URL}#environment-variables`,
+      { code: 'MCP_INVALID_CONFIG' }
     );
   }
 
   const version = process.env.BLOOM_MCP_VERSION ?? '1.0.0';
   if (!/^\d+\.\d+\.\d+/.test(version)) {
-    throw new Error(
-      `[@bloomneo/appkit/mcp] Invalid BLOOM_MCP_VERSION: "${version}". Must be semver. See: ${DOCS_URL}#environment-variables`
+    throw new McpError(
+      `[@bloomneo/appkit/mcp] Invalid BLOOM_MCP_VERSION: "${version}". Must be semver. See: ${DOCS_URL}#environment-variables`,
+      { code: 'MCP_INVALID_CONFIG' }
     );
   }
 

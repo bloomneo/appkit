@@ -8,6 +8,8 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance like auth/logging modules
  */
 
+import { QueueError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 
 export interface QueueConfig {
@@ -175,19 +177,19 @@ export function validateEnvironment(): void {
   // Validate concurrency
   const concurrency = process.env.BLOOM_QUEUE_CONCURRENCY;
   if (concurrency && (isNaN(parseInt(concurrency)) || parseInt(concurrency) < 1 || parseInt(concurrency) > 100)) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_CONCURRENCY: "${concurrency}". Must be number between 1 and 100. See: ${DOCS_URL}#environment-variables`);
+    throw new QueueError(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_CONCURRENCY: "${concurrency}". Must be number between 1 and 100. See: ${DOCS_URL}#environment-variables`, { code: 'QUEUE_INVALID_CONFIG' });
   }
 
   // Validate max attempts
   const maxAttempts = process.env.BLOOM_QUEUE_MAX_ATTEMPTS;
   if (maxAttempts && (isNaN(parseInt(maxAttempts)) || parseInt(maxAttempts) < 1 || parseInt(maxAttempts) > 10)) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_MAX_ATTEMPTS: "${maxAttempts}". Must be number between 1 and 10. See: ${DOCS_URL}#environment-variables`);
+    throw new QueueError(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_MAX_ATTEMPTS: "${maxAttempts}". Must be number between 1 and 10. See: ${DOCS_URL}#environment-variables`, { code: 'QUEUE_INVALID_CONFIG' });
   }
 
   // Validate retry backoff
   const backoff = process.env.BLOOM_QUEUE_RETRY_BACKOFF;
   if (backoff && !['fixed', 'exponential'].includes(backoff)) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_RETRY_BACKOFF: "${backoff}". Must be: fixed, exponential. See: ${DOCS_URL}#environment-variables`);
+    throw new QueueError(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_RETRY_BACKOFF: "${backoff}". Must be: fixed, exponential. See: ${DOCS_URL}#environment-variables`, { code: 'QUEUE_INVALID_CONFIG' });
   }
 
   // Validate transport selection
@@ -196,7 +198,7 @@ export function validateEnvironment(): void {
     const hint = transport.toLowerCase() === 'redis'
       ? ' The Redis queue transport was removed in 6.0; use "database" (Postgres) for a durable queue.'
       : '';
-    throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_TRANSPORT: "${transport}". Must be: memory, database.${hint} See: ${DOCS_URL}#environment-variables`);
+    throw new QueueError(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_TRANSPORT: "${transport}". Must be: memory, database.${hint} See: ${DOCS_URL}#environment-variables`, { code: 'QUEUE_INVALID_CONFIG' });
   }
 
   // Validate ONLY the URL this queue will actually use. DATABASE_URL is shared
@@ -206,13 +208,13 @@ export function validateEnvironment(): void {
 
   const dbUrl = process.env.DATABASE_URL;
   if (resolvedTransport === 'database' && dbUrl && !isValidDatabaseUrl(dbUrl)) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid DATABASE_URL: "${dbUrl}". Must be valid database connection string. See: ${DOCS_URL}#environment-variables`);
+    throw new QueueError(`[@bloomneo/appkit/queue] Invalid DATABASE_URL: "${dbUrl}". Must be valid database connection string. See: ${DOCS_URL}#environment-variables`, { code: 'QUEUE_INVALID_CONFIG' });
   }
 
   // Validate worker setting
   const worker = process.env.BLOOM_QUEUE_WORKER;
   if (worker && !['true', 'false'].includes(worker.toLowerCase())) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_WORKER: "${worker}". Must be: true, false. See: ${DOCS_URL}#environment-variables`);
+    throw new QueueError(`[@bloomneo/appkit/queue] Invalid BLOOM_QUEUE_WORKER: "${worker}". Must be: true, false. See: ${DOCS_URL}#environment-variables`, { code: 'QUEUE_INVALID_CONFIG' });
   }
   
   // Validate numeric values
@@ -231,7 +233,7 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
-    throw new Error(`[@bloomneo/appkit/queue] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`);
+    throw new QueueError(`[@bloomneo/appkit/queue] Invalid ${name}: "${value}". Must be number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`, { code: 'QUEUE_INVALID_CONFIG' });
   }
 }
 

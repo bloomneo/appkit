@@ -11,25 +11,10 @@
  */
 
 import { QueueClass } from './queue.js';
-import { AppKitError } from '../internal/errors.js';
+import { QueueError } from './errors.js';
 import { getSmartDefaults, type QueueConfig } from './defaults.js';
 
-/**
- * Thrown by queue operations (invalid job type, serialization errors, handler
- * timeout, transport failures). `instanceof AppKitError` also true.
- */
-export class QueueError extends AppKitError {
-  readonly code: string;
-  constructor(message: string, options?: { code?: string; cause?: unknown }) {
-    super(message, {
-      module: 'queue',
-      code: options?.code ?? 'QUEUE_ERROR',
-      cause: options?.cause,
-    });
-    this.name = 'QueueError';
-    this.code = options?.code ?? 'QUEUE_ERROR';
-  }
-}
+export { QueueError } from './errors.js';
 
 // Global queuing instance for performance (like auth module)
 let globalQueuing: QueueClass | null = null;

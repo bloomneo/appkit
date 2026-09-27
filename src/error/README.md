@@ -388,6 +388,16 @@ BLOOM_ERROR_STACK=true           # Show stack traces for debugging
 BLOOM_ERROR_LOG=true             # Enable error logging
 ```
 
+### **What `handleErrors()` sends**
+
+- An error with a `statusCode` (`AppError` from `error.badRequest()` etc.,
+  `SecurityError` from the rate limiter) keeps its status, type and message.
+- Anything else — an appkit configuration/misuse error (`ConfigError`,
+  `QueueError`, … every one is an `AppKitError`) or an unexpected `Error` —
+  is a 500 `SERVER_ERROR`. In production its message is replaced by
+  `messages.serverError`, so env var names and driver errors never reach the
+  client; outside production the message and the appkit `code` are included.
+
 ### **Framework-Specific Setup**
 
 #### **Express Production Setup**

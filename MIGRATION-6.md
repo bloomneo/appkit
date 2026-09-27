@@ -41,4 +41,29 @@ Nothing below was used by any of the four production apps (counted
 
 ## Changed
 
-_None yet._
+### Every appkit error is an `AppKitError`
+
+In 5.x some modules threw typed errors and others threw plain `Error`, so
+apps wrapped appkit in their api-router with duck-typing (`err.message
+.startsWith('[@bloomneo/appkit/')`, checking `err.statusCode` / `err.code`
+by hand). In 6.0 every module throws an `AppKitError` subclass with
+`module` and a stable `code`; message text is unchanged.
+
+**Delete the duck-typing.** Either let `error.handleErrors()` handle it, or:
+
+```ts
+import { AppKitError, AppError } from '@bloomneo/appkit';
+
+if (err instanceof AppError) { /* HTTP error: err.statusCode, err.type */ }
+else if (err instanceof AppKitError) { /* appkit misuse/config: err.module, err.code → 500 */ }
+```
+
+New classes: `AuthError` (`@bloomneo/appkit/auth`), `ConfigError`
+(`/config`), `VerifyError` (`/verify`). Token verification still throws
+`TokenError`. Codes per module are listed in `llms.txt` → "Error Types".
+
+`error.handleErrors()` keeps `AppError` / `SecurityError` statuses and
+messages as before. Any other error becomes a 500, and **in production its
+message is replaced** by the generic server-error message (`Server error`).
+If a client depended on seeing a raw internal message in production, throw
+an `AppError` (`error.badRequest(...)`, `error.serverError(...)`) instead.

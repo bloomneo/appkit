@@ -12,6 +12,7 @@ import database  from '../../database/index.js'; // Leverage existing Prisma cli
 import type { Transport } from '../queue.js';
 import type { QueueConfig } from '../defaults.js';
 import type { JobData, JobOptions, JobHandler, QueueStats, JobInfo, JobStatus } from '../index.js';
+import { QueueError } from '../errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 
@@ -102,7 +103,7 @@ export class DatabaseTransport implements Transport {
         },
       });
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/queue] Failed to add job to database: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`);
+      throw new QueueError(`[@bloomneo/appkit/queue] Failed to add job to database: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_ADD_FAILED', cause: error });
     }
   }
 
@@ -138,7 +139,7 @@ export class DatabaseTransport implements Transport {
         },
       });
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/queue] Failed to schedule job in database: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`);
+      throw new QueueError(`[@bloomneo/appkit/queue] Failed to schedule job in database: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_SCHEDULE_FAILED', cause: error });
     }
   }
 
@@ -203,7 +204,7 @@ export class DatabaseTransport implements Transport {
       };
       
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/queue] Failed to get database stats: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`);
+      throw new QueueError(`[@bloomneo/appkit/queue] Failed to get database stats: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_STATS_FAILED', cause: error });
     }
   }
 
@@ -231,7 +232,7 @@ export class DatabaseTransport implements Transport {
         return jobs.map((job: any) => this.dbJobToInfo(job));
         
     } catch (error) {
-        throw new Error(`[@bloomneo/appkit/queue] Failed to get database jobs: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`);
+        throw new QueueError(`[@bloomneo/appkit/queue] Failed to get database jobs: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_JOBS_FAILED', cause: error });
     }
     }
 
@@ -247,11 +248,11 @@ export class DatabaseTransport implements Transport {
       });
 
       if (!job) {
-        throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
+        throw new QueueError(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`, { code: 'QUEUE_JOB_NOT_FOUND' });
       }
 
       if (job.status !== 'failed') {
-        throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} is not in failed state. See: ${DOCS_URL}#managing-jobs`);
+        throw new QueueError(`[@bloomneo/appkit/queue] Job ${jobId} is not in failed state. See: ${DOCS_URL}#managing-jobs`, { code: 'QUEUE_INVALID_JOB_STATE' });
       }
 
       // Reset job for retry
@@ -267,7 +268,7 @@ export class DatabaseTransport implements Transport {
       });
       
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/queue] Failed to retry database job: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`);
+      throw new QueueError(`[@bloomneo/appkit/queue] Failed to retry database job: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_RETRY_FAILED', cause: error });
     }
   }
 
@@ -283,11 +284,11 @@ export class DatabaseTransport implements Transport {
       });
 
       if (!job) {
-        throw new Error(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`);
+        throw new QueueError(`[@bloomneo/appkit/queue] Job ${jobId} not found. See: ${DOCS_URL}#managing-jobs`, { code: 'QUEUE_JOB_NOT_FOUND' });
       }
 
       if (job.status === 'processing') {
-        throw new Error(`[@bloomneo/appkit/queue] Cannot remove active job ${jobId}. See: ${DOCS_URL}#managing-jobs`);
+        throw new QueueError(`[@bloomneo/appkit/queue] Cannot remove active job ${jobId}. See: ${DOCS_URL}#managing-jobs`, { code: 'QUEUE_INVALID_JOB_STATE' });
       }
 
       await this.db.queueJob.delete({
@@ -295,7 +296,7 @@ export class DatabaseTransport implements Transport {
       });
       
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/queue] Failed to remove database job: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`);
+      throw new QueueError(`[@bloomneo/appkit/queue] Failed to remove database job: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_REMOVE_FAILED', cause: error });
     }
   }
 
@@ -331,7 +332,7 @@ export class DatabaseTransport implements Transport {
       });
       
     } catch (error) {
-      throw new Error(`[@bloomneo/appkit/queue] Failed to clean database jobs: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`);
+      throw new QueueError(`[@bloomneo/appkit/queue] Failed to clean database jobs: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_CLEAN_FAILED', cause: error });
     }
   }
 
@@ -623,9 +624,10 @@ export class DatabaseTransport implements Transport {
     try {
       await this.db.queueJob.count();
     } catch (error) {
-      throw new Error(
+      throw new QueueError(
         `[@bloomneo/appkit/queue] QueueJob table not found. Please ensure the queue_jobs table exists in your database schema. ` +
-        `Add the QueueJob model to your Prisma schema and run migrations. See: ${DOCS_URL}#database-transport`
+        `Add the QueueJob model to your Prisma schema and run migrations. See: ${DOCS_URL}#database-transport`,
+        { code: 'QUEUE_TABLE_MISSING' }
       );
     }
   }

@@ -8,6 +8,8 @@
  * @llm-rule NOTE: Called once at startup, cached globally for performance
  */
 
+import { CacheError } from './errors.js';
+
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/cache/README.md';
 
 export interface RedisConfig {
@@ -134,16 +136,18 @@ function validateEnvironment(): void {
   // Validate Redis URL if provided
   const redisUrl = process.env.REDIS_URL;
   if (detectCacheStrategy() === 'redis' && redisUrl && !isValidRedisUrl(redisUrl)) {
-    throw new Error(
-      `[@bloomneo/appkit/cache] Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://. See: ${DOCS_URL}#environment-variables`
+    throw new CacheError(
+      `[@bloomneo/appkit/cache] Invalid REDIS_URL: "${redisUrl}". Must start with redis:// or rediss://. See: ${DOCS_URL}#environment-variables`,
+      { code: 'CACHE_INVALID_CONFIG' }
     );
   }
 
   // Validate cache strategy if explicitly set
   const strategy = process.env.BLOOM_CACHE_STRATEGY;
   if (strategy && !['redis', 'memory'].includes(strategy.toLowerCase())) {
-    throw new Error(
-      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_STRATEGY: "${strategy}". Must be "redis" or "memory". See: ${DOCS_URL}#environment-variables`
+    throw new CacheError(
+      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_STRATEGY: "${strategy}". Must be "redis" or "memory". See: ${DOCS_URL}#environment-variables`,
+      { code: 'CACHE_INVALID_CONFIG' }
     );
   }
 
@@ -160,16 +164,18 @@ function validateEnvironment(): void {
   // Validate key prefix
   const keyPrefix = process.env.BLOOM_CACHE_PREFIX;
   if (keyPrefix && !/^[a-zA-Z0-9_-]+$/.test(keyPrefix)) {
-    throw new Error(
-      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`
+    throw new CacheError(
+      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_PREFIX: "${keyPrefix}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`,
+      { code: 'CACHE_INVALID_CONFIG' }
     );
   }
 
   // Validate namespace
   const namespace = process.env.BLOOM_CACHE_NAMESPACE;
   if (namespace && !/^[a-zA-Z0-9_-]+$/.test(namespace)) {
-    throw new Error(
-      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`
+    throw new CacheError(
+      `[@bloomneo/appkit/cache] Invalid BLOOM_CACHE_NAMESPACE: "${namespace}". Must contain only letters, numbers, underscores, and hyphens. See: ${DOCS_URL}#environment-variables`,
+      { code: 'CACHE_INVALID_CONFIG' }
     );
   }
 
@@ -215,8 +221,9 @@ function validateNumericEnv(name: string, min: number, max: number): void {
   
   const num = parseInt(value);
   if (isNaN(num) || num < min || num > max) {
-    throw new Error(
-      `[@bloomneo/appkit/cache] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`
+    throw new CacheError(
+      `[@bloomneo/appkit/cache] Invalid ${name}: "${value}". Must be a number between ${min} and ${max}. See: ${DOCS_URL}#environment-variables`,
+      { code: 'CACHE_INVALID_CONFIG' }
     );
   }
 }
