@@ -231,7 +231,7 @@ function disconnectAll(): void {
  * Rebuild configuration from the environment, dropping registered tools
  * @llm-rule WHEN: Testing MCP behaviour across different environment configurations
  * @llm-rule AVOID: Using in production - only for tests and development
- * @llm-rule NOTE: Same contract as cacheClass.reset() / eventClass.reset()
+ * @llm-rule NOTE: Same contract as cacheClass.reset() / queueClass.reset()
  */
 function reset(): Mcp {
   disconnectAll();

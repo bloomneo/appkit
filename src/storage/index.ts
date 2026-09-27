@@ -10,7 +10,7 @@
  */
 
 import { StorageClass } from './storage.js';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 import { getSmartDefaults, type StorageConfig } from './defaults.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/storage/README.md';

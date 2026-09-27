@@ -1,17 +1,17 @@
 /**
  * COOKBOOK — Authenticated file upload → background processing pipeline.
  *
- * Modules:    auth + security + storage + queue + event + error + logger
+ * Modules:    auth + security + storage + queue + error + logger
  * Required:   BLOOM_AUTH_SECRET
  * Optional:   AWS_S3_BUCKET | R2_BUCKET (else local disk),
- *             REDIS_URL (else in-process queue + events)
+ *             BLOOM_QUEUE_DB (else in-process queue)
  *
  * Flow:
  *   1. POST /upload → rate-limit (security.requests) → auth required
  *   2. storage.upload() persists the file and returns { key, url }.
  *   3. queue.add('process-upload', …) enqueues a worker job.
- *   4. Worker downloads, processes, and emits 'upload.processed'.
- *   5. Consumers of events.on('upload.processed') react (notify, index, …).
+ *   4. Worker downloads, processes, and enqueues 'upload.processed'.
+ *   5. A second worker reacts to it (notify, index, …).
  */
 
 import { Router } from 'express';
@@ -20,7 +20,6 @@ import {
   securityClass,
   storageClass,
   queueClass,
-  eventClass,
   errorClass,
   loggerClass,
 } from '@bloomneo/appkit';
@@ -28,7 +27,6 @@ import {
 const auth     = authClass.get();
 const security = securityClass.get();
 const logger   = loggerClass.get('uploads');
-const events   = eventClass.get('uploads');
 
 // ── HTTP endpoint ───────────────────────────────────────────────────
 const router = Router();
@@ -79,8 +77,8 @@ queueClass.get().process<UploadJob>('process-upload', async ({ key, userId, cont
   const processedKey = key.replace(/^uploads\//, 'processed/');
   await storage.put(processedKey, bytes, { contentType, cacheControl: 'public, max-age=31536000' });
 
-  // 3. Notify everyone listening — in-process or across Redis.
-  await events.emit('upload.processed', {
+  // 3. Hand off to whatever reacts to a processed upload.
+  await queueClass.get().add('upload.processed', {
     originalKey: key,
     processedKey,
     userId,
@@ -91,7 +89,7 @@ queueClass.get().process<UploadJob>('process-upload', async ({ key, userId, cont
 });
 
 // ── Downstream consumer (example) ───────────────────────────────────
-events.on('upload.processed', async (payload: any) => {
+queueClass.get().process('upload.processed', async (payload: any) => {
   logger.info('downstream consumer saw upload.processed', payload);
   // e.g. send email via emailClass, invalidate cache, write an audit record…
 });

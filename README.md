@@ -7,7 +7,7 @@
 
 > Minimal, framework-agnostic Node.js toolkit designed for AI agentic backend development.
 
-**14 integrated modules. One pattern. Zero config to start, enterprise scaling on demand.**
+**12 integrated modules. One pattern. Zero config to start, enterprise scaling on demand.**
 
 ```ts
 import { authClass, databaseClass, errorClass, loggerClass } from '@bloomneo/appkit';
@@ -44,9 +44,9 @@ Five locations at the package root tell agents everything they need to know:
 |---|---|
 | **[`AGENTS.md`](./AGENTS.md)** | Rules: always-do, never-do, canonical patterns. Read first. |
 | **[`llms.txt`](./llms.txt)** | Reference: every export, every method, signatures + examples. |
-| **[`examples/`](./examples)** | 14 minimal `.ts` files, one per module. Copy and modify. |
+| **[`examples/`](./examples)** | 12 minimal `.ts` files, one per module. Copy and modify. |
 | **[`cookbook/`](./cookbook)** | Composed recipes for whole patterns (CRUD, multi-tenant, file upload, real-time). |
-| **[`.claude/skills/`](./.claude/skills)** | Claude Code skills — one `appkit` overview + one per module (`appkit-auth`, `appkit-cache`, `appkit-config`, `appkit-database`, `appkit-email`, `appkit-error`, `appkit-event`, `appkit-logger`, `appkit-mcp`, `appkit-queue`, `appkit-security`, `appkit-storage`, `appkit-util`, `appkit-verify`). Auto-trigger when agents work on code that imports this package. Copy the directory into your own repo's `.claude/skills/` to activate. |
+| **[`.claude/skills/`](./.claude/skills)** | Claude Code skills — one `appkit` overview + one per module (`appkit-auth`, `appkit-cache`, `appkit-config`, `appkit-database`, `appkit-email`, `appkit-error`, `appkit-logger`, `appkit-mcp`, `appkit-queue`, `appkit-security`, `appkit-storage`, `appkit-verify`). Auto-trigger when agents work on code that imports this package. Copy the directory into your own repo's `.claude/skills/` to activate. |
 
 All of the above ship inside the npm tarball. AI agents installing `@bloomneo/appkit`
 can read them directly from `node_modules/@bloomneo/appkit/`.
@@ -137,19 +137,11 @@ npm install
 node server.mjs
 ```
 
-### As a complete scaffold (CLI)
+### As part of a full app
 
-```bash
-npm install -g @bloomneo/appkit
-appkit generate app myproject
-cd myproject && npm run dev:api
-```
-
-→ Production-ready Express API at `http://localhost:3000` with auth, database,
-logging, error handling all wired.
-
-For full-stack scaffolding (frontend + backend), use [`@bloomneo/bloom`](https://www.npmjs.com/package/@bloomneo/bloom)
-which assembles AppKit + UIKit + FBCA convention into one CLI.
+For a scaffolded project with appkit already wired in (and UIKit on the
+frontend), use [`@bloomneo/bloom`](https://www.npmjs.com/package/@bloomneo/bloom):
+`bloom create my-app`.
 
 ---
 
@@ -175,7 +167,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 
 ---
 
-## 🎭 The 14 modules
+## 🎭 The 12 modules
 
 | # | Module | Purpose | Auto-scales |
 |---|---|---|---|
@@ -187,12 +179,10 @@ const logger   = loggerClass.get('api');     // component-tagged
 | 6 | **Storage** | Local → S3/R2 | `AWS_S3_BUCKET` |
 | 7 | **Queue** | Memory → Redis → DB | `REDIS_URL` / `BLOOM_QUEUE_DB` |
 | 8 | **Email** | Console → SMTP → Resend | `RESEND_API_KEY` |
-| 9 | **Event** | Memory → Redis pub/sub | `REDIS_URL` |
-| 10 | **Logger** | Console → File → HTTP | `BLOOM_LOGGER_*` |
-| 11 | **Config** | Type-safe env var access | — |
-| 12 | **Util** | Safe property access, debounce, chunk, uuid, slugify | — |
-| 13 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery | optional peers |
-| 14 | **Verify** | Generates the cross-tenant attack matrix and fails CI on a leak | — |
+| 9 | **Logger** | Console → File → HTTP | `BLOOM_LOGGER_*` |
+| 10 | **Config** | Type-safe env var access | — |
+| 11 | **MCP** | Your app as an MCP server — OAuth 2.1 + FBCA tool discovery | optional peers |
+| 12 | **Verify** | Generates the cross-tenant attack matrix and fails CI on a leak | — |
 
 For full method signatures and per-module examples, read [`llms.txt`](./llms.txt).
 
@@ -220,42 +210,6 @@ See [`.env.example`](./.env.example) at the repo root for the full canonical tem
 
 ---
 
-## 🛠️ AppKit CLI
-
-Project generation:
-
-```bash
-appkit generate app myproject       # full backend scaffold (Express + auth + db + error + logger)
-```
-
-Feature generation:
-
-```bash
-appkit generate feature product     # basic feature (route + service + types)
-appkit generate feature order --db  # database-enabled feature (+ model + HTTP tests)
-appkit generate feature user        # complete authentication system (9-role hierarchy)
-```
-
-Generated project structure:
-
-```
-myproject/
-├── AGENTS.md                       # ← copied from @bloomneo/appkit at scaffold time
-├── llms.txt                        # ← copied from @bloomneo/appkit at scaffold time
-├── src/api/
-│   ├── server.ts                   # Express bootstrap
-│   ├── lib/api-router.ts           # auto-discovery routing
-│   └── features/
-│       ├── welcome/
-│       └── [your-features]/
-└── package.json
-
-# `.env` is created on demand — `generate feature user` (or any `--db` feature)
-# drops DATABASE_URL, BLOOM_AUTH_SECRET, and DEFAULT_USER_PASSWORD into it.
-```
-
----
-
 ## 🏗️ Migration
 
 **Current release: 6.0.0-alpha.0.** Pre-release; stable is 5.1.4. The full, canonical migration table lives in
@@ -273,8 +227,6 @@ cacheClass.shutdown(      → cacheClass.disconnectAll(
 queueClass.clear(         → queueClass.disconnectAll(
 emailClass.shutdown(      → emailClass.disconnectAll(
 emailClass.clear(         → emailClass.disconnectAll(
-eventClass.shutdown(      → eventClass.disconnectAll(
-eventClass.clear(         → eventClass.disconnectAll(
 storageClass.shutdown(    → storageClass.disconnectAll(
 storageClass.clear(       → storageClass.disconnectAll(
 loggerClass.clear(        → loggerClass.disconnectAll(

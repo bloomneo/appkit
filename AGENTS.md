@@ -7,7 +7,7 @@
 
 ## What this package is
 
-`@bloomneo/appkit` is a Node.js backend toolkit with **14 integrated modules**
+`@bloomneo/appkit` is a Node.js backend toolkit with **12 integrated modules**
 that share one canonical pattern: every module exports a `xxxClass` namespace
 object with a `.get()` factory. There is exactly one way to obtain each module
 and exactly one way to use it.
@@ -42,7 +42,7 @@ Both work. The subpath form is unusual for AppKit (most users want
 multiple modules in the same file) but it tree-shakes slightly better.
 **Don't mix the two styles in the same file.**
 
-## The 14 modules at a glance
+## The 12 modules at a glance
 
 | Module | Import | Purpose |
 |---|---|---|
@@ -54,10 +54,8 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | `storageClass` | `from '@bloomneo/appkit/storage'` | Local → S3/R2 auto-scaling |
 | `queueClass` | `from '@bloomneo/appkit/queue'` | Memory → Redis → DB scaling |
 | `emailClass` | `from '@bloomneo/appkit/email'` | Console → SMTP → Resend |
-| `eventClass` | `from '@bloomneo/appkit/event'` | Memory → Redis pub/sub |
 | `loggerClass` | `from '@bloomneo/appkit/logger'` | Multi-transport, auto-scaling |
 | `configClass` | `from '@bloomneo/appkit/config'` | Environment-driven config |
-| `utilClass` | `from '@bloomneo/appkit/util'` | Safe property access, debounce, chunk |
 | `mcpClass` | `from '@bloomneo/appkit/mcp'` | Your app as an MCP server for AI agents |
 | `verifyClass` | `from '@bloomneo/appkit/verify'` | Proves the app doesn't leak across tenants |
 
@@ -77,7 +75,6 @@ Every file path below ships inside the npm tarball at `node_modules/@bloomneo/ap
 | Query a tenant-aware database | [`examples/database.ts`](./examples/database.ts) |
 | Build a multi-tenant SaaS (auth + db + org scoping) | [`cookbook/multi-tenant-saas.ts`](./cookbook/multi-tenant-saas.ts) |
 | Upload + process files in the background | [`cookbook/file-upload-pipeline.ts`](./cookbook/file-upload-pipeline.ts) |
-| Real-time pub/sub across processes | [`cookbook/real-time-chat.ts`](./cookbook/real-time-chat.ts) |
 | Send email (dev → SMTP → Resend) | [`examples/email.ts`](./examples/email.ts) |
 | Cache DB queries (memory → Redis) | [`examples/cache.ts`](./examples/cache.ts) |
 | Background jobs with retries | [`examples/queue.ts`](./examples/queue.ts) |
@@ -85,7 +82,6 @@ Every file path below ships inside the npm tarball at `node_modules/@bloomneo/ap
 | Type-safe env vars | [`examples/config.ts`](./examples/config.ts) |
 | Rate limit / CSRF / crypto / sanitize | [`examples/security.ts`](./examples/security.ts) |
 | Error-handling middleware | [`examples/error.ts`](./examples/error.ts) |
-| Small helpers (uuid, chunk, debounce, slugify) | [`examples/util.ts`](./examples/util.ts) |
 
 ## Environment variables
 
@@ -239,22 +235,10 @@ app.use(error.handleErrors());
   alone. Never chain `requireUserRoles` after `requireApiToken` — API tokens
   don't have user roles.
 
-## CLI
+## Scaffolding
 
-`@bloomneo/appkit` ships a CLI for scaffolding backend projects:
-
-```bash
-appkit generate app myproject       # full backend scaffold
-cd myproject && npm run dev:api     # → http://localhost:3000
-
-appkit generate feature product      # basic feature (route + service + types)
-appkit generate feature order --db   # database-enabled feature
-appkit generate feature user         # full auth system with 9-role hierarchy
-```
-
-For a downstream consumer building with `@bloomneo/bloom`, the bloom CLI
-handles scaffolding instead — appkit's CLI is for users who only want the
-backend, no frontend.
+appkit has no CLI. To start a project, use `bloom create <name>` from
+`@bloomneo/bloom`, which scaffolds the backend with appkit already wired.
 
 ## Migration notes
 

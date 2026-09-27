@@ -10,7 +10,7 @@
  */
 
 import { LoggerClass } from './logger.js';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 import { getSmartDefaults } from './defaults.js';
 
 // Global logger instances for performance (like auth module)

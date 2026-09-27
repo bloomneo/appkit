@@ -6,9 +6,6 @@
   "type": "module",
   "types": "./dist/index.d.ts",
   "sideEffects": false,
-  "bin": {
-    "appkit": "bin/appkit.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -38,10 +35,6 @@
       "types": "./dist/email/index.d.ts",
       "default": "./dist/email/index.js"
     },
-    "./event": {
-      "types": "./dist/event/index.d.ts",
-      "default": "./dist/event/index.js"
-    },
     "./error": {
       "types": "./dist/error/index.d.ts",
       "default": "./dist/error/index.js"
@@ -58,10 +51,6 @@
       "types": "./dist/storage/index.d.ts",
       "default": "./dist/storage/index.js"
     },
-    "./util": {
-      "types": "./dist/util/index.d.ts",
-      "default": "./dist/util/index.js"
-    },
     "./mcp": {
       "types": "./dist/mcp/index.d.ts",
       "default": "./dist/mcp/index.js"
@@ -73,7 +62,6 @@
   },
   "files": [
     "dist/",
-    "bin/",
     "examples/",
     "cookbook/",
     ".claude/skills/",
@@ -83,13 +71,11 @@
     "src/database/README.md",
     "src/email/README.md",
     "src/error/README.md",
-    "src/event/README.md",
     "src/logger/README.md",
     "src/mcp/README.md",
     "src/queue/README.md",
     "src/security/README.md",
     "src/storage/README.md",
-    "src/util/README.md",
     "README.md",
     "AGENTS.md",
     "llms.txt",
@@ -105,7 +91,7 @@
     "lint": "eslint src/",
     "format": "prettier --write 'src/**/*.js'",
     "prisma:generate": "prisma generate",
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "check:docs": "npx tsx scripts/check-doc-drift.ts",
     "check:anchors": "npx tsx scripts/check-readme-anchors.ts",
     "prepublishOnly": "npm run build && npm run test",
@@ -170,7 +156,6 @@
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "bcrypt": "^5.1.1",
-    "commander": "^12.1.0",
     "dotenv": "^16.6.1",
     "ioredis": "^5.6.1",
     "jsonwebtoken": "^9.0.2",

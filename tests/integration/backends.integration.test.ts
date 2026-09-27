@@ -116,31 +116,6 @@ describe.skipIf(!REDIS)('queue: Redis transport is real', () => {
 });
 if (!REDIS) announce('queue→Redis', 'APPKIT_TEST_REDIS_URL');
 
-/* ────────────────────────────── Event → Redis ────────────────────────────── */
-
-describe.skipIf(!REDIS)('event: Redis pub/sub is real', () => {
-  afterAll(async () => {
-    const { eventClass } = await import('../../src/event/index.js');
-    await eventClass.disconnectAll();
-  });
-
-  it('delivers an event across two namespaces via Redis', async () => {
-    process.env.REDIS_URL = REDIS;
-    const { eventClass } = await import('../../src/event/index.js');
-    const events = eventClass.get('integration');
-
-    expect(eventClass.getStrategy()).toBe('redis');
-
-    const received: unknown[] = [];
-    events.on('ping', (data) => { received.push(data); });
-    await events.emit('ping', { n: 1 });
-
-    await new Promise((r) => setTimeout(r, 500));
-    expect(received).toContainEqual({ n: 1 });
-  });
-});
-if (!REDIS) announce('event→Redis', 'APPKIT_TEST_REDIS_URL');
-
 /* ──────────────────────── Database → Postgres + SQLite ───────────────────── */
 
 describe.skipIf(!POSTGRES)('database: Postgres is real', () => {

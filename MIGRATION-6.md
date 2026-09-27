@@ -16,7 +16,14 @@ each is designed to be used with 6.0.0 of the others.
 
 ## Removed
 
-_None yet._
+Nothing below was used by any of the four production apps (counted
+2026-09-26). Each removal is also banned by the drift check.
+
+| Removed | Use instead |
+|---|---|
+| `eventClass` (`@bloomneo/appkit/event`), `EventError` | `queueClass` jobs for async work; Redis pub/sub directly if you need fan-out |
+| `utilClass` (`@bloomneo/appkit/util`) | Node built-ins (`crypto.randomUUID()`, `structuredClone`, optional chaining) or a small local helper |
+| The `appkit` CLI (`appkit generate app / feature`) | `bloom create <name>` scaffolds a project; add features by creating files |
 
 ## Changed
 

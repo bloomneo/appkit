@@ -31,12 +31,10 @@ import configDefault, { configClass, ConfigClass }   from '../src/config/index.j
 import databaseDefault, { databaseClass }            from '../src/database/index.js';
 import emailDefault, { emailClass, EmailClass }      from '../src/email/index.js';
 import errorDefault, { errorClass, ErrorClass }      from '../src/error/index.js';
-import eventDefault, { eventClass, EventClass }      from '../src/event/index.js';
 import loggerDefault, { loggerClass, LoggerClass }   from '../src/logger/index.js';
 import queueDefault, { queueClass, QueueClass }      from '../src/queue/index.js';
 import securityDefault, { securityClass, SecurityClass } from '../src/security/index.js';
 import storageDefault, { storageClass, StorageClass } from '../src/storage/index.js';
-import utilDefault, { utilClass, UtilClass }         from '../src/util/index.js';
 
 /**
  * Every public class constant the flat `@bloomneo/appkit` entry must export.
@@ -50,13 +48,11 @@ const EXPECTED_FLAT_EXPORTS = [
   'databaseClass',
   'emailClass',
   'errorClass',
-  'eventClass',
   'loggerClass',
   'mcpClass',
   'queueClass',
   'securityClass',
   'storageClass',
-  'utilClass',
   'verifyClass',
 ] as const;
 
@@ -93,12 +89,10 @@ describe('Deep entries — every xxxClass.get is a function', () => {
     ['databaseClass', databaseClass],
     ['emailClass',    emailClass],
     ['errorClass',    errorClass],
-    ['eventClass',    eventClass],
     ['loggerClass',   loggerClass],
     ['queueClass',    queueClass],
     ['securityClass', securityClass],
     ['storageClass',  storageClass],
-    ['utilClass',     utilClass],
   ] as const;
 
   for (const [name, obj] of deepEntries) {
@@ -121,12 +115,10 @@ describe('Flat entry matches deep entries (no drift)', () => {
     ['databaseClass', databaseClass],
     ['emailClass',    emailClass],
     ['errorClass',    errorClass],
-    ['eventClass',    eventClass],
     ['loggerClass',   loggerClass],
     ['queueClass',    queueClass],
     ['securityClass', securityClass],
     ['storageClass',  storageClass],
-    ['utilClass',     utilClass],
   ])('%s from flat entry === from deep entry', (name, deep) => {
     expect((root as any)[name]).toBe(deep);
   });
@@ -143,12 +135,10 @@ describe('Default exports — every module ships the singleton, not the class', 
   it('database default === databaseClass', () => expect(databaseDefault).toBe(databaseClass));
   it('email default === emailClass',       () => expect(emailDefault).toBe(emailClass));
   it('error default === errorClass',       () => expect(errorDefault).toBe(errorClass));
-  it('event default === eventClass',       () => expect(eventDefault).toBe(eventClass));
   it('logger default === loggerClass',     () => expect(loggerDefault).toBe(loggerClass));
   it('queue default === queueClass',       () => expect(queueDefault).toBe(queueClass));
   it('security default === securityClass', () => expect(securityDefault).toBe(securityClass));
   it('storage default === storageClass',   () => expect(storageDefault).toBe(storageClass));
-  it('util default === utilClass',         () => expect(utilDefault).toBe(utilClass));
 });
 
 describe('Class re-exports — available for advanced consumers', () => {
@@ -169,22 +159,19 @@ describe('Class re-exports — available for advanced consumers', () => {
   it('config re-exports ConfigClass',       () => expect(typeof ConfigClass).toBe('function'));
   it('email re-exports EmailClass',         () => expect(typeof EmailClass).toBe('function'));
   it('error re-exports ErrorClass',         () => expect(typeof ErrorClass).toBe('function'));
-  it('event re-exports EventClass',         () => expect(typeof EventClass).toBe('function'));
   it('logger re-exports LoggerClass',       () => expect(typeof LoggerClass).toBe('function'));
   it('queue re-exports QueueClass',         () => expect(typeof QueueClass).toBe('function'));
   it('security re-exports SecurityClass',   () => expect(typeof SecurityClass).toBe('function'));
   it('storage re-exports StorageClass',     () => expect(typeof StorageClass).toBe('function'));
-  it('util re-exports UtilClass',           () => expect(typeof UtilClass).toBe('function'));
 });
 
 describe('Teardown verb — one name across every stateful module', () => {
   // 4.0.0 committed to `disconnectAll()` as the canonical teardown call on
   // every module that owns resources. Stateless modules (auth, config, error,
-  // security, util) don't have one because they have nothing to close.
+  // security) don't have one because they have nothing to close.
   it('cache.disconnectAll is a function',    () => expect(typeof (cacheClass as any).disconnectAll).toBe('function'));
   it('database.disconnectAll is a function', () => expect(typeof (databaseClass as any).disconnectAll).toBe('function'));
   it('email.disconnectAll is a function',    () => expect(typeof (emailClass as any).disconnectAll).toBe('function'));
-  it('event.disconnectAll is a function',    () => expect(typeof (eventClass as any).disconnectAll).toBe('function'));
   it('logger.disconnectAll is a function',   () => expect(typeof (loggerClass as any).disconnectAll).toBe('function'));
   it('queue.disconnectAll is a function',    () => expect(typeof (queueClass as any).disconnectAll).toBe('function'));
   it('storage.disconnectAll is a function',  () => expect(typeof (storageClass as any).disconnectAll).toBe('function'));
@@ -193,7 +180,7 @@ describe('Teardown verb — one name across every stateful module', () => {
   // Drift-check also catches this in src/, but keeping a runtime assertion
   // here makes the expectation explicit.
   it('no xxxClass exposes both clear and disconnectAll', () => {
-    for (const cls of [cacheClass, emailClass, eventClass, loggerClass, queueClass, storageClass]) {
+    for (const cls of [cacheClass, emailClass, loggerClass, queueClass, storageClass]) {
       const hasBoth = typeof (cls as any).clear === 'function'
         && typeof (cls as any).disconnectAll === 'function';
       expect(hasBoth, `${(cls as any).get?.name ?? 'unknown'} has both clear + disconnectAll`).toBe(false);
@@ -201,7 +188,7 @@ describe('Teardown verb — one name across every stateful module', () => {
   });
 
   it('no xxxClass exposes shutdown at class level', () => {
-    for (const cls of [cacheClass, emailClass, eventClass, loggerClass, queueClass, storageClass, databaseClass]) {
+    for (const cls of [cacheClass, emailClass, loggerClass, queueClass, storageClass, databaseClass]) {
       expect(typeof (cls as any).shutdown).not.toBe('function');
     }
   });
@@ -228,7 +215,6 @@ describe('AppKitError — unified error base across every typed error', () => {
     ['SecurityError', () => import('../src/index.js').then(m => new m.SecurityError('x', 400))],
     ['DatabaseError', () => import('../src/index.js').then(m => new m.DatabaseError('x'))],
     ['EmailError',    () => import('../src/index.js').then(m => new m.EmailError('x'))],
-    ['EventError',    () => import('../src/index.js').then(m => new m.EventError('x'))],
     ['QueueError',    () => import('../src/index.js').then(m => new m.QueueError('x'))],
     ['LoggerError',   () => import('../src/index.js').then(m => new m.LoggerError('x'))],
     ['StorageError',  () => import('../src/index.js').then(m => new m.StorageError('x'))],

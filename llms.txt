@@ -24,10 +24,8 @@ import {
   storageClass,
   queueClass,
   emailClass,
-  eventClass,
   configClass,
   securityClass,
-  utilClass,
   mcpClass,
   verifyClass,
 } from '@bloomneo/appkit';
@@ -497,56 +495,7 @@ await email.sendBatch(emails: EmailData[], batchSize?: number)
 
 ---
 
-## Module 9 — Event (`@bloomneo/appkit/event`)
-
-Memory → Redis pub/sub for distributed events. Wildcard pattern matching.
-
-### Methods
-
-```ts
-const events = eventClass.get();              // default namespace
-const userEvents = eventClass.get('users');   // namespace isolation
-
-events.on(eventName: string, handler: (data) => void | Promise<void>)
-events.on('user.*', handler)                  // wildcard
-await events.emit(eventName: string, data: any)
-events.off(eventName, handler)
-```
-
-Set `REDIS_URL` to distribute events across processes/servers.
-
----
-
-## Module 10 — Util (`@bloomneo/appkit/util`)
-
-12 small zero-dependency helpers for common Node.js tasks.
-
-### Methods
-
-```ts
-const util = utilClass.get();
-
-util.get(obj, 'a.b.c.d', defaultValue)     // safe deep property access (read-only)
-// NOTE: there is no util.set() — use plain assignment for mutation.
-util.pick(obj, ['a', 'b', 'c'])             // subset (keep listed keys)
-// NOTE: there is no util.omit() — use util.pick() with the keys you want to keep.
-util.isEmpty(value: any): boolean           // true for null, undefined, '', [], {}
-util.chunk(array, size)                     // split into batches
-util.unique(array): any[]                   // deduplicate
-util.clamp(value, min, max): number         // clamp(150, 0, 100) → 100
-util.debounce(fn, ms)
-// NOTE: there is no util.throttle() — only debounce.
-util.sleep(ms): Promise<void>
-util.uuid(): string                         // v4 UUID
-util.slugify(text, opts?)                   // url-safe slug
-util.formatBytes(bytes): string             // "1.5 MB"
-util.truncate(text, maxLength): string      // truncate with ellipsis
-// NOTE: there is no util.retry() — implement retry with a loop or a dedicated library.
-```
-
----
-
-## Module 11 — Config (`@bloomneo/appkit/config`)
+## Module 9 — Config (`@bloomneo/appkit/config`)
 
 Type-safe environment variable access with validation.
 
@@ -579,7 +528,7 @@ the `BLOOM_*` prefix.
 
 ---
 
-## Module 12 — Logger (`@bloomneo/appkit/logger`)
+## Module 10 — Logger (`@bloomneo/appkit/logger`)
 
 Multi-transport structured logging. Console → File → HTTP auto-scaling.
 
@@ -601,7 +550,7 @@ logger.fatal(message: string, meta?)
 
 ---
 
-## Module 13 — MCP (`@bloomneo/appkit/mcp`)
+## Module 11 — MCP (`@bloomneo/appkit/mcp`)
 
 Turns the app into an MCP server — a claude.ai custom connector or Claude
 Desktop tool source. Ships the OAuth 2.1 authorization server the connector
@@ -692,7 +641,7 @@ explicitly inside the tool.
 
 ---
 
-## Module 14 — Verify (`@bloomneo/appkit/verify`)
+## Module 12 — Verify (`@bloomneo/appkit/verify`)
 
 Proves a multi-tenant app doesn't leak across tenants by generating the
 cross-tenant attack matrix from the app itself. Drives a RUNNING server.
@@ -780,10 +729,8 @@ import { cacheClass } from '@bloomneo/appkit/cache';
 import { storageClass } from '@bloomneo/appkit/storage';
 import { queueClass } from '@bloomneo/appkit/queue';
 import { emailClass } from '@bloomneo/appkit/email';
-import { eventClass } from '@bloomneo/appkit/event';
 import { loggerClass } from '@bloomneo/appkit/logger';
 import { configClass } from '@bloomneo/appkit/config';
-import { utilClass } from '@bloomneo/appkit/util';
 ```
 
 The flat `from '@bloomneo/appkit'` import is preferred when multiple
@@ -815,7 +762,6 @@ try { ... } catch (err) {
 | database | `DatabaseError` | `DATABASE_MISSING_URL` / `DATABASE_ERROR` | Set `DATABASE_URL` |
 | email | `EmailError` | `EMAIL_PROD_NO_PROVIDER` / `EMAIL_ERROR` | Set `RESEND_API_KEY` or `SMTP_HOST` in production |
 | error | `AppError` | HTTP type string (`BAD_REQUEST`, `NOT_FOUND`, etc.) | Handled by `error.handleErrors()` middleware automatically |
-| event | `EventError` | `EVENT_ERROR` | Fix serialization / handler shape |
 | logger | `LoggerError` | `LOGGER_ERROR` | Check transport config |
 | queue | `QueueError` | `QUEUE_ERROR` / `QUEUE_HANDLER_TIMEOUT` | Investigate handler; override `{ timeout }` on `process()` if intentional |
 | security | `SecurityError` | `SECURITY_MISSING_CONFIG` / `SECURITY_400` / `SECURITY_403` | Set required env; reject invalid input |
@@ -841,8 +787,6 @@ cacheClass.shutdown(      → cacheClass.disconnectAll(
 queueClass.clear(         → queueClass.disconnectAll(
 emailClass.shutdown(      → emailClass.disconnectAll(
 emailClass.clear(         → emailClass.disconnectAll(
-eventClass.shutdown(      → eventClass.disconnectAll(
-eventClass.clear(         → eventClass.disconnectAll(
 storageClass.shutdown(    → storageClass.disconnectAll(
 storageClass.clear(       → storageClass.disconnectAll(
 loggerClass.clear(        → loggerClass.disconnectAll(
@@ -877,17 +821,10 @@ Removed (never actually existed — docs were wrong): `auth.requireLogin()`,
 
 ---
 
-## CLI
+## Scaffolding
 
-```bash
-npm install -g @bloomneo/appkit
-appkit generate app myproject              # full backend scaffold
-appkit generate feature product            # basic feature
-appkit generate feature order --db         # database-enabled feature
-appkit generate feature user               # full auth system
-```
-
-For frontend + backend together, use `@bloomneo/bloom` which scaffolds both.
+appkit has no CLI (removed in 6.0). Use `bloom create <name>` from
+`@bloomneo/bloom` to scaffold a project with appkit wired in.
 
 ---
 

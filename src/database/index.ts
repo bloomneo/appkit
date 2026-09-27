@@ -13,7 +13,7 @@
 
 import { PrismaAdapter } from './adapters/prisma.js';
 import { MongooseAdapter } from './adapters/mongoose.js';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
 

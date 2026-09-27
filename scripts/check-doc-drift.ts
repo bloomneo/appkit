@@ -38,16 +38,18 @@ const BANNED: Banned[] = [
   // queue — 2.0.1 align with cache teardown naming
   { pattern: /\bqueueClass\.clear\s*\(/,    now: 'queueClass.disconnectAll()' },
 
-  // email / event / storage — 3.0.2 unify teardown verb across all 12 modules
+  // email / storage — 3.0.2 unify teardown verb across all modules
   { pattern: /\bemailClass\.shutdown\s*\(/,   now: 'emailClass.disconnectAll()' },
-  { pattern: /\beventClass\.shutdown\s*\(/,   now: 'eventClass.disconnectAll()' },
   { pattern: /\bstorageClass\.shutdown\s*\(/, now: 'storageClass.disconnectAll()' },
 
-  // email / event / storage / logger — 4.0.0 removes redundant class-level clear()
+  // email / storage / logger — 4.0.0 removes redundant class-level clear()
   { pattern: /\bemailClass\.clear\s*\(/,   now: 'emailClass.disconnectAll()' },
-  { pattern: /\beventClass\.clear\s*\(/,   now: 'eventClass.disconnectAll()' },
   { pattern: /\bstorageClass\.clear\s*\(/, now: 'storageClass.disconnectAll()' },
   { pattern: /\bloggerClass\.clear\s*\(/,  now: 'loggerClass.disconnectAll()' },
+
+  // 6.0.0 — removed modules. No app used them; see MIGRATION-6.md.
+  { pattern: /\beventClass\b|@bloomneo\/appkit\/event\b/, now: 'removed in 6.0 — use queueClass jobs for async work (MIGRATION-6.md)' },
+  { pattern: /\butilClass\b|@bloomneo\/appkit\/util\b/,   now: 'removed in 6.0 — use Node built-ins, e.g. crypto.randomUUID() (MIGRATION-6.md)' },
 
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },
@@ -75,23 +77,6 @@ function addTsDir(rel: string) {
 addTsDir('examples');
 addTsDir('cookbook');
 
-// Walk bin/templates for .template and .js/.ts files — scaffolded code
-// ships to every downstream consumer, so drift here is especially bad.
-function addTemplateDir(rel: string) {
-  const abs = join(ROOT, rel);
-  let entries: string[];
-  try { entries = readdirSync(abs); } catch { return; }
-  for (const f of entries) {
-    const full = join(rel, f);
-    const fullAbs = join(ROOT, full);
-    if (statSync(fullAbs).isDirectory()) {
-      addTemplateDir(full);
-    } else if (/\.(template|ts|js|md)$/.test(f)) {
-      SCAN.push(full);
-    }
-  }
-}
-addTemplateDir('bin');
 
 for (const mod of readdirSync(join(ROOT, 'src'))) {
   const sub = join('src', mod);

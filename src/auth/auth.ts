@@ -11,7 +11,7 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 import {
   validateRounds,
   validateRoleLevel,

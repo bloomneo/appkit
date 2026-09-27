@@ -10,7 +10,7 @@
  */
 
 import { EmailClass } from './email.js';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 import {
   getSmartDefaults,
   validateProductionRequirements,

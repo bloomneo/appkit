@@ -10,7 +10,7 @@
 
 import { RedisStrategy } from './strategies/redis.js';
 import { MemoryStrategy } from './strategies/memory.js';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 import type { CacheConfig } from './defaults.js';
 
 /**

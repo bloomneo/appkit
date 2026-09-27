@@ -13,7 +13,6 @@ For single-module tours, see [`examples/`](../examples/README.md) first.
 | `auth-protected-crud.ts`      | auth, database, error, logger                      | Express CRUD router gated by login + role middleware                        |
 | `multi-tenant-saas.ts`        | auth, database, cache, error, logger               | Row-level tenant filtering, per-org admin, per-tenant cached dashboards     |
 | `file-upload-pipeline.ts`     | auth, security, storage, queue, event, error, log  | Rate-limited upload → storage → queue worker → event fan-out                |
-| `real-time-chat.ts`           | auth, event, cache, error, logger                  | Namespaced room fan-out over Redis pub/sub + TTL-based presence             |
 | `api-key-service.ts`          | auth, security, database, error, logger            | JWT-backed API keys with encrypted DB copies, revocation, and auth middleware |
 
 ## Environment

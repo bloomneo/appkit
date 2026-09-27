@@ -9,7 +9,7 @@
  */
 
 import { authClass } from '../auth/index.js';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 import type { McpTool, McpToolDescriptor } from './types.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/mcp/README.md';

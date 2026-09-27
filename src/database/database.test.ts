@@ -120,7 +120,7 @@ describe('databaseClass.get() — DATABASE_URL requirement', () => {
 
   it('throws thrown-error has DatabaseError shape (code + module)', async () => {
     const { DatabaseError } = await import('./index.js');
-    const { AppKitError } = await import('../util/errors.js');
+    const { AppKitError } = await import('../internal/errors.js');
     const saved = process.env.DATABASE_URL;
     delete process.env.DATABASE_URL;
     try {

@@ -52,7 +52,7 @@ export interface SecurityConfig {
   environment: EnvironmentConfig;
 }
 
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 
 /**
  * Thrown by security operations (CSRF mismatch, rate limit exceeded,

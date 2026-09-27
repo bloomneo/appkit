@@ -9,7 +9,7 @@
  */
 
 import type { ErrorConfig } from './defaults.js';
-import { AppKitError } from '../util/errors.js';
+import { AppKitError } from '../internal/errors.js';
 
 /**
  * Semantic HTTP error with statusCode + type. Thrown by `errorClass.get()`'s

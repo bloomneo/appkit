@@ -741,7 +741,7 @@ await cache.set('user:123', userData, 3600);
 | 4 | Type safety | **9** | `Cache` interface now uses generics: `get<T>() → Promise<T \| null>`, `set<T>()`, `getOrSet<T>()`. No `any` on the public surface (strategy-internal `any` is not exported). |
 | 5 | Discoverability | **10** | `package.json` description is prompt-shaped, README hero is a copy-pasteable 3-line import, one canonical pattern. |
 | 6 | Example completeness | **9** | `examples/cache.ts` covers get/set/delete/clear/getOrSet + every utility method (`getStrategy`, `hasRedis`, `getActiveNamespaces`, `getConfig`, `clearAll`, `disconnectAll`). |
-| 7 | Composability | **9** | Used in 3 cookbook recipes (`real-time-chat`, `multi-tenant-saas`, `file-upload-pipeline`) composing cache with auth/db/event. |
+| 7 | Composability | **9** | Used in 2 cookbook recipes (`multi-tenant-saas`, `file-upload-pipeline`) composing cache with auth/db/queue. |
 | 8 | Educational errors | **7** | All throws use `[@bloomneo/appkit/cache] …` prefix + stable `code` (e.g. `CACHE_INVALID_KEY`). Missing DOCS_URL anchor. |
 | 9 | Convention enforcement | **9** | Exactly one way to construct (`cacheClass.get`), one teardown pattern (`clearAll` per-test / `disconnectAll` per-suite), explicitly documented. |
 | 10 | Drift prevention | **5** | Tests catch runtime drift; no scripted doc-vs-source checker. |

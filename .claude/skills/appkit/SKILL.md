@@ -54,12 +54,10 @@ Everything else is opt-in and auto-detected.
 | Run background jobs | queue | `@bloomneo/appkit/queue` |
 | Send email | email | `@bloomneo/appkit/email` |
 | Upload files / presign URLs | storage | `@bloomneo/appkit/storage` |
-| Publish/subscribe events | event | `@bloomneo/appkit/event` |
 | Structured logging | logger | `@bloomneo/appkit/logger` |
 | Typed HTTP errors + middleware | error | `@bloomneo/appkit/error` |
 | CSRF, rate limit, encryption | security | `@bloomneo/appkit/security` |
 | Config lookup helpers | config | `@bloomneo/appkit/config` |
-| String/date/array utilities | util | `@bloomneo/appkit/util` |
 
 ## Non-negotiable conventions
 

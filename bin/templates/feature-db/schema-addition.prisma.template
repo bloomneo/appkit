@@ -1,9 +1,0 @@
-model {{FeatureName}} {
-  id          Int       @id @default(autoincrement())
-  name        String
-  tenant_id   String?   // Mandatory for AppKit multi-tenant support
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@map("{{tableName}}")
-}

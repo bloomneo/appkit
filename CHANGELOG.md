@@ -6,6 +6,16 @@ All notable changes to AppKit will be documented in this file.
 
 Work in progress on the `next` branch; see `MIGRATION-6.md`.
 
+### Removed
+
+- `eventClass` / `@bloomneo/appkit/event` and `EventError` (2,188 lines),
+  and `utilClass` / `@bloomneo/appkit/util` (1,279 lines), with their
+  examples, skills and the `real-time-chat` cookbook recipe. No production
+  app used either. `AppKitError` and the env helpers moved to
+  `src/internal/`; `AppKitError` is still exported from the package root.
+- The `appkit` CLI (`appkit generate …`, 1,077 lines plus templates) and its
+  `commander` dependency. `bloom create` scaffolds projects.
+
 ### Changed
 
 - Released in lockstep with appkit, uikit and bloom on one shared version.
