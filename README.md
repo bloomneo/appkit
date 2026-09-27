@@ -99,7 +99,7 @@ the most common first-run stumbles, so do them up front:
 {
   "type": "module",
   "dependencies": {
-    "@bloomneo/appkit": "^6.0.0-rc.3",
+    "@bloomneo/appkit": "^6.0.0-rc.4",
     "dotenv": "^16.0.0",
     "express": "^5.0.0"
   }
@@ -223,7 +223,7 @@ See [`.env.example`](./.env.example) at the repo root for the full canonical tem
 
 ## 🏗️ Migration
 
-**Current release: 6.0.0-rc.3.** Pre-release; stable is 5.1.4.
+**Current release: 6.0.0-rc.4.** Pre-release; stable is 5.1.4.
 
 **From 5.x to 6.0:** read [`MIGRATION-6.md`](./MIGRATION-6.md). It lists every
 removal with its replacement (event, util, the CLI, the logger's database /
