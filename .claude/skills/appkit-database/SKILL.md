@@ -78,16 +78,17 @@ databaseClass.context()                        // Express middleware: tenant for
 databaseClass.onBypass(listener)               // audit hook; returns unsubscribe
 databaseClass.rlsPolicyStatements({ table })   // Postgres policy SQL (BLOOM_DB_TENANT=rls)
 databaseClass.rlsPolicySql({ table })          // same, one string (for migration files)
-await databaseClass.getTenants()               // unfiltered client (admin)
 await databaseClass.health()
-await databaseClass.list() / .exists(id) / .create(id) / .delete(id)
 await databaseClass.disconnectAll()            // teardown
 ```
 
 There is no `getProvider()`, no `getActiveTenantIds()`, and no
 `databaseClass.reset()` — earlier versions of this file listed all three and
 none has ever existed. `databaseClass.org()` and `ORG_<NAME>` per-org databases
-were removed in 6.0.
+were removed in 6.0, as were `getTenants()`, `list()`, `exists()`, `create()`
+and `delete()`: use `bypass('reason', fn)` for cross-tenant access and the
+app's own tenants table (queried inside `bypass()`) to list, create or delete
+tenants.
 
 ## Env vars
 

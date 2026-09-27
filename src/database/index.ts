@@ -7,7 +7,6 @@
  * @llm-rule NOTE: tenant_id = null (single tenant) or "team-1" (multi-tenant)
  * @llm-rule VARIABLE: const db = await databaseClass.get() - user's data (single or tenant-filtered)
  * @llm-rule VARIABLE: const rows = await databaseClass.tenant(req, db => db.x.findMany()) - tenant-scoped
- * @llm-rule VARIABLE: const dbTenants = await databaseClass.getTenants() - all tenants (admin access)
  */
 
 import { PrismaAdapter } from './adapters/prisma.js';
@@ -60,11 +59,6 @@ type DatabaseClientUnion = PrismaClient;
 interface DatabaseAdapter {
   createClient: (config: any) => Promise<DatabaseClientUnion>;
   applyTenantMiddleware?: (client: any, tenantId: string, options?: any) => Promise<any>;
-  hasTenantRegistry?: (client: any) => Promise<boolean>;
-  createTenantRegistryEntry?: (client: any, tenantId: string) => Promise<void>;
-  deleteTenantRegistryEntry?: (client: any, tenantId: string) => Promise<void>;
-  tenantExistsInRegistry?: (client: any, tenantId: string) => Promise<boolean>;
-  getTenantsFromRegistry?: (client: any) => Promise<string[]>;
   disconnect: () => Promise<void>;
 }
 
@@ -397,24 +391,6 @@ export const databaseClass = {
   rlsPolicyStatements,
 
   /**
-   * Get all tenants data (admin access - no tenant filtering)
-   * @returns {Promise<DatabaseClientUnion>} Database client with no tenant filtering
-   */
-  async getTenants(): Promise<DatabaseClientUnion> {
-    const url = process.env.DATABASE_URL;
-
-    if (!url) {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`,
-        { code: 'DATABASE_MISSING_URL' },
-      );
-    }
-    
-    // No tenant filtering - admin sees all data
-    return await createClient(url, null);
-  },
-  
-  /**
    * Health check for database connections
    * @returns {Promise<Object>} Health status
    */
@@ -440,92 +416,6 @@ export const databaseClass = {
         timestamp: new Date().toISOString(),
       };
     }
-  },
-  
-  /**
-   * List tenant IDs that have rows
-   * @returns {Promise<string[]>} Array of tenant IDs
-   */
-  async list(): Promise<string[]> {
-    try {
-      const db = await this.getTenants();
-      return await this._getDistinctTenantIds(db);
-    } catch (error: any) {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Failed to list tenants: ${error.message}. See: ${DOCS_URL}#troubleshooting`,
-        { code: 'DATABASE_LIST_TENANTS_FAILED', cause: error },
-      );
-    }
-  },
-  
-  /**
-   * Check if tenant exists
-   * @param {string} tenantId - Tenant ID
-   * @returns {Promise<boolean>} Whether tenant exists
-   */
-  async exists(tenantId: string): Promise<boolean> {
-    if (!tenantId) return false;
-    
-    try {
-      const db = await this.getTenants();
-      return await this._tenantHasData(db, tenantId);
-    } catch {
-      return false;
-    }
-  },
-  
-  /**
-   * Create tenant (registers tenant for future use)
-   * @param {string} tenantId - Tenant ID
-   * @returns {Promise<void>}
-   */
-  async create(tenantId: string): Promise<void> {
-    if (!tenantId || typeof tenantId !== 'string') {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Tenant ID is required and must be a string. See: ${DOCS_URL}#tenant-mode`,
-        { code: 'DATABASE_INVALID_TENANT_ID' },
-      );
-    }
-
-    if (!/^[a-zA-Z0-9_-]+$/.test(tenantId)) {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Invalid tenant ID format. Use alphanumeric characters, underscores, and hyphens only. See: ${DOCS_URL}#tenant-mode`,
-        { code: 'DATABASE_INVALID_TENANT_ID' },
-      );
-    }
-    
-    // For row-level strategy, tenant creation is implicit
-    // The tenant exists when first record with tenant_id is created
-    // This method can be used to validate the tenant ID format
-  },
-  
-  /**
-   * Delete all tenant data (requires confirmation)
-   * @param {string} tenantId - Tenant ID
-   * @param {Object} options - Options object
-   * @param {boolean} options.confirm - Confirmation flag (required)
-   * @returns {Promise<void>}
-   */
-  async delete(tenantId: string, options: any): Promise<void> {
-    if (!tenantId) {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Tenant ID is required. See: ${DOCS_URL}#tenant-mode`,
-        { code: 'DATABASE_INVALID_TENANT_ID' },
-      );
-    }
-
-    if (!options?.confirm) {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Tenant deletion requires explicit confirmation. Pass { confirm: true }. See: ${DOCS_URL}#tenant-mode`,
-        { code: 'DATABASE_DELETE_NOT_CONFIRMED' },
-      );
-    }
-    
-    const db = await this.getTenants();
-    await this._deleteAllTenantData(db, tenantId);
-    
-    // Clear cached connections for this tenant
-    this._clearTenantCache(tenantId);
   },
   
   /**
@@ -564,149 +454,6 @@ export const databaseClass = {
   },
   
   // Private helper methods
-  
-  /**
-   * Get distinct tenant IDs from database
-   * @private
-   */
-  async _getDistinctTenantIds(client: any): Promise<string[]> {
-    const tenantIds = new Set<string>();
-    
-    try {
-      if (client.$queryRaw) {
-        // Prisma client - find models with tenant_id field
-        const models = Object.keys(client).filter(
-          (key) =>
-            !key.startsWith('$') &&
-            !key.startsWith('_') &&
-            typeof client[key] === 'object' &&
-            typeof client[key].findMany === 'function'
-        );
-        
-        for (const modelName of models) {
-          try {
-            const records = await client[modelName].findMany({
-              select: { tenant_id: true },
-              distinct: ['tenant_id'],
-              where: { tenant_id: { not: null } },
-            });
-            
-            records.forEach((record: any) => {
-              if (record.tenant_id) tenantIds.add(record.tenant_id);
-            });
-          } catch {
-            // Model might not have tenant_id field
-            continue;
-          }
-        }
-      }
-      
-      return Array.from(tenantIds).sort();
-    } catch (error: any) {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Failed to get tenant IDs: ${error.message}. See: ${DOCS_URL}#troubleshooting`,
-        { code: 'DATABASE_LIST_TENANTS_FAILED', cause: error },
-      );
-    }
-  },
-  
-  /**
-   * Check if tenant has data
-   * @private
-   */
-  async _tenantHasData(client: any, tenantId: string): Promise<boolean> {
-    try {
-      if (client.$queryRaw) {
-        // Prisma client
-        const models = Object.keys(client).filter(
-          (key) =>
-            !key.startsWith('$') &&
-            !key.startsWith('_') &&
-            typeof client[key] === 'object' &&
-            typeof client[key].findFirst === 'function'
-        );
-        
-        for (const modelName of models) {
-          try {
-            const record = await client[modelName].findFirst({
-              where: { tenant_id: tenantId },
-            });
-            if (record) return true;
-          } catch {
-            continue;
-          }
-        }
-      }
-      
-      return false;
-    } catch {
-      return false;
-    }
-  },
-  
-  /**
-   * Delete all tenant data
-   * @private
-   */
-  async _deleteAllTenantData(client: any, tenantId: string): Promise<void> {
-    try {
-      if (client.$transaction) {
-        // Prisma client - use transaction for safety
-        const models = Object.keys(client).filter(
-          (key) =>
-            !key.startsWith('$') &&
-            !key.startsWith('_') &&
-            typeof client[key] === 'object' &&
-            typeof client[key].deleteMany === 'function'
-        );
-        
-        const deleteOperations: any[] = [];
-        
-        for (const modelName of models) {
-          try {
-            deleteOperations.push(
-              client[modelName].deleteMany({
-                where: { tenant_id: tenantId },
-              })
-            );
-          } catch {
-            continue;
-          }
-        }
-        
-        if (deleteOperations.length > 0) {
-          await client.$transaction(deleteOperations);
-        }
-      }
-    } catch (error: any) {
-      throw new DatabaseError(
-        `[@bloomneo/appkit/database] Failed to delete tenant data: ${error.message}. See: ${DOCS_URL}#troubleshooting`,
-        { code: 'DATABASE_DELETE_TENANT_FAILED', cause: error },
-      );
-    }
-  },
-  
-  /**
-   * Clear tenant-specific cached connections
-   * @private
-   */
-  _clearTenantCache(tenantId: string): void {
-    const keysToDelete: string[] = [];
-    
-    for (const [key] of connections) {
-      if (key.includes(`_${tenantId}_`)) {
-        keysToDelete.push(key);
-      }
-    }
-    
-    keysToDelete.forEach((key) => {
-      const connection = connections.get(key);
-      if (connection) {
-        this._closeConnection(connection);
-      }
-      connections.delete(key);
-    });
-  },
   
   /**
    * Close database connection

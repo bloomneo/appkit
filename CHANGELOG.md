@@ -118,8 +118,15 @@ upgrade guide, with a replacement for every removal, is
   `S3_FORCE_PATH_STYLE` for MinIO), which covers R2, Wasabi and MinIO.
 - Database Mongoose adapter (607 lines); Prisma is the only adapter.
 - Per-org databases: `databaseClass.org()`, `ORG_<NAME>` URLs, `{org}` URL
-  templates and `x-org-id` detection. The org-only `req` argument on
-  `getTenants / list / exists / create / delete` is gone.
+  templates and `x-org-id` detection.
+- Legacy tenant helpers `databaseClass.getTenants()`, `list()`, `exists()`,
+  `create()` and `delete()`, and the Prisma adapter's tenant-registry
+  methods. No production app used them; they hard-coded a `tenant_id` column
+  (wrong for apps with `BLOOM_DB_TENANT_COLUMN`, e.g. an `Int customerId`),
+  `getTenants()` handed out an unscoped client with no reason attached, and
+  `delete()` wiped a tenant's data. Use `databaseClass.bypass('reason', fn)`
+  for cross-tenant access and the app's own tenants table for listing,
+  creating and deleting tenants.
 - Tenant detection from the `x-tenant-id` header, `:tenantId` route param,
   `?tenant=` query and subdomain. These are caller-controlled, so any client
   could pick its tenant. The tenant now comes only from `req.user.tenantId`

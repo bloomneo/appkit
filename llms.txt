@@ -302,13 +302,16 @@ const database = await databaseClass.get();
 database.user.findMany()                          // auto-filtered by tenant_id
 database.user.create({ data: {...} })             // auto-stamps tenant_id
 
-// Cross-tenant queries (admin only)
-const dbAll = await databaseClass.getTenants();   // unfiltered, all tenants
-dbAll.user.groupBy({ by: ['tenant_id'], _count: true })
+// Cross-tenant queries (admin only) — named, logged, reported to onBypass
+await databaseClass.bypass('platform admin user counts', (db) =>
+  db.user.groupBy({ by: ['tenant_id'], _count: true }))
 ```
 
 One database per app. Per-org databases (`databaseClass.org()`, `ORG_<NAME>`
-URLs, `{org}` URL templates) were removed in 6.0.
+URLs, `{org}` URL templates) were removed in 6.0. So were the tenant helpers
+`getTenants()`, `list()`, `exists()`, `create()` and `delete()`: list, create
+and delete tenants through the app's own tenants table (e.g. an `Organization`
+model) inside `bypass()`.
 
 ### Required env
 

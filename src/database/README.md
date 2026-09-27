@@ -184,16 +184,17 @@ const database = await databaseClass.get();
 // Tenant-scoped access (multi-tenant apps)
 const users = await databaseClass.tenant(req, (db) => db.user.findMany());
 
-// Admin access to all tenants
-const dbTenants = await databaseClass.getTenants();
+// Admin access to all tenants — a specific reason is required and logged
+const allUsers = await databaseClass.bypass('admin user list', (db) => db.user.findMany());
 ```
 
 ### **LLM-Friendly Variable Naming**
 
 ```typescript
 // Standard patterns for AI code generation:
-const database = await databaseClass.get(); // Single/tenant user data
-const dbTenants = await databaseClass.getTenants(); // All tenants (admin)
+const database = await databaseClass.get(); // Single-tenant apps
+await databaseClass.tenant(req, (db) => db.user.findMany()); // One tenant's data
+await databaseClass.bypass('specific reason', (db) => db.user.findMany()); // All tenants (admin)
 ```
 
 ## 🛡️ Mandatory Future-Proofing
@@ -322,11 +323,12 @@ async function getBlogPosts(req) {
  * Admin dashboard (any time)
  */
 async function getAllPosts() {
-  const dbTenants = await databaseClass.getTenants();
-  return await dbTenants.posts.findMany({
-    include: { user: true },
-    orderBy: { createdAt: 'desc' },
-  });
+  return await databaseClass.bypass('admin dashboard: all posts', (db) =>
+    db.posts.findMany({
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+  );
 }
 ```
 
@@ -350,10 +352,11 @@ app.post('/api/users', auth.requireLoginToken(), async (req, res) => {
 
 // Admin endpoints - see all tenant data
 app.get('/api/admin/users', requireUserRoles(['admin']), async (req, res) => {
-  const dbTenants = await databaseClass.getTenants();
-  const users = await dbTenants.user.findMany({
-    include: { _count: { select: { posts: true } } },
-  });
+  const users = await databaseClass.bypass('admin user list', (db) =>
+    db.user.findMany({
+      include: { _count: { select: { posts: true } } },
+    }),
+  );
   res.json(users); // All tenants data
 });
 ```
@@ -394,8 +397,7 @@ app.get('/users', async (req, res) => {
 
 // Admin route - access all tenants
 app.get('/admin/users', requireAdmin, async (req, res) => {
-  const dbTenants = await databaseClass.getTenants();
-  const users = await dbTenants.user.findMany();
+  const users = await databaseClass.bypass('admin user list', (db) => db.user.findMany());
   res.json(users);
 });
 ```
@@ -418,9 +420,7 @@ fastify.get(
   '/admin/users',
   { preHandler: requireAdmin },
   async (request, reply) => {
-    const dbTenants = await databaseClass.getTenants();
-    const users = await dbTenants.user.findMany();
-    return users;
+    return databaseClass.bypass('admin user list', (db) => db.user.findMany());
   }
 );
 ```
@@ -447,8 +447,7 @@ export default async function handler(req, res) {
 import { databaseClass } from '@bloomneo/appkit/database';
 
 export default async function handler(req, res) {
-  const dbTenants = await databaseClass.getTenants();
-  const users = await dbTenants.user.findMany();
+  const users = await databaseClass.bypass('admin user list', (db) => db.user.findMany());
   res.json(users);
 }
 ```
@@ -470,20 +469,24 @@ console.log(health);
 
 ### **Tenant Management**
 
+appkit keeps no tenant registry. Tenants are rows in your own table (a
+`Customer`, `Organization` or `Firm` model), read and written inside
+`bypass()` because that table is not scoped to one tenant. The 5.x helpers
+`getTenants()`, `list()`, `exists()`, `create()` and `delete()` were removed in
+6.0 (see MIGRATION-6.md).
+
 ```typescript
-// List all tenants
-const tenants = await databaseClass.list();
-console.log(tenants); // ['team-alpha', 'team-beta', 'team-gamma']
+// List tenants
+const tenants = await databaseClass.bypass('admin tenant list', (db) =>
+  db.organization.findMany({ select: { id: true, name: true } }),
+);
 
-// Check if tenant exists
-const exists = await databaseClass.exists('team-alpha');
-console.log(exists); // true
+// Create a tenant
+const org = await databaseClass.bypass('provision tenant', (db) =>
+  db.organization.create({ data: { name: 'New Team' } }),
+);
 
-// Create tenant (validates ID format)
-await databaseClass.create('new-team');
-
-// Delete tenant (requires confirmation)
-await databaseClass.delete('old-team', { confirm: true });
+// Deleting a tenant's rows is an explicit app migration or job, not a framework call.
 ```
 
 ### **Connection Management**
@@ -572,8 +575,8 @@ const database = await databaseClass.get();
 // Tenant-scoped access (multi-tenant apps)
 const users = await databaseClass.tenant(req, (db) => db.user.findMany());
 
-// Admin access to all tenants
-const dbTenants = await databaseClass.getTenants();
+// Admin access to all tenants (reason required, logged)
+const allUsers = await databaseClass.bypass('admin user list', (db) => db.user.findMany());
 ```
 
 ### **Common Patterns**
@@ -584,8 +587,7 @@ const database = await databaseClass.get();
 const users = await database.user.findMany();
 
 // ✅ Admin functionality
-const dbTenants = await databaseClass.getTenants();
-const allUsers = await dbTenants.user.findMany();
+const allUsers = await databaseClass.bypass('admin user list', (db) => db.user.findMany());
 
 // ✅ Cross-tenant analytics (admin)
 const analytics = await databaseClass.bypass('tenant usage report', (db) => db.user.groupBy({
@@ -645,15 +647,13 @@ const users = await databaseClass.tenant(req, (db) => db.user.findMany()); // Au
 // ❌ DON'T: Take the tenant from a header or URL
 const users = await databaseClass.tenant({ user: { tenantId: req.headers['x-tenant-id'] } }, fn); // caller picks the tenant
 
-// ❌ DON'T: Mix access patterns
+// ❌ DON'T: Hold an unscoped client and hope nobody reuses it
 const database = await databaseClass.get();
-const admindatabase = await databaseClass.getTenants();
-const users = await database.user.findMany(); // Which database am I using?
+const users = await database.user.findMany(); // Which tenant am I in?
 
-// ✅ DO: Clear variable naming
-const database = await databaseClass.get(); // User data
-const dbTenants = await databaseClass.getTenants(); // Admin data
-const users = await database.user.findMany(); // Clear intent
+// ✅ DO: Say which kind of access each call is
+const mine = await databaseClass.tenant(req, (db) => db.user.findMany()); // One tenant
+const all = await databaseClass.bypass('admin user list', (db) => db.user.findMany()); // Admin, logged
 ```
 
 ## 🔧 Troubleshooting
@@ -713,7 +713,7 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 ## Agent-Dev Friendliness Score
 
-> Snapshot from before 6.0. `org()`, per-org databases and the Mongoose adapter it mentions have since been removed.
+> Snapshot from before 6.0. `org()`, per-org databases, the Mongoose adapter and the tenant helpers (`getTenants`, `list`, `exists`, `create`, `delete`) it mentioned have since been removed; the method lists below are trimmed to what still exists.
 
 **Score: 75/100 — 🟡 Solid** *(capped at 75: module README has zero pointers to `AGENTS.md`, `examples/`, or `llms.txt`; weighted raw = 75.5)*
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
@@ -721,20 +721,20 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 | # | Dimension | Score | Notes |
 |---|---|---:|---|
-| 1 | API correctness | **10** | All 9 public methods (`get`, `getTenants`, `org`, `health`, `list`, `exists`, `create`, `delete`, `disconnect`) exist as documented. README / `examples/database.ts` / `cookbook/*.ts` / `llms.txt` / root `README.md` all use `databaseClass`. Drift-check test (`database.test.ts`) enforces both the presence list and a hallucination blocklist (`query`, `transaction`, `model`, `findMany`, …). |
-| 2 | Doc consistency | **9** | Every surface uses `databaseClass.get(req)` / `.getTenants()` / `.org(id).get()`. `cookbook/auth-protected-crud.ts` and `multi-tenant-saas.ts` pass `req` consistently for tenant scoping. One minor gap: module README body has no explicit pointer to `AGENTS.md` / `examples/` / `llms.txt`. |
+| 1 | API correctness | **10** | All public methods (`get`, `health`, `disconnect`) exist as documented. README / `examples/database.ts` / `cookbook/*.ts` / `llms.txt` / root `README.md` all use `databaseClass`. Drift-check test (`database.test.ts`) enforces both the presence list and a hallucination blocklist (`query`, `transaction`, `model`, `findMany`, …). |
+| 2 | Doc consistency | **9** | Every surface uses `databaseClass.get(req)`. `cookbook/auth-protected-crud.ts` and `multi-tenant-saas.ts` pass `req` consistently for tenant scoping. One minor gap: module README body has no explicit pointer to `AGENTS.md` / `examples/` / `llms.txt`. |
 | 3 | Runtime verification | **6** | `database.test.ts` verifies all 9 methods exist + blocks 9 hallucinated names + checks `org()` contract. `examples/database.ts` is runtime-verified today. Still no behaviour tests for the tenant middleware itself (no fake Prisma/Mongoose harness). |
 | 4 | Type safety | **5** | Unchanged from previous: `req: any`, `options: any`, `DatabaseClientUnion` contains `[key: string]: any`. Return type is a `PrismaClient \| MongooseConnection` union; autocomplete is best-effort at the call site. |
 | 5 | Discoverability | **7** | `package.json` description + README hero give one canonical import in the first 30 lines. `databaseClass` is the only exported entry symbol. Still no explicit "See also" block pointing at `AGENTS.md` / `llms.txt` / `examples/database.ts` from the top of the README. |
-| 6 | Example completeness | **9** | `examples/database.ts` now exercises `get`, `get(req)`, `getTenants`, `org().get`, `org().getTenants`, `health`, `list`, `exists`, `create`, `disconnect`. `delete` is shown as a commented destructive opt-in (intentional — it wipes tenant data). Runtime-verified 2026-04-14. |
-| 7 | Composability | **9** | Two cookbook recipes compose `databaseClass` with the rest of the stack and typecheck clean: `cookbook/auth-protected-crud.ts` (auth + database + error + logger) and `cookbook/multi-tenant-saas.ts` (auth + database + cache + error + logger, with `databaseClass.create` / `exists` / `delete` on the admin path). Both call `databaseClass.get(req)` — the canonical tenant-aware pattern. |
-| 8 | Educational errors | **8** | Every throw site is prefixed `[@bloomneo/appkit/database]`, names the missing/invalid input, and appends `See: ${DOCS_URL}#<anchor>`. Examples: `Database URL required. Set DATABASE_URL environment variable. See …#environment-variables`, `No database URL found for organization 'X'`, `Tenant deletion requires explicit confirmation. Pass { confirm: true }`, `Invalid tenant ID format. Use alphanumeric characters, underscores, and hyphens only`. Weakest spot: `_getDistinctTenantIds` wraps the underlying ORM error verbatim. |
-| 9 | Convention enforcement | **8** | One canonical pattern per task: `get(req)` for user data, `getTenants(req)` for admin, `org(id).get(req)` for per-org. Variable-name convention (`database` / `dbTenants` / `<org>database` / `<org>DbTenants`) is documented and matches examples + cookbook + llms.txt. |
+| 6 | Example completeness | **9** | `examples/database.ts` now exercises `get`, `get(req)`, `health`, `disconnect`. Runtime-verified 2026-04-14. |
+| 7 | Composability | **9** | Two cookbook recipes compose `databaseClass` with the rest of the stack and typecheck clean: `cookbook/auth-protected-crud.ts` (auth + database + error + logger) and `cookbook/multi-tenant-saas.ts` (auth + database + cache + error + logger). Both call `databaseClass.get(req)` — the canonical tenant-aware pattern. |
+| 8 | Educational errors | **8** | Every throw site is prefixed `[@bloomneo/appkit/database]`, names the missing/invalid input, and appends `See: ${DOCS_URL}#<anchor>`. Examples: `Database URL required. Set DATABASE_URL environment variable. See …#environment-variables`, `No database URL found for organization 'X'`, `No database URL found for organization 'X'`. |
+| 9 | Convention enforcement | **8** | One canonical pattern per task: `get(req)` for user data. Variable-name convention (`database`) is documented and matches examples + cookbook + llms.txt. |
 | 10 | Drift prevention | **5** | `database.test.ts` is the drift gate and runs under `vitest`. No dedicated CI job asserts the doc ↔ source mapping; the gate is only "did someone run the test suite". |
 | 11 | Reading order | **4** | Module README still has no pointer block to `AGENTS.md`, `llms.txt`, `examples/database.ts`, or the cookbook. A fresh agent landing here has to guess where to go next. This is what triggers the 75 anti-pattern cap. |
-| **12** | **Simplicity** | **7** | 9 public methods on `databaseClass`; 2 on the `OrgDatabase` returned by `.org()`. 80% case is one call (`await databaseClass.get(req)`) with one optional arg. Tenant admin methods (`list` / `exists` / `create` / `delete`) are secondary and rarely needed in app code. |
-| **13** | **Clarity** | **9** | Every method reads as its behaviour: `get`, `getTenants`, `org`, `health`, `list`, `exists`, `create`, `delete`, `disconnect`. No vague verbs (`process`, `handle`, `run`). Parameter names (`req`, `tenantId`, `orgId`, `options.confirm`) are self-describing. |
-| **14** | **Unambiguity** | **5** | Unchanged. `get()` can return a Prisma client *or* a Mongoose connection — the caller has to runtime-probe (`db.$queryRaw` vs `db.db`). `create(tenantId)` is a format-validation no-op under the row-level strategy; the name suggests registration. |
+| **12** | **Simplicity** | **7** | 80% case is one call (`await databaseClass.get(req)`) with one optional arg. |
+| **13** | **Clarity** | **9** | Every method reads as its behaviour: `get`, `health`, `disconnect`. No vague verbs (`process`, `handle`, `run`). Parameter names are self-describing. |
+| **14** | **Unambiguity** | **5** | Unchanged. `get()` can return a Prisma client *or* a Mongoose connection — the caller has to runtime-probe (`db.$queryRaw` vs `db.db`). |
 | **15** | **Learning curve** | **6** | Fresh dev hits a working snippet in the first 60 lines of README. Progressive story (single → multi-tenant → multi-org via env vars only) is well-told. Friction remains around (a) the Prisma vs Mongoose return union, and (b) the "pass `req` to enable tenant filtering" implicit contract. |
 
 ### Weighted (v1.1)
@@ -753,8 +753,8 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 
 1. **D11 Reading order → 8 + lift cap**: Add a "See also" block near the top of this README pointing to `AGENTS.md`, `llms.txt`, `examples/database.ts`, `cookbook/auth-protected-crud.ts`, `cookbook/multi-tenant-saas.ts`. Removes the 75 cap.
 2. **D3 Runtime verification → 8**: Add a fake adapter that records `$use` middleware calls so tenant-filter behaviour (create stamping, findMany filter injection, OR/AND rewrite) is exercised under vitest without a real DB.
-3. **D4 Type safety → 8**: Tighten `delete(tenantId, options: { confirm: true })`, narrow `req` to `{ headers?, user?, params?, query?, hostname? }`, and add an adapter-aware return generic (`databaseClass.get<'prisma'>(req)` → `PrismaClient`).
-4. **D14 Unambiguity → 7**: Expose `client._adapter: 'prisma' | 'mongoose'` publicly and document it as the supported runtime discriminator; rename `create()` docs to make the "validate-only" semantics unmistakable.
+3. **D4 Type safety → 8**: Narrow `req` to `{ headers?, user?, params?, query?, hostname? }`, and add an adapter-aware return generic (`databaseClass.get<'prisma'>(req)` → `PrismaClient`).
+4. **D14 Unambiguity → 7**: Expose `client._adapter: 'prisma' | 'mongoose'` publicly and document it as the supported runtime discriminator.
 5. **D10 Drift prevention → 7**: Wire `database.test.ts` (plus a doc-ref scan) into a dedicated CI job so a README rename breaks the build, not just the test suite.
 
 **Realistic ceiling with fixes 1–5:** ~84/100. Breaking past that requires typed adapter generics propagated through `get` and `org().get` at the call site.

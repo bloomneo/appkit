@@ -10,8 +10,7 @@ import { getSmartDefaults } from './defaults.js';
 
 describe('Public API surface — drift check', () => {
   const CLASS_METHODS = [
-    'get', 'getTenants', 'health', 'list', 'exists',
-    'create', 'delete', 'disconnectAll', 'tenant', 'bypass',
+    'get', 'health', 'disconnectAll', 'tenant', 'bypass', 'context',
   ];
 
   // Class-level methods that MUST NOT exist. Drift trap for docs that assume
@@ -22,6 +21,11 @@ describe('Public API surface — drift check', () => {
     'put', 'update', 'findMany', 'raw',
     'disconnect',   // renamed to disconnectAll() in 4.0.0 — one teardown verb across package
     'org',          // per-org databases removed in 6.0
+    // Legacy tenant helpers removed in 6.0: they hard-coded a `tenant_id`
+    // column, getTenants() handed out an unscoped client with no reason, and
+    // delete() wiped a tenant's rows. Use bypass('reason', fn) for cross-tenant
+    // access and the app's own tenants table for list/create/delete.
+    'getTenants', 'list', 'exists', 'create', 'delete',
   ];
 
   for (const m of CLASS_METHODS) {
@@ -35,39 +39,6 @@ describe('Public API surface — drift check', () => {
       expect(typeof (databaseClass as any)[m]).not.toBe('function');
     });
   }
-});
-
-describe('databaseClass.create() — tenant ID validation', () => {
-  it('rejects empty string', async () => {
-    await expect(databaseClass.create('')).rejects.toThrow(/Tenant ID is required/);
-  });
-
-  it('rejects invalid characters', async () => {
-    await expect(databaseClass.create('acme org!')).rejects.toThrow(/Invalid tenant ID format/);
-    await expect(databaseClass.create('acme/org')).rejects.toThrow(/Invalid tenant ID format/);
-  });
-
-  it('accepts alphanumeric, underscore, hyphen', async () => {
-    // No DATABASE_URL wiring needed — create() is a format validator in
-    // row-level strategy; it doesn't touch the DB.
-    await expect(databaseClass.create('tenant-1')).resolves.toBeUndefined();
-    await expect(databaseClass.create('tenant_1')).resolves.toBeUndefined();
-    await expect(databaseClass.create('tenantA1B2')).resolves.toBeUndefined();
-  });
-});
-
-describe('databaseClass.delete() — safety rails', () => {
-  it('refuses delete without confirm:true option', async () => {
-    await expect(
-      databaseClass.delete('t1', {}),
-    ).rejects.toThrow(/confirm|Confirmation/i);
-  });
-
-  it('refuses delete without tenant ID', async () => {
-    await expect(
-      databaseClass.delete('', { confirm: true }),
-    ).rejects.toThrow(/Tenant ID is required/);
-  });
 });
 
 describe('databaseClass.get() — DATABASE_URL requirement', () => {
@@ -106,13 +77,20 @@ describe('BLOOM_DB_TENANT detection', () => {
   // query-filtering tests would require a real DB and live in cookbook/.
   it('without BLOOM_DB_TENANT, req context is ignored (detectTenant returns null)', async () => {
     const saved = process.env.BLOOM_DB_TENANT;
+    const savedUrl = process.env.DATABASE_URL;
     delete process.env.BLOOM_DB_TENANT;
+    process.env.DATABASE_URL = 'postgresql://u:p@localhost:5432/db';
     try {
-      // Indirect: create() doesn't throw because tenant detection is skipped
-      // entirely when BLOOM_DB_TENANT is unset.
-      await expect(databaseClass.create('acme')).resolves.toBeUndefined();
+      // Indirect: get(req) with a tenant claim never hits the tenant guard
+      // because tenant detection is skipped entirely when BLOOM_DB_TENANT is
+      // unset — it gets as far as the connection attempt.
+      await expect(
+        databaseClass.get({ headers: {}, user: { userId: 'u1', tenantId: 'acme' } }),
+      ).rejects.not.toThrow(/tenant/i);
     } finally {
       if (saved !== undefined) process.env.BLOOM_DB_TENANT = saved;
+      if (savedUrl !== undefined) process.env.DATABASE_URL = savedUrl;
+      else delete process.env.DATABASE_URL;
     }
   });
 

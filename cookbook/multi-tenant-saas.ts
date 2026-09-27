@@ -68,6 +68,12 @@ router.get(
   }),
 );
 
+// ── Tenant management lives in the app's own tenants table ─────────
+// appkit has no tenant registry (6.0 removed getTenants/list/exists/create/
+// delete). Tenants are rows in your own model — `organization` here, often a
+// Customer or Firm — read and written through bypass(), because the tenants
+// table is by definition not scoped to one tenant.
+
 // ── Admin-only cross-tenant report ──────────────────────────────────
 router.get(
   '/admin/tenants',
@@ -79,7 +85,7 @@ router.get(
     // Cross-tenant BY DESIGN — so it says so, in a form you can grep for.
     const tenants = await databaseClass.bypass(
       `org admin listing tenants for ${user.org_id}`,
-      async () => databaseClass.list(),
+      (db: any) => db.organization.findMany({ select: { id: true, name: true, active: true } }),
     );
     logger.info('admin listing tenants', { org: user.org_id, count: tenants.length });
 
@@ -87,35 +93,39 @@ router.get(
   }),
 );
 
-// ── Provision a new tenant under the caller's org ───────────────────
+// ── Provision a new tenant ──────────────────────────────────────────
 router.post(
   '/admin/tenants',
   auth.requireUserRoles(['admin.org']),
   errorClass.asyncRoute(async (req, res) => {
-    const { tenantId } = req.body ?? {};
-    if (typeof tenantId !== 'string' || !tenantId) {
-      throw errorClass.badRequest('tenantId required');
+    const { name } = req.body ?? {};
+    if (typeof name !== 'string' || !name.trim()) {
+      throw errorClass.badRequest('name required');
     }
 
-    // Row-level strategy: create() validates the id shape. No tables created.
-    await databaseClass.create(tenantId);
-    logger.info('tenant registered', { tenantId });
-    res.status(201).json({ tenantId });
+    const tenant = await databaseClass.bypass('provision new tenant', (db: any) =>
+      db.organization.create({ data: { name: name.trim(), active: true } }),
+    );
+    logger.info('tenant provisioned', { tenantId: tenant.id });
+    res.status(201).json({ tenantId: tenant.id });
   }),
 );
 
-// ── Purge a tenant (destructive, requires explicit confirm) ─────────
+// ── Deactivate a tenant ─────────────────────────────────────────────
+// Deactivate, don't purge. Deleting a tenant's rows across every table is an
+// explicit, reviewed app migration or job — never a request handler.
 router.delete(
   '/admin/tenants/:tenantId',
   auth.requireUserRoles(['admin.org']),
   errorClass.asyncRoute(async (req, res) => {
     const tenantId = String(req.params.tenantId);
-    const exists = await databaseClass.exists(tenantId);
-    if (!exists) throw errorClass.notFound('Tenant not found');
+    const updated = await databaseClass.bypass('deactivate tenant', (db: any) =>
+      db.organization.updateMany({ where: { id: tenantId }, data: { active: false } }),
+    );
+    if (updated.count === 0) throw errorClass.notFound('Tenant not found');
 
-    await databaseClass.delete(tenantId, { confirm: true });
-    logger.warn('tenant purged', { tenantId });
-    res.json({ deleted: true });
+    logger.warn('tenant deactivated', { tenantId });
+    res.json({ deactivated: true });
   }),
 );
 

@@ -55,23 +55,19 @@ async function main() {
     //   }
   }
 
-  // 3. Admin view — every tenant's data, no filtering.
-  const adminDb = await databaseClass.getTenants();
-  console.log('admin client tenantId (should be undefined):', (adminDb as any)._tenantId);
+  // 3. Admin view — every tenant's data, no filtering. bypass() takes a
+  //    specific reason, logs it and reports it to onBypass listeners.
+  const tenantId = await databaseClass.bypass('example: admin cross-tenant view', () => currentTenant()?.tenantId);
+  console.log('bypass tenantId (should be undefined):', tenantId);
 
   // 4. Health check — pings the database.
   console.log('health:', await databaseClass.health());
 
-  // 5. Tenant admin operations (row-level strategy).
-  //    list() — distinct tenant_id values seen across models.
-  //    exists(id) — does any row carry this tenant_id?
-  //    create(id) — validates format (row-level creation is implicit).
-  //    delete(id, { confirm: true }) — deleteMany across all models.
-  const tenants = await databaseClass.list();
-  console.log('tenants:', tenants);
-  console.log("exists('team-1') =", await databaseClass.exists('team-1'));
-  await databaseClass.create('team-new');
-  // await databaseClass.delete('team-old', { confirm: true }); // destructive — opt-in
+  // 5. Listing / creating / deleting tenants is not a framework call (6.0
+  //    removed getTenants/list/exists/create/delete). Query the app's own
+  //    tenants table inside bypass(), e.g.:
+  //      await databaseClass.bypass('list tenants', (db) => (db as any).organization.findMany());
+  //    Deleting a tenant's rows is an explicit app migration or job.
 
   // 6. Run real queries with the returned client — it is the Prisma client.
   // const users = await (db as any).user.findMany({ take: 5 });
