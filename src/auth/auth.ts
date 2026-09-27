@@ -18,6 +18,13 @@ import {
   type AuthConfig,
 } from './defaults.js';
 import { AuthError } from './errors.js';
+import type {
+  ExpressRequest,
+  ExpressResponse,
+  ExpressNextFunction,
+  ExpressMiddleware,
+  AuthenticatedRequestLike,
+} from '../internal/express.js';
 
 /**
  * Canonical doc URL appended to runtime errors so devs (and AI agents)
@@ -85,25 +92,14 @@ export interface ApiTokenPayload {
   [key: string]: any;
 }
 
-export interface ExpressRequest {
-  headers: { [key: string]: string | string[] | undefined };
-  cookies?: { [key: string]: string };
-  query?: { [key: string]: any };
-  user?: JwtPayload;
-  token?: JwtPayload;
-  [key: string]: any;
-}
-
-export interface ExpressResponse {
-  status: (code: number) => { json: (data: any) => void };
-  json: (data: any) => void;
-}
+// Express types: appkit middleware takes and returns Express's own types
+// (6.0). The old names stay exported as aliases so existing imports compile.
+export type { ExpressRequest, ExpressResponse, ExpressMiddleware } from '../internal/express.js';
 
 export interface MiddlewareOptions {
   getToken?: (request: ExpressRequest) => string | null;
 }
 
-export type ExpressMiddleware = (req: ExpressRequest, res: ExpressResponse, next: () => void) => void;
 
 /**
  * Authentication class with JWT, password, and role.level hierarchy
@@ -306,7 +302,7 @@ export class AuthenticationClass {
    * @llm-rule NOTE: Previously named user(). Renamed to getUser() pre-v1 per NAMING.md
    *                 (no bare-noun methods). There is no user() alias.
    */
-  getUser(request: ExpressRequest): JwtPayload | null {
+  getUser(request: AuthenticatedRequestLike | null | undefined): JwtPayload | null {
     if (!request || typeof request !== 'object') {
       return null;
     }
@@ -386,7 +382,7 @@ export class AuthenticationClass {
    * @llm-rule AVOID: Trusting it alone for authorization - pair it with requireUserRoles()
    * @llm-rule NOTE: Login tokens must carry tenantId (null for platform accounts) or this throws
    */
-  scopedWhere(req: ExpressRequest): { tenantId?: string; clientId?: string } {
+  scopedWhere(req: AuthenticatedRequestLike): { tenantId?: string; clientId?: string } {
     const user = this.getUser(req) as ({ tenantId?: string | null; clientId?: string | null } | null);
     if (!user) {
       throw new AuthError(
@@ -420,24 +416,26 @@ export class AuthenticationClass {
   requireLoginToken(options: MiddlewareOptions = {}): ExpressMiddleware {
     const getToken = options.getToken || this.getDefaultTokenExtractor();
 
-    return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
+    return (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
       try {
         const token = getToken(req);
 
         if (!token) {
-          return res.status(401).json({
+          res.status(401).json({
             error: 'Authentication required',
             message: this.config.middleware.errorMessages.noToken,
           });
+          return;
         }
 
         const payload = this.verifyToken(token);
         
         if (payload.type !== 'login') {
-          return res.status(401).json({
+          res.status(401).json({
             error: 'Invalid token type',
             message: 'Login token required for this endpoint',
           });
+          return;
         }
 
         req.user = payload;
@@ -448,10 +446,11 @@ export class AuthenticationClass {
           ? this.config.middleware.errorMessages.expiredToken
           : this.config.middleware.errorMessages.invalidToken;
 
-        return res.status(401).json({
+        res.status(401).json({
           error: 'Unauthorized',
           message,
         });
+        return;
       }
     };
   }
@@ -476,21 +475,23 @@ export class AuthenticationClass {
       }
     }
 
-    return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
+    return (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
       const user = this.getUser(req);
 
       if (!user) {
-        return res.status(401).json({
+        res.status(401).json({
           error: 'Authentication required',
           message: this.config.middleware.errorMessages.noToken,
         });
+        return;
       }
 
       if (user.type !== 'login') {
-        return res.status(403).json({
+        res.status(403).json({
           error: 'Access denied',
           message: 'User roles only apply to login tokens',
         });
+        return;
       }
 
       const userRoleLevel = `${user.role}.${user.level}`;
@@ -499,10 +500,11 @@ export class AuthenticationClass {
       );
 
       if (!hasRequiredRole) {
-        return res.status(403).json({
+        res.status(403).json({
           error: 'Access denied',
           message: this.config.middleware.errorMessages.insufficientRole,
         });
+        return;
       }
 
       next();
@@ -518,24 +520,26 @@ export class AuthenticationClass {
   requireApiToken(options: MiddlewareOptions = {}): ExpressMiddleware {
     const getToken = options.getToken || this.getDefaultTokenExtractor();
 
-    return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
+    return (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
       try {
         const token = getToken(req);
 
         if (!token) {
-          return res.status(401).json({
+          res.status(401).json({
             error: 'API token required',
             message: 'API token required for this endpoint',
           });
+          return;
         }
 
         const payload = this.verifyToken(token);
         
         if (payload.type !== 'api_key') {
-          return res.status(401).json({
+          res.status(401).json({
             error: 'Invalid token type',
             message: 'API token required for this endpoint',
           });
+          return;
         }
 
         req.token = payload;
@@ -546,10 +550,11 @@ export class AuthenticationClass {
           ? 'API token has expired'
           : 'Invalid API token';
 
-        return res.status(401).json({
+        res.status(401).json({
           error: 'Unauthorized',
           message,
         });
+        return;
       }
     };
   }

@@ -10,6 +10,13 @@
 
 import type { ErrorConfig } from './defaults.js';
 import { AppKitError } from '../internal/errors.js';
+import type {
+  ExpressRequest,
+  ExpressResponse,
+  ExpressNextFunction,
+  ExpressErrorHandler,
+  ExpressMiddleware,
+} from '../internal/express.js';
 
 /**
  * Semantic HTTP error with statusCode + type. Thrown by `errorClass.get()`'s
@@ -32,31 +39,24 @@ export class AppError extends AppKitError {
   }
 }
 
-export interface ExpressRequest {
-  [key: string]: any;
-}
+// Express types: handleErrors()/asyncRoute() take and return Express's own
+// types (6.0). The old names stay exported as aliases for compatibility.
+export type {
+  ExpressRequest,
+  ExpressResponse,
+  ExpressNextFunction,
+  ExpressErrorHandler,
+} from '../internal/express.js';
 
-export interface ExpressResponse {
-  status: (code: number) => ExpressResponse;
-  json: (data: any) => void;
-}
-
-export interface ExpressNextFunction {
-  (error?: any): void;
-}
-
-export type ExpressErrorHandler = (
-  error: AppError,
-  req: ExpressRequest,
-  res: ExpressResponse,
-  next: ExpressNextFunction
-) => void;
-
+/**
+ * An async (or sync) Express route handler. Whatever it throws or rejects
+ * with is passed to next() — i.e. to handleErrors().
+ */
 export type AsyncRouteHandler = (
   req: ExpressRequest,
   res: ExpressResponse,
   next: ExpressNextFunction
-) => Promise<any>;
+) => unknown;
 
 export interface ErrorHandlerOptions {
   showStack?: boolean;
@@ -241,7 +241,7 @@ export class ErrorClass {
    * @llm-rule NOTE: ASYNC PATTERN: app.post('/route', error.asyncRoute(async (req, res) => {...}));
    * @llm-rule NOTE: ERROR FLOW: thrown errors → automatically caught → sent to handleErrors middleware
    */
-  asyncRoute(fn: AsyncRouteHandler): (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => void {
+  asyncRoute(fn: AsyncRouteHandler): ExpressMiddleware {
     return (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction): void => {
       Promise.resolve(fn(req, res, next)).catch(next);
     };

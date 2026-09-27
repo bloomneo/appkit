@@ -10,6 +10,7 @@
 
 import { SecurityClass } from './security.js';
 import { getSmartDefaults, SecurityError, type SecurityConfig } from './defaults.js';
+import type { ExpressMiddleware } from '../internal/express.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
 
@@ -106,9 +107,9 @@ function quickSetup(options: {
   rateLimit?: boolean;
   maxRequests?: number;
   windowMs?: number;
-} = {}): Array<any> {
+} = {}): ExpressMiddleware[] {
   const security = get();
-  const middleware: Array<any> = [];
+  const middleware: ExpressMiddleware[] = [];
 
   // Add rate limiting if requested (default: true)
   if (options.rateLimit !== false) {

@@ -1,0 +1,14 @@
+{
+  // Type-level tests: `npm run test:types` compiles these files (no emit)
+  // against the source. A compile error here means an app would need a cast.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["./*.ts"],
+  "exclude": []
+}

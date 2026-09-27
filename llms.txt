@@ -78,7 +78,9 @@ auth.verifyToken(token: string): JwtPayload
 auth.hashPassword(plain: string, rounds?: number): Promise<string>
 auth.comparePassword(plain: string, hash: string): Promise<boolean>  // never throws
 
-// Express middleware factories — return ExpressMiddleware functions
+// Express middleware factories — return Express RequestHandlers (ExpressMiddleware
+// is an alias of express's RequestHandler; no casts needed with app.get/app.use).
+// req.user / req.token are typed via a global Express.Request augmentation.
 auth.requireLoginToken(options?): ExpressMiddleware       // user authentication
 auth.requireApiToken(options?): ExpressMiddleware         // API token authentication
 auth.requireUserRoles(['admin.tenant']): ExpressMiddleware       // role check (OR within array)

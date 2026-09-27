@@ -67,3 +67,33 @@ messages as before. Any other error becomes a 500, and **in production its
 message is replaced** by the generic server-error message (`Server error`).
 If a client depended on seeing a raw internal message in production, throw
 an `AppError` (`error.badRequest(...)`, `error.serverError(...)`) instead.
+
+### Middleware uses Express's own types
+
+appkit used to declare its own `ExpressRequest` / `ExpressResponse` shapes,
+which were not Express's `Request` / `Response`, so apps wrote
+`auth.requireLoginToken() as any` and `(req as any).user`. In 6.0 every
+middleware and handler takes and returns express's types, and appkit
+augments `Express.Request`:
+
+```ts
+app.get('/x', auth.requireLoginToken(), auth.requireUserRoles(['admin.tenant']),
+  error.asyncRoute(async (req, res) => {
+    req.user?.tenantId;   // string | null | undefined — typed, no cast
+    res.json({});
+  }));
+```
+
+- **Delete the casts** (`as any`, `as unknown as RequestHandler`,
+  `(req as any).user`). Any that remain are now plain type errors worth
+  reading.
+- **Install `@types/express`** in TypeScript apps (optional peer; express 4
+  or 5 typings).
+- `req.user` is `Express.User` (appkit's `JwtPayload`: `userId`, `role`,
+  `level`, `type`, `tenantId`, `clientId`, plus any claim you signed);
+  `req.token` is the API token's `JwtPayload`. If the app declared its own
+  `user` on `Express.Request`, remove it, or add extra fields to
+  `Express.User` instead.
+- `ExpressRequest`, `ExpressResponse`, `ExpressNextFunction`,
+  `ExpressMiddleware`, `ExpressErrorHandler` still export, now as aliases
+  of the Express types.

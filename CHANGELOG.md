@@ -72,6 +72,16 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   replaced by the generic server-error message instead of leaking env var
   names or driver errors. Outside production the response also carries the
   appkit `code`. `AppError` responses are unchanged.
+- Express types: middleware and handlers (`auth.require*`,
+  `error.asyncRoute` / `handleErrors`, `security.requests`) now take and
+  return express's own `Request` / `Response` / `NextFunction` /
+  `RequestHandler` / `ErrorRequestHandler` (type-only imports), so apps no
+  longer cast to `any`. `ExpressRequest`, `ExpressResponse`,
+  `ExpressNextFunction`, `ExpressMiddleware` and `ExpressErrorHandler` remain
+  exported as aliases. appkit augments `Express.Request` with
+  `user?: Express.User` (the login token's `JwtPayload`) and
+  `token?: JwtPayload`. `@types/express` is a new optional peer and dev
+  dependency. `npm test` runs a `test:types` compile check.
 
 ## [5.1.4] - 2026-09-27
 

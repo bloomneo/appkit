@@ -11,6 +11,12 @@
 import crypto from 'crypto';
 import type { SecurityConfig, SecurityError } from './defaults.js';
 import { createSecurityError } from './defaults.js';
+import type {
+  ExpressRequest,
+  ExpressResponse,
+  ExpressNextFunction,
+  ExpressMiddleware,
+} from '../internal/express.js';
 
 // Extended crypto interfaces for GCM mode
 interface CipherGCM extends crypto.Cipher {
@@ -23,30 +29,14 @@ interface DecipherGCM extends crypto.Decipher {
   setAuthTag(buffer: Buffer): this;
 }
 
-export interface ExpressRequest {
-  method: string;
-  body?: any;
-  headers?: Record<string, string | string[] | undefined>;
-  query?: any;
-  ip?: string;
-  connection?: { remoteAddress?: string };
-  [key: string]: any;
-}
-
-export interface ExpressResponse {
-  setHeader?: (name: string, value: string | number) => void;
-  [key: string]: any;
-}
-
-export interface ExpressNextFunction {
-  (error?: any): void;
-}
-
-export type ExpressMiddleware = (
-  req: ExpressRequest,
-  res: ExpressResponse,
-  next: ExpressNextFunction
-) => void;
+// Express types: requests() takes and returns Express's own types (6.0).
+// The old names stay exported as aliases for compatibility.
+export type {
+  ExpressRequest,
+  ExpressResponse,
+  ExpressNextFunction,
+  ExpressMiddleware,
+} from '../internal/express.js';
 
 export interface RateLimitOptions {
   maxRequests?: number;

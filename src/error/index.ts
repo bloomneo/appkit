@@ -10,42 +10,20 @@
  * @llm-rule NOTE: COMPLETE SETUP: const error = errorClass.get(); app.use(error.handleErrors()); // Done!
  */
 
-import { ErrorClass, AppError } from './error.js';
+import { ErrorClass, AppError, type AsyncRouteHandler, type ErrorHandlerOptions } from './error.js';
 import { getSmartDefaults, type ErrorConfig } from './defaults.js';
 
 // Re-export the AppError class (value export — AppError is a class as of 4.0.0).
 export { AppError };
 
-export interface ExpressRequest {
-  [key: string]: any;
-}
-
-export interface ExpressResponse {
-  status: (code: number) => ExpressResponse;
-  json: (data: any) => void;
-}
-
-export interface ExpressNextFunction {
-  (error?: any): void;
-}
-
-export type ExpressErrorHandler = (
-  error: AppError,
-  req: ExpressRequest,
-  res: ExpressResponse,
-  next: ExpressNextFunction
-) => void;
-
-export type AsyncRouteHandler = (
-  req: ExpressRequest,
-  res: ExpressResponse,
-  next: ExpressNextFunction
-) => Promise<any>;
-
-export interface ErrorHandlerOptions {
-  showStack?: boolean;
-  logErrors?: boolean;
-}
+export type {
+  ExpressRequest,
+  ExpressResponse,
+  ExpressNextFunction,
+  ExpressErrorHandler,
+  AsyncRouteHandler,
+  ErrorHandlerOptions,
+} from './error.js';
 
 // Global error instance for performance
 let globalError: ErrorClass | null = null;

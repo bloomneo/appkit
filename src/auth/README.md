@@ -764,6 +764,23 @@ const user: JwtPayload | null = auth.getUser(req);
 const middleware: ExpressMiddleware = auth.requireUserRoles(['admin.tenant']);
 ```
 
+As of 6.0 the middleware takes and returns **Express's own types**
+(`ExpressRequest`, `ExpressResponse`, `ExpressMiddleware` are aliases of
+express's `Request`, `Response`, `RequestHandler`), and appkit augments
+`Express.Request` so `req.user` (login token claims — `userId`, `role`,
+`level`, `tenantId`, `clientId`, `type`, …) and `req.token` (API token) are
+typed. No `as any`:
+
+```typescript
+app.get('/x', auth.requireLoginToken(), auth.requireUserRoles(['admin.tenant']),
+  error.asyncRoute(async (req, res) => {
+    res.json({ tenantId: req.user?.tenantId });
+  }));
+```
+
+Install `@types/express` (an optional peer) in TypeScript apps. Extra claims
+you sign into the token can be typed by augmenting `Express.User`.
+
 ## ❓ FAQ
 
 **Q: Can I use both login and API tokens in the same app?**
