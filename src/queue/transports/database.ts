@@ -139,6 +139,10 @@ export class DatabaseTransport implements Transport {
         },
       });
     } catch (error) {
+      // Idempotent by id: a repeating series schedules each slot under a
+      // deterministic id, so every cluster worker (and every restart) that
+      // schedules the same slot collides here — the first insert wins.
+      if ((error as { code?: string })?.code === 'P2002') return;
       throw new QueueError(`[@bloomneo/appkit/queue] Failed to schedule job in database: ${(error as Error).message}. See: ${DOCS_URL}#database-transport`, { code: 'QUEUE_SCHEDULE_FAILED', cause: error });
     }
   }

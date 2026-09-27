@@ -103,6 +103,9 @@ export class MemoryTransport implements Transport {
    * @llm-rule AVOID: Very long delays - memory transport resets on restart
    */
   async schedule(id: string, jobType: string, data: JobData, delay: number): Promise<void> {
+    // Idempotent by id: a repeating series schedules each slot under a
+    // deterministic id, and a second schedule of the same slot is a no-op.
+    if (this.jobs.has(id)) return;
     // Check memory limits
     if (this.jobs.size >= this.config.memory.maxJobs) {
       throw new QueueError(`[@bloomneo/appkit/queue] Memory queue full (${this.config.memory.maxJobs} jobs). See: ${DOCS_URL}#memory-transport`, { code: 'QUEUE_FULL' });

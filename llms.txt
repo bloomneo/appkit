@@ -494,7 +494,11 @@ await queue.schedule(jobType: string, data: any, delayMs: number): Promise<strin
 await queue.schedule('cleanup-tokens', {}, 8 * 60 * 60 * 1000)
 
 // Repeat — every N ms (min 1000). The next run is queued before the handler
-// runs; on the database transport the series survives restarts.
+// runs; on the database transport the series survives restarts. Idempotent:
+// occurrences are keyed by their wall-clock slot, so calling repeat() at boot
+// in every pm2 worker, or again after a restart, keeps ONE series — no
+// "only instance 0 schedules" guard needed. Missed slots are skipped, not
+// replayed.
 await queue.repeat(jobType: string, data: object, everyMs: number, opts?: { startDelay?: number }): Promise<string>
 queue.cancelRepeat(jobType: string)
 // For wall-clock schedules ("09:00 every Monday") use a cron library to call queue.add().

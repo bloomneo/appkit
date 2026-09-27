@@ -229,10 +229,11 @@ describe('repeat() — recurring jobs (5.1)', () => {
     // already be queued at the moment the handler body runs.
     const q = queueClass.get();
     const order: string[] = [];
-    const originalSchedule = q.schedule.bind(q);
-    (q as any).schedule = async (...args: any[]) => {
+    const transport = (q as any).transport;
+    const originalSchedule = transport.schedule.bind(transport);
+    transport.schedule = async (...args: any[]) => {
       order.push('scheduled');
-      return originalSchedule(...(args as [string, any, number]));
+      return originalSchedule(...args);
     };
 
     await q.repeat('tick', { n: 1 }, 1000, { startDelay: 1000 });
@@ -244,7 +245,8 @@ describe('repeat() — recurring jobs (5.1)', () => {
       order.push('handled');
     });
 
-    await new Promise((r) => setTimeout(r, 1400));
+    // Occurrences land on slot boundaries: the first runs within 2s.
+    await new Promise((r) => setTimeout(r, 2400));
     expect(sawScheduleBeforeHandler).toBe(true);
     q.cancelRepeat('tick');
   });
@@ -257,10 +259,33 @@ describe('repeat() — recurring jobs (5.1)', () => {
       runs++;
       throw new Error('boom');
     });
-    await new Promise((r) => setTimeout(r, 2400));
+    await new Promise((r) => setTimeout(r, 3400));
     q.cancelRepeat('flaky');
     // The successor was enqueued before the throw, so the chain continued.
     expect(runs).toBeGreaterThan(1);
+  });
+
+  it('repeat() is idempotent: every worker and every restart share one series', async () => {
+    const q = queueClass.get();
+    const transport = (q as any).transport;
+    // Three "workers" (or three boots) register the same series.
+    const ids = await Promise.all([1, 2, 3].map(() => q.repeat('uptime', {}, 60_000)));
+    expect(new Set(ids).size).toBe(1);
+    expect(ids[0]).toMatch(/^repeat:uptime:\d+$/);
+    const delayed = [...transport.jobs.values()].filter((j: any) => j.type === 'uptime');
+    expect(delayed).toHaveLength(1);
+    q.cancelRepeat('uptime');
+  });
+
+  it('a restart while the next occurrence is queued adds nothing', async () => {
+    const q = queueClass.get();
+    const transport = (q as any).transport;
+    const first = await q.repeat('backup-watch', {}, 3_600_000, { startDelay: 60_000 });
+    q.cancelRepeat('backup-watch');
+    const again = await q.repeat('backup-watch', {}, 3_600_000, { startDelay: 60_000 }); // "after restart"
+    expect(again).toBe(first);
+    expect([...transport.jobs.values()].filter((j: any) => j.type === 'backup-watch')).toHaveLength(1);
+    q.cancelRepeat('backup-watch');
   });
 
   it('a cancelled series stops enqueuing successors', async () => {
@@ -296,5 +321,27 @@ describe('jobs keep the tenant they were queued in', () => {
     expect(byN[1].data).toEqual({ n: 1 });
     expect(byN[2].tenant).toBeUndefined();
     expect(byN[3].tenant).toEqual({ bypassReason: 'nightly export' });
+  });
+});
+
+describe('database transport: a repeating slot is scheduled once', () => {
+  it('treats a duplicate job id (Prisma P2002) as already scheduled, and still throws other errors', async () => {
+    const { DatabaseTransport } = await import('./transports/database.js');
+    const inserted: string[] = [];
+    const t: any = Object.create(DatabaseTransport.prototype);
+    t.config = { maxAttempts: 3, defaultPriority: 0 };
+    t.db = {
+      queueJob: {
+        create: async ({ data }: any) => {
+          if (data.id === 'boom') throw Object.assign(new Error('connection lost'), { code: 'P1001' });
+          if (inserted.includes(data.id)) throw Object.assign(new Error('Unique constraint failed on the fields: (`id`)'), { code: 'P2002' });
+          inserted.push(data.id);
+        },
+      },
+    };
+    await t.schedule('repeat:uptime:100', 'uptime', {}, 1000);
+    await expect(t.schedule('repeat:uptime:100', 'uptime', {}, 1000)).resolves.toBeUndefined();
+    expect(inserted).toEqual(['repeat:uptime:100']);
+    await expect(t.schedule('boom', 'uptime', {}, 1000)).rejects.toThrow(/connection lost/);
   });
 });

@@ -25,6 +25,11 @@ const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.
  */
 const REPEAT_KEY = '__appkitRepeat';
 
+/** Deterministic id of one occurrence of a repeating series. */
+function repeatId(jobType: string, slot: number): string {
+  return `repeat:${jobType}:${slot}`;
+}
+
 /*
  * Jobs keep the tenant they were queued in. A job added inside a tenant
  * context (database.tenant(), database.context(), a contract route) runs its
@@ -204,12 +209,27 @@ export class QueueClass implements Queue {
 
     this.repeating.add(jobType);
 
-    const payload = {
+    /*
+     * Occurrences are keyed by their slot on the wall clock (runAt / everyMs),
+     * not a random id. Every pm2 worker that calls repeat() at boot, and every
+     * restart while the next occurrence is still queued, computes the same
+     * slot and the same id — and the transport keeps only the first. Without
+     * this each worker and each deploy added its own series, and a 5-minute
+     * check ran N times over.
+     */
+    const now = Date.now();
+    const slot = Math.ceil((now + (options.startDelay ?? everyMs)) / everyMs);
+    const payload = stampTenant({
       ...(data as Record<string, unknown>),
-      [REPEAT_KEY]: { everyMs },
-    } as unknown as T;
-
-    return this.schedule(jobType, payload, options.startDelay ?? everyMs);
+      [REPEAT_KEY]: { everyMs, slot },
+    }) as unknown as JobData;
+    const id = repeatId(jobType, slot);
+    try {
+      await this.transport.schedule(id, jobType, payload, Math.max(0, slot * everyMs - now));
+    } catch (error) {
+      throw new QueueError(`[@bloomneo/appkit/queue] Failed to schedule job: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'QUEUE_SCHEDULE_FAILED', cause: error });
+    }
+    return id;
   }
 
   /**
@@ -436,11 +456,16 @@ export class QueueClass implements Queue {
       // recurring job that quietly stops is worse than one that never started.
       // A duplicate on crash-after-schedule is recoverable; a stall is not.
       const repeat = (data as Record<string, any> | null)?.[REPEAT_KEY] as
-        | { everyMs: number }
+        | { everyMs: number; slot?: number }
         | undefined;
       if (repeat && this.repeating.has(jobType) && !this.isClosing) {
         try {
-          await this.schedule(jobType, data, repeat.everyMs);
+          // The next slot after this one — or, after downtime, the next one
+          // still in the future (missed slots are skipped, not replayed).
+          const now = Date.now();
+          const next = Math.max((repeat.slot ?? 0) + 1, Math.floor(now / repeat.everyMs) + 1);
+          const successor = { ...(data as Record<string, unknown>), [REPEAT_KEY]: { everyMs: repeat.everyMs, slot: next } };
+          await this.transport.schedule(repeatId(jobType, next), jobType, successor as JobData, next * repeat.everyMs - now);
         } catch (error) {
           // Never let a scheduling failure swallow the occurrence that is
           // already in hand — run it, and let the transport's retry surface
