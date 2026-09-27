@@ -306,7 +306,7 @@ appkit has no CLI. To start a project, use `bloom create <name>` from
 
 ## Migration notes
 
-**Current release: 6.0.0-rc.0.** Pre-release of 6.0; 5.1.4 is the stable line.
+**Current release: 6.0.0-rc.1.** Pre-release of 6.0; 5.1.4 is the stable line.
 Upgrading from 5.x: [`MIGRATION-6.md`](./MIGRATION-6.md) lists every removal
 with its replacement, every addition and every behaviour change. Older
 release history is in [`CHANGELOG.md`](./CHANGELOG.md).

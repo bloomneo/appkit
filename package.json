@@ -1,6 +1,6 @@
 {
   "name": "@bloomneo/appkit",
-  "version": "6.0.0-rc.0",
+  "version": "6.0.0-rc.1",
   "description": "The Node.js backend for Bloomneo business apps: route contracts with an enforced auth decision, Postgres row-level security with automatic tenant context, typed errors, and one way each to do auth, jobs, email, storage, cache and logging on Express.",
   "main": "dist/index.js",
   "type": "module",
