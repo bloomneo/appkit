@@ -161,6 +161,11 @@ database.onBypass(({ reason }) => audit.log('tenant.bypass', { reason }));
   request still run in parallel.
 - The setting is transaction-local (`set_config(..., true)`), so it is safe
   behind pgbouncer in transaction pooling.
+- **Cost:** each operation adds three round trips (begin, set tenant,
+  commit). Measured on a local Postgres (2,000 reads): 0.13 → 0.41 ms per
+  query sequentially, 0.06 → 0.14 ms at 20 in parallel. Against a database
+  ~1 ms away expect roughly +3 ms per query — fine for most apps; for hot,
+  chatty endpoints keep the database close or batch the reads.
 - `BLOOM_DB_TENANT_COLUMN` names the tenant column (default `tenant_id`).
 - Superusers and roles with `BYPASSRLS` skip policies. Connect the app as an
   ordinary role. A backup role needs `BYPASSRLS` (and `CONNECT`), or
