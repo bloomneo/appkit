@@ -11,7 +11,6 @@
  */
 
 process.env.BLOOM_AUTH_SECRET = 'test-secret-must-be-at-least-32-characters-long';
-process.env.BLOOM_SECURITY_CSRF_SECRET = 'test-csrf-secret-must-be-32-chars-long-x';
 process.env.BLOOM_SECURITY_ENCRYPTION_KEY =
   '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 process.env.NODE_ENV = 'test';

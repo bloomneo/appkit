@@ -34,6 +34,8 @@ Nothing below was used by any of the four production apps (counted
 | Auth permissions model: `auth.hasPermission()`, `auth.requireUserPermissions()`, `authClass.getPermissions()`, `BLOOM_AUTH_PERMISSIONS`, the `permissions` token field | `auth.requireUserRoles([...])` / `auth.hasRole()` on the role ladder (`BLOOM_AUTH_ROLES` to customise). A `permissions` field in a payload is still signed but nothing reads it |
 | Auth matrix mode: `BLOOM_AUTH_SCOPES`, `BLOOM_AUTH_TIERS`, `auth.requireScope()`, `auth.requireTier()`, `auth.roleParts()`, `tier` / `scope` token fields | The linear 9-level ladder; the env vars are ignored |
 | `auth.canSeePII()`, `auth.maskPII()` | Decide and mask fields in the app's own serializer |
+| `security.forms()` (CSRF), `BLOOM_SECURITY_CSRF_*`, `quickSetup({ csrf })`, `validateRequired({ csrf })`, `getStatus().csrf` | Bearer-token APIs need no CSRF token. Cookie-session HTML forms: `SameSite=Lax/Strict` session cookies or a maintained CSRF middleware. `BLOOM_SECURITY_CSRF_SECRET` is no longer required anywhere |
+| `security.input()`, `security.html()`, `security.escape()`, `BLOOM_SECURITY_MAX_INPUT_LENGTH`, `BLOOM_SECURITY_ALLOWED_TAGS`, `BLOOM_SECURITY_STRIP_ALL_TAGS` | Validate input with a schema (zod, valibot); let the template engine or React escape output; a dedicated sanitizer (e.g. DOMPurify) if you must accept HTML |
 
 ## Changed
 

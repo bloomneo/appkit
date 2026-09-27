@@ -59,51 +59,6 @@ describe('security.requests() — rate limiting', () => {
   });
 });
 
-describe('security.forms() — CSRF', () => {
-  it('returns an Express middleware function', () => {
-    // May throw if BLOOM_SECURITY_CSRF_SECRET not set — that is expected behaviour.
-    try {
-      const mw = securityClass.get().forms();
-      expect(typeof mw).toBe('function');
-    } catch (e: any) {
-      expect(e.message).toMatch(/CSRF secret/i);
-    }
-  });
-});
-
-describe('security.input() — sanitization', () => {
-  const security = securityClass.get();
-
-  it('strips <script> tags', () => {
-    const result = security.input('<script>alert(1)</script>hello');
-    expect(result).not.toContain('<script>');
-    expect(result).toContain('hello');
-  });
-
-  it('returns a string for any input', () => {
-    expect(typeof security.input('test')).toBe('string');
-    expect(typeof security.input('')).toBe('string');
-  });
-});
-
-describe('security.html() — HTML sanitization', () => {
-  it('strips disallowed tags but keeps safe ones', () => {
-    const security = securityClass.get();
-    const result = security.html('<b>bold</b><script>evil()</script>');
-    expect(result).toContain('<b>bold</b>');
-    expect(result).not.toContain('<script>');
-  });
-});
-
-describe('security.escape()', () => {
-  it('escapes HTML special characters', () => {
-    const security = securityClass.get();
-    const result = security.escape('<div>"test"&</div>');
-    expect(result).not.toContain('<div>');
-    expect(result).toContain('&lt;');
-  });
-});
-
 describe('security.encrypt() / decrypt()', () => {
   it('roundtrips plaintext through encrypt/decrypt', () => {
     try {
@@ -126,17 +81,25 @@ describe('Public API surface — drift check', () => {
   ];
 
   const INSTANCE_METHODS = [
-    'forms', 'requests', 'input', 'html', 'escape', 'encrypt', 'decrypt', 'generateKey',
+    'requests', 'encrypt', 'decrypt', 'generateKey',
   ];
 
-  // Instance methods that do NOT exist — previously hallucinated
-  const HALLUCINATED_INSTANCE = ['csrf', 'requireCsrf', 'email', 'url'];
+  // Instance methods that do NOT exist — previously hallucinated, or removed
+  // in 6.0 (forms / input / html / escape).
+  const HALLUCINATED_INSTANCE = ['csrf', 'requireCsrf', 'email', 'url', 'forms', 'input', 'html', 'escape'];
 
   // Class-level methods that MUST NOT exist — drift trap for docs that
   // assume symmetry with the instance surface.
   const HALLUCINATED_CLASS = [
     'forms', 'requests', 'input', 'html', 'escape', 'encrypt', 'decrypt',
   ];
+
+  it('quickSetup() returns only the rate limiter now that CSRF is gone', () => {
+    const mws = securityClass.quickSetup();
+    expect(mws).toHaveLength(1);
+    expect(typeof mws[0]).toBe('function');
+    expect(securityClass.getStatus()).not.toHaveProperty('csrf');
+  });
 
   for (const m of CLASS_METHODS) {
     it(`securityClass.${m} exists`, () => {

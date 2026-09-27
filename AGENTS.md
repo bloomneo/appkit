@@ -48,7 +48,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 |---|---|---|
 | `authClass` | `from '@bloomneo/appkit/auth'` | JWT tokens, role.level hierarchy, middleware |
 | `databaseClass` | `from '@bloomneo/appkit/database'` | Prisma with multi-tenant filtering |
-| `securityClass` | `from '@bloomneo/appkit/security'` | CSRF, rate limiting, encryption, sanitization |
+| `securityClass` | `from '@bloomneo/appkit/security'` | Rate limiting, AES-256-GCM encryption |
 | `errorClass` | `from '@bloomneo/appkit/error'` | HTTP errors with semantic types |
 | `cacheClass` | `from '@bloomneo/appkit/cache'` | Memory → Redis auto-scaling |
 | `storageClass` | `from '@bloomneo/appkit/storage'` | Local → S3 (R2 / MinIO via `S3_ENDPOINT`) |
@@ -80,7 +80,7 @@ Every file path below ships inside the npm tarball at `node_modules/@bloomneo/ap
 | Background jobs with retries | [`examples/queue.ts`](./examples/queue.ts) |
 | Structured logging with components | [`examples/logger.ts`](./examples/logger.ts) |
 | Type-safe env vars | [`examples/config.ts`](./examples/config.ts) |
-| Rate limit / CSRF / crypto / sanitize | [`examples/security.ts`](./examples/security.ts) |
+| Rate limit / encrypt fields | [`examples/security.ts`](./examples/security.ts) |
 | Error-handling middleware | [`examples/error.ts`](./examples/error.ts) |
 
 ## Environment variables
@@ -92,8 +92,7 @@ Required for production:
 ```bash
 BLOOM_AUTH_SECRET=<min 32 chars>          # JWT signing key
 DATABASE_URL=postgresql://...              # any Prisma-supported URL
-BLOOM_SECURITY_CSRF_SECRET=<min 32 chars>  # CSRF protection
-BLOOM_SECURITY_ENCRYPTION_KEY=<64 hex>     # AES-256-GCM key
+BLOOM_SECURITY_ENCRYPTION_KEY=<64 hex>     # AES-256-GCM key (if you encrypt fields)
 ```
 
 Optional (auto-scaling kicks in when set):
@@ -247,7 +246,7 @@ unscoped. That is the point of the major, not a side effect.
 
 Headline renames you will hit:
 - **From 1.5.x or earlier:** `auth.user()` → `auth.getUser(req)`,
-  `auth.can()` → `auth.hasPermission()` (removed in 6.0), `security.csrf()` → `security.forms()`.
+  `auth.can()` → `auth.hasPermission()` (removed in 6.0), `security.csrf()` → `security.forms()` (removed in 6.0).
 - **Also in 4.0.0:** every stateful module's teardown is now
   `xxxClass.disconnectAll()` — the old `shutdown()` and class-level `clear()`
   are removed. `databaseClass.disconnect()` → `databaseClass.disconnectAll()`.

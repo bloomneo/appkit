@@ -10,23 +10,10 @@
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/security/README.md';
 
-export interface CSRFConfig {
-  secret: string;
-  tokenField: string;
-  headerField: string;
-  expiryMinutes: number;
-}
-
 export interface RateLimitConfig {
   maxRequests: number;
   windowMs: number;
   message: string;
-}
-
-export interface SanitizationConfig {
-  maxLength: number;
-  allowedTags: string[];
-  stripAllTags: boolean;
 }
 
 export interface EncryptionConfig {
@@ -45,9 +32,7 @@ export interface EnvironmentConfig {
 }
 
 export interface SecurityConfig {
-  csrf: CSRFConfig;
   rateLimit: RateLimitConfig;
-  sanitization: SanitizationConfig;
   encryption: EncryptionConfig;
   environment: EnvironmentConfig;
 }
@@ -55,8 +40,7 @@ export interface SecurityConfig {
 import { AppKitError } from '../internal/errors.js';
 
 /**
- * Thrown by security operations (CSRF mismatch, rate limit exceeded,
- * encryption failure, sanitizer misuse). Extends AppKitError so consumers
+ * Thrown by security operations (rate limit exceeded, encryption failure). Extends AppKitError so consumers
  * can `instanceof` against the package-wide base.
  */
 export class SecurityError extends AppKitError {
@@ -79,7 +63,7 @@ export class SecurityError extends AppKitError {
  * Gets smart defaults using BLOOM_SECURITY_* environment variables
  * @llm-rule WHEN: App startup to get production-ready security configuration
  * @llm-rule AVOID: Calling repeatedly - expensive validation, cache the result
- * @llm-rule NOTE: Automatically configures CSRF, rate limiting, and encryption from environment
+ * @llm-rule NOTE: Automatically configures rate limiting and encryption from environment
  */
 export function getSmartDefaults(): SecurityConfig {
   validateEnvironment();
@@ -90,28 +74,11 @@ export function getSmartDefaults(): SecurityConfig {
   const isTest = nodeEnv === 'test';
 
   return {
-    // CSRF configuration with fallback to auth secret
-    csrf: {
-      secret: process.env.BLOOM_SECURITY_CSRF_SECRET || process.env.BLOOM_AUTH_SECRET || '',
-      tokenField: process.env.BLOOM_SECURITY_CSRF_FIELD || '_csrf',
-      headerField: process.env.BLOOM_SECURITY_CSRF_HEADER || 'x-csrf-token',
-      expiryMinutes: parseInt(process.env.BLOOM_SECURITY_CSRF_EXPIRY || '60'),
-    },
-
     // Rate limiting with production-ready defaults
     rateLimit: {
       maxRequests: parseInt(process.env.BLOOM_SECURITY_RATE_LIMIT || '100'),
       windowMs: parseInt(process.env.BLOOM_SECURITY_RATE_WINDOW || String(15 * 60 * 1000)), // 15 minutes
       message: process.env.BLOOM_SECURITY_RATE_MESSAGE || 'Too many requests, please try again later',
-    },
-
-    // Input sanitization configuration
-    sanitization: {
-      maxLength: parseInt(process.env.BLOOM_SECURITY_MAX_INPUT_LENGTH || '1000'),
-      allowedTags: process.env.BLOOM_SECURITY_ALLOWED_TAGS
-        ? process.env.BLOOM_SECURITY_ALLOWED_TAGS.split(',').map(tag => tag.trim())
-        : [],
-      stripAllTags: process.env.BLOOM_SECURITY_STRIP_ALL_TAGS === 'true',
     },
 
     // Encryption configuration with AES-256-GCM
@@ -137,20 +104,10 @@ export function getSmartDefaults(): SecurityConfig {
  * Validates environment variables for security configuration
  * @llm-rule WHEN: App startup to ensure proper security environment configuration
  * @llm-rule AVOID: Skipping validation - improper config causes security vulnerabilities
- * @llm-rule NOTE: Validates CSRF secrets, encryption keys, and rate limit values
+ * @llm-rule NOTE: Validates encryption keys and rate limit values
  */
 function validateEnvironment(): void {
   const nodeEnv = process.env.NODE_ENV || 'development';
-
-  // Validate CSRF secret in production
-  const csrfSecret = process.env.BLOOM_SECURITY_CSRF_SECRET || process.env.BLOOM_AUTH_SECRET;
-  if (!csrfSecret && nodeEnv === 'production') {
-    console.warn(
-      `[@bloomneo/appkit/security] BLOOM_SECURITY_CSRF_SECRET not set. ` +
-      `CSRF protection will not work in production. ` +
-      `Set BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET environment variable. See: ${DOCS_URL}#environment-variables`
-    );
-  }
 
   // Validate encryption key if provided
   const encryptionKey = process.env.BLOOM_SECURITY_ENCRYPTION_KEY;
@@ -175,28 +132,6 @@ function validateEnvironment(): void {
     if (isNaN(rateWindowNum) || rateWindowNum <= 0) {
       throw new Error(
         `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_RATE_WINDOW: "${rateWindow}". Must be a positive number (milliseconds). See: ${DOCS_URL}#environment-variables`
-      );
-    }
-  }
-
-  // Validate max input length
-  const maxLength = process.env.BLOOM_SECURITY_MAX_INPUT_LENGTH;
-  if (maxLength) {
-    const maxLengthNum = parseInt(maxLength);
-    if (isNaN(maxLengthNum) || maxLengthNum <= 0) {
-      throw new Error(
-        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_MAX_INPUT_LENGTH: "${maxLength}". Must be a positive number. See: ${DOCS_URL}#environment-variables`
-      );
-    }
-  }
-
-  // Validate CSRF expiry
-  const csrfExpiry = process.env.BLOOM_SECURITY_CSRF_EXPIRY;
-  if (csrfExpiry) {
-    const csrfExpiryNum = parseInt(csrfExpiry);
-    if (isNaN(csrfExpiryNum) || csrfExpiryNum <= 0) {
-      throw new Error(
-        `[@bloomneo/appkit/security] Invalid BLOOM_SECURITY_CSRF_EXPIRY: "${csrfExpiry}". Must be a positive number (minutes). See: ${DOCS_URL}#environment-variables`
       );
     }
   }

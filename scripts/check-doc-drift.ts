@@ -29,7 +29,7 @@ const BANNED: Banned[] = [
   { pattern: /\bauth\.requireRole\s*\(/,   now: 'auth.requireUserRoles([...])' },
 
   // security — 2.0.0 rename
-  { pattern: /\bsecurity\.csrf\s*\(/,      now: 'security.forms()' },
+  { pattern: /\bsecurity\.csrf\s*\(/,      now: 'removed — CSRF is gone in 6.0 (MIGRATION-6.md)' },
 
   // cache — 2.0.1 synonym drift removal
   { pattern: /\bcacheClass\.flushAll\s*\(/, now: 'cacheClass.clearAll()' },
@@ -60,6 +60,7 @@ const BANNED: Banned[] = [
   { pattern: /\b(auth\.)?(hasPermission|requireUserPermissions)\s*\(|\bgetPermissions\s*\(|\bBLOOM_AUTH_PERMISSIONS\b/, now: 'removed in 6.0 — gate with auth.requireUserRoles([...]) (MIGRATION-6.md)' },
   { pattern: /\b(requireScope|requireTier|roleParts)\s*\(|\bBLOOM_AUTH_(SCOPES|TIERS)\b/, now: 'removed in 6.0 — matrix mode is gone; use the role ladder / BLOOM_AUTH_ROLES (MIGRATION-6.md)' },
   { pattern: /\b(canSeePII|maskPII)\s*\(/, now: 'removed in 6.0 — mask fields in the app serializer (MIGRATION-6.md)' },
+  { pattern: /\bsecurity\.(forms|input|html|escape)\s*\(|\bBLOOM_SECURITY_(CSRF_\w+|MAX_INPUT_LENGTH|ALLOWED_TAGS|STRIP_ALL_TAGS)\b/, now: 'removed in 6.0 — security keeps requests() and encrypt/decrypt (MIGRATION-6.md)' },
 
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },

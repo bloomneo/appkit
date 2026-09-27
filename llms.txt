@@ -258,38 +258,31 @@ BLOOM_DB_TENANT=auto              # optional, enables multi-tenant filtering
 
 ## Module 3 — Security (`@bloomneo/appkit/security`)
 
-CSRF protection, rate limiting, AES-256-GCM encryption, input sanitization.
+Rate limiting and AES-256-GCM encryption. CSRF (`forms()`) and sanitization
+(`input()`, `html()`, `escape()`) were removed in 6.0.
 
 ### Methods
 
 ```ts
 const security = securityClass.get();
 
-// Rate limiting middleware
-security.requests(maxRequests: number, windowMs: number)
+// Rate limiting middleware — each call counts separately; { name } shares a budget
+security.requests(maxRequests: number, windowMs: number, options?: { name?, message?, keyGenerator? })
 // e.g. security.requests(100, 900000) → 100 req per 15 min per IP
 
-// CSRF protection middleware — ONE method that does both injection AND validation.
-// Mount once on HTML form routes. No separate requireCsrf() — forms() handles it.
-security.forms(): ExpressMiddleware
-
 // Encryption
-security.encrypt(plaintext: string): string   // AES-256-GCM
+security.encrypt(plaintext: string): string   // AES-256-GCM → "iv:ciphertext:tag"
 security.decrypt(ciphertext: string): string
+security.generateKey(): string                // 64 hex chars
 
-// Input sanitization (strip XSS + control chars — NOT email/URL validation)
-security.input(value: string): string
-security.html(value: string): string          // strip disallowed HTML tags, keep safe ones
-security.escape(value: string): string        // escape HTML special chars (&, <, >, etc.)
-
-// NOTE: there is no security.email() or security.url() — use zod or validator.js for those.
+// NOTE: there is no input validation or HTML sanitizing here — use zod /
+// valibot for input and let the template engine or React escape output.
 ```
 
 ### Required env
 
 ```bash
-BLOOM_SECURITY_CSRF_SECRET=<min 32 chars>
-BLOOM_SECURITY_ENCRYPTION_KEY=<64 hex chars for AES-256>
+BLOOM_SECURITY_ENCRYPTION_KEY=<64 hex chars for AES-256>   # only if you encrypt
 ```
 
 ---
@@ -660,7 +653,6 @@ verifyClass.reset() / verifyClass.disconnectAll()
 |---|---|---|
 | `BLOOM_AUTH_SECRET` | JWT signing key (min 32 chars) | yes |
 | `DATABASE_URL` | Prisma connection string | yes |
-| `BLOOM_SECURITY_CSRF_SECRET` | CSRF token signing (min 32 chars) | recommended |
 | `BLOOM_SECURITY_ENCRYPTION_KEY` | AES-256-GCM key (64 hex chars) | recommended |
 | `REDIS_URL` | Distributed cache | optional |
 | `AWS_S3_BUCKET` | Cloud storage (S3) | optional |
@@ -773,7 +765,7 @@ Apply the 2.0.0 → 4.0.0 list above plus:
 
 - `auth.user(req)` → `auth.getUser(req)`
 - `auth.can(user, perm)` → `auth.hasPermission(user, perm)` (itself removed in 6.0; use `requireUserRoles` / `hasRole`)
-- `security.csrf()` → `security.forms()`
+- `security.csrf()` → `security.forms()` (itself removed in 6.0)
 - `error.handleErrors({ includeStack })` → `error.handleErrors({ showStack })`
 
 Removed (never actually existed — docs were wrong): `auth.requireLogin()`,

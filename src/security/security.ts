@@ -1,11 +1,11 @@
 /**
- * Core security class with CSRF, rate limiting, sanitization, and encryption
+ * Core security class with rate limiting and encryption
  * @module @bloomneo/appkit/security
  * @file src/security/security.ts
  * 
- * @llm-rule WHEN: Building apps that need security protection (CSRF, rate limiting, input sanitization, encryption)
+ * @llm-rule WHEN: Building apps that need rate limiting or AES-256-GCM encryption
  * @llm-rule AVOID: Using directly - always get instance via securityClass.get()
- * @llm-rule NOTE: Provides enterprise-grade security with CSRF tokens, rate limiting, XSS prevention, and AES-256-GCM encryption
+ * @llm-rule NOTE: Provides rate limiting and AES-256-GCM encryption
  */
 
 import crypto from 'crypto';
@@ -25,13 +25,11 @@ interface DecipherGCM extends crypto.Decipher {
 
 export interface ExpressRequest {
   method: string;
-  session?: any;
   body?: any;
   headers?: Record<string, string | string[] | undefined>;
   query?: any;
   ip?: string;
   connection?: { remoteAddress?: string };
-  csrfToken?: () => string;
   [key: string]: any;
 }
 
@@ -50,13 +48,6 @@ export type ExpressMiddleware = (
   next: ExpressNextFunction
 ) => void;
 
-export interface CSRFOptions {
-  secret?: string;
-  tokenField?: string;
-  headerField?: string;
-  expiryMinutes?: number;
-}
-
 export interface RateLimitOptions {
   maxRequests?: number;
   windowMs?: number;
@@ -68,17 +59,6 @@ export interface RateLimitOptions {
    * two routes). Defaults to a name unique to the call.
    */
   name?: string;
-}
-
-export interface InputOptions {
-  maxLength?: number;
-  trim?: boolean;
-  removeXSS?: boolean;
-}
-
-export interface HTMLOptions {
-  allowedTags?: string[];
-  stripAllTags?: boolean;
 }
 
 interface RateLimitRecord {
@@ -99,56 +79,6 @@ export class SecurityClass {
     this.config = config;
     this.requestStore = new Map();
     this.cleanupInitialized = false;
-  }
-
-  /**
-   * Creates CSRF protection middleware for forms and AJAX requests
-   * @llm-rule WHEN: Protecting forms and state-changing requests from CSRF attacks
-   * @llm-rule AVOID: Using without session middleware - CSRF requires sessions for token storage
-   * @llm-rule NOTE: Automatically validates tokens on POST/PUT/DELETE/PATCH requests, adds req.csrfToken() method
-   */
-  forms(options: CSRFOptions = {}): ExpressMiddleware {
-    const csrfSecret = options.secret || this.config.csrf.secret;
-
-    if (!csrfSecret) {
-      throw createSecurityError(
-        'CSRF secret required. Set BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET environment variable',
-        500
-      );
-    }
-
-    const tokenField = options.tokenField || this.config.csrf.tokenField;
-    const headerField = options.headerField || this.config.csrf.headerField;
-    const expiryMinutes = options.expiryMinutes || this.config.csrf.expiryMinutes;
-
-    return (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction): void => {
-      // Ensure session exists
-      if (!req.session || typeof req.session !== 'object') {
-        const error = createSecurityError('Session required for CSRF protection', 500);
-        return next(error);
-      }
-
-      // Add token generation method to request
-      req.csrfToken = (): string => this.generateCSRFToken(req.session, expiryMinutes);
-
-      // Skip CSRF verification for safe HTTP methods
-      if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-        return next();
-      }
-
-      // Extract token from request
-      const token = (req.body && req.body[tokenField]) ||
-                   (req.headers && req.headers[headerField.toLowerCase()]) ||
-                   (req.query && req.query[tokenField]);
-
-      // Verify token
-      if (!this.verifyCSRFToken(token, req.session)) {
-        const error = createSecurityError('Invalid or missing CSRF token', 403);
-        return next(error);
-      }
-
-      next();
-    };
   }
 
   /**
@@ -232,127 +162,6 @@ export class SecurityClass {
 
       next();
     };
-  }
-
-  /**
-   * Cleans text input with XSS prevention and length limiting
-   * @llm-rule WHEN: Processing any user text input before storage or display
-   * @llm-rule AVOID: Storing raw user input - always clean to prevent XSS attacks
-   * @llm-rule NOTE: Removes dangerous patterns like <script>, javascript:, event handlers
-   */
-  input(text: any, options: InputOptions = {}): string {
-    if (typeof text !== 'string') {
-      return '';
-    }
-
-    const maxLength = options.maxLength || this.config.sanitization.maxLength;
-    const trim = options.trim !== false;
-    const removeXSS = options.removeXSS !== false;
-
-    let result = text;
-
-    // Trim whitespace
-    if (trim) {
-      result = result.trim();
-    }
-
-    // Basic XSS prevention
-    if (removeXSS) {
-      result = result
-        .replace(/[<>]/g, '') // Remove angle brackets
-        .replace(/javascript:/gi, '') // Remove javascript: protocol
-        .replace(/on\w+\s*=/gi, '') // Remove inline event handlers
-        .replace(/data:/gi, '') // Remove data: protocol
-        .replace(/vbscript:/gi, '') // Remove vbscript: protocol
-        .replace(/expression\s*\(/gi, '') // Remove CSS expressions
-        .replace(/url\s*\(/gi, ''); // Remove CSS url() functions
-    }
-
-    // Length limiting
-    if (result.length > maxLength) {
-      result = result.substring(0, maxLength);
-    }
-
-    return result;
-  }
-
-  /**
-   * Cleans HTML content allowing only specified safe tags
-   * @llm-rule WHEN: Processing user HTML content like rich text editor input
-   * @llm-rule AVOID: Allowing all HTML tags - only whitelist safe formatting tags
-   * @llm-rule NOTE: Removes script, iframe, object tags and dangerous attributes like onclick
-   */
-  html(html: any, options: HTMLOptions = {}): string {
-    if (typeof html !== 'string') {
-      return '';
-    }
-
-    const allowedTags = options.allowedTags || this.config.sanitization.allowedTags;
-    const stripAllTags = options.stripAllTags !== undefined 
-      ? options.stripAllTags 
-      : this.config.sanitization.stripAllTags;
-
-    let result = html;
-
-    // Strip all tags if requested
-    if (stripAllTags) {
-      return result.replace(/<[^>]*>/g, '');
-    }
-
-    // Remove dangerous elements
-    result = result
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
-      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '') // Remove iframe tags
-      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '') // Remove object tags
-      .replace(/<embed\b[^>]*>/gi, '') // Remove embed tags
-      .replace(/<form\b[^<]*(?:(?!<\/form>)<[^<]*)*<\/form>/gi, '') // Remove form tags
-      .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '') // Remove inline event handlers
-      .replace(/javascript\s*:/gi, '') // Remove javascript: protocol
-      .replace(/data\s*:/gi, '') // Remove data: protocol
-      .replace(/vbscript\s*:/gi, '') // Remove vbscript: protocol
-      .replace(/expression\s*\(/gi, ''); // Remove CSS expressions
-
-    // Filter allowed tags if specified
-    if (allowedTags.length > 0) {
-      try {
-        const allowedPattern = allowedTags
-          .map(tag => tag.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'))
-          .join('|');
-
-        const tagPattern = new RegExp(`<(?!\/?(?:${allowedPattern})\\b)[^>]+>`, 'gi');
-        result = result.replace(tagPattern, '');
-      } catch (error) {
-        console.warn('[@bloomneo/appkit/security] HTML sanitization: Invalid allowed tags, stripping all tags');
-        result = result.replace(/<[^>]*>/g, '');
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Escapes HTML special characters for safe display in HTML content
-   * @llm-rule WHEN: Displaying user text content in HTML without allowing any HTML tags
-   * @llm-rule AVOID: Direct interpolation of user content in HTML - always escape first
-   * @llm-rule NOTE: Converts &, <, >, quotes to HTML entities for safe display
-   */
-  escape(text: any): string {
-    if (typeof text !== 'string') {
-      return '';
-    }
-
-    const HTML_ESCAPE_MAP: Record<string, string> = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#x27;',
-      '/': '&#x2F;',
-      '`': '&#x60;',
-      '=': '&#x3D;',
-    };
-
-    return text.replace(/[&<>"'/`=]/g, (char) => HTML_ESCAPE_MAP[char]);
   }
 
   /**
@@ -499,48 +308,6 @@ export class SecurityClass {
   }
 
   // Private helper methods
-
-  /**
-   * Generates a cryptographically secure CSRF token
-   */
-  private generateCSRFToken(session: any, expiryMinutes: number): string {
-    if (!session || typeof session !== 'object') {
-      throw createSecurityError('Session object required for CSRF token generation', 500);
-    }
-
-    const token = crypto.randomBytes(16).toString('hex');
-    session.csrfToken = token;
-    session.csrfTokenExpiry = Date.now() + expiryMinutes * 60 * 1000;
-
-    return token;
-  }
-
-  /**
-   * Verifies CSRF token using timing-safe comparison
-   */
-  private verifyCSRFToken(token: any, session: any): boolean {
-    if (!token || typeof token !== 'string' || !session?.csrfToken) {
-      return false;
-    }
-
-    // Check expiry
-    if (session.csrfTokenExpiry && Date.now() > session.csrfTokenExpiry) {
-      return false;
-    }
-
-    try {
-      const expectedBuffer = Buffer.from(session.csrfToken, 'hex');
-      const actualBuffer = Buffer.from(token, 'hex');
-
-      if (expectedBuffer.length !== actualBuffer.length) {
-        return false;
-      }
-
-      return crypto.timingSafeEqual(expectedBuffer, actualBuffer);
-    } catch {
-      return false;
-    }
-  }
 
   /**
    * Gets unique identifier for the client

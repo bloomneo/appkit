@@ -3,10 +3,9 @@
  * @module @bloomneo/appkit/security
  * @file src/security/index.ts
  * 
- * @llm-rule WHEN: Building apps that need security protection (CSRF, rate limiting, input sanitization, encryption)
- * @llm-rule AVOID: Manual security implementation - this provides enterprise-grade protection automatically
- * @llm-rule NOTE: Common pattern - securityClass.get() → security.forms() → security.requests() → security.input()
- * @llm-rule NOTE: Use middleware first: forms() for CSRF, requests() for rate limiting, then input() for sanitization
+ * @llm-rule WHEN: Building apps that need rate limiting or AES-256-GCM encryption
+ * @llm-rule AVOID: Hand-rolled rate limiters or crypto - this handles keys, IVs and auth tags
+ * @llm-rule NOTE: Common pattern - securityClass.get() → security.requests() on routes, encrypt()/decrypt() for fields
  */
 
 import { SecurityClass } from './security.js';
@@ -22,7 +21,7 @@ let globalSecurity: SecurityClass | null = null;
  * Environment variables parsed once for performance
  * @llm-rule WHEN: Starting any operation that needs security protection - this is your main entry point
  * @llm-rule AVOID: Calling new SecurityClass() directly - always use this function
- * @llm-rule NOTE: Typical flow - get() → security.forms() → security.requests() → security.input()
+ * @llm-rule NOTE: Typical flow - get() → security.requests() → security.encrypt()/decrypt()
  */
 function get(overrides: Partial<SecurityConfig> = {}): SecurityClass {
   // Lazy initialization - parse environment once
@@ -101,21 +100,15 @@ function generateKey(): string {
  * Quick security setup helper for common Express app patterns
  * @llm-rule WHEN: Setting up basic security for Express apps quickly
  * @llm-rule AVOID: Using without understanding - review each middleware for your needs
- * @llm-rule NOTE: Returns array of middleware: [CSRF protection, rate limiting]
+ * @llm-rule NOTE: Returns array of middleware: [rate limiting]. CSRF protection was removed in 6.0.
  */
 function quickSetup(options: {
-  csrf?: boolean;
   rateLimit?: boolean;
   maxRequests?: number;
   windowMs?: number;
 } = {}): Array<any> {
   const security = get();
   const middleware: Array<any> = [];
-
-  // Add CSRF protection if requested (default: true)
-  if (options.csrf !== false) {
-    middleware.push(security.forms());
-  }
 
   // Add rate limiting if requested (default: true)
   if (options.rateLimit !== false) {
@@ -135,16 +128,11 @@ function quickSetup(options: {
  * @llm-rule NOTE: Throws descriptive errors with environment variable names
  */
 function validateRequired(checks: {
-  csrf?: boolean;
   encryption?: boolean;
   rateLimit?: boolean;
 } = {}): void {
   const config = getConfig();
   const missing: string[] = [];
-
-  if (checks.csrf && !config.csrf.secret) {
-    missing.push('BLOOM_SECURITY_CSRF_SECRET or BLOOM_AUTH_SECRET');
-  }
 
   if (checks.encryption && !config.encryption.key) {
     missing.push('BLOOM_SECURITY_ENCRYPTION_KEY');
@@ -166,7 +154,6 @@ function validateRequired(checks: {
  * @llm-rule AVOID: Exposing sensitive security details - this only shows availability
  */
 function getStatus(): {
-  csrf: boolean;
   encryption: boolean;
   rateLimit: boolean;
   environment: string;
@@ -174,7 +161,6 @@ function getStatus(): {
   const config = getConfig();
   
   return {
-    csrf: !!config.csrf.secret,
     encryption: !!config.encryption.key,
     rateLimit: true, // Always available
     environment: config.environment.nodeEnv,
@@ -207,9 +193,7 @@ export const securityClass = {
 // Re-export types for consumers
 export type {
   SecurityConfig,
-  CSRFConfig,
   RateLimitConfig,
-  SanitizationConfig,
   EncryptionConfig,
   EnvironmentConfig,
 } from './defaults.js';
@@ -222,10 +206,7 @@ export type {
   ExpressResponse,
   ExpressNextFunction,
   ExpressMiddleware,
-  CSRFOptions,
   RateLimitOptions,
-  InputOptions,
-  HTMLOptions,
 } from './security.js';
 
 export { SecurityClass } from './security.js';

@@ -40,6 +40,11 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   `BLOOM_AUTH_TIERS`) and `canSeePII` / `maskPII`. The 9-level role ladder,
   `BLOOM_AUTH_ROLES`, `scopedWhere()` and the `tenantId` / `clientId` claims
   are unchanged.
+- Security `forms()` (CSRF), `input()`, `html()` and `escape()` with their
+  config and env vars. `BLOOM_SECURITY_CSRF_SECRET` is no longer read or
+  required. `quickSetup()` returns just the rate limiter; `getStatus()` drops
+  `csrf`. `requests()`, `encrypt()`, `decrypt()` and `generateKey()` are
+  unchanged.
 
 ### Changed
 
