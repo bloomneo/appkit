@@ -66,7 +66,6 @@ email.send(emailData)                         // → Promise<EmailResult>
 email.sendText(to, subject, text, from?)
 email.sendHtml(to, subject, html, from?)
 email.sendBatch(emailDataArray)               // → EmailResult[]
-email.renderTemplate(name, vars)              // built-ins: 'welcome', 'reset'
 ```
 
 ### emailClass
@@ -108,3 +107,5 @@ Console (dev):
   but your own input-layer validation is safer.
 - Calling `email.send({ text: undefined, html: undefined })` — module throws
   "Email must have either text or html content".
+- Calling `email.sendTemplate(...)` — removed in 6.0. Render `html` / `text`
+  in the app and pass them to `send()`.

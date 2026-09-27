@@ -61,6 +61,7 @@ const BANNED: Banned[] = [
   { pattern: /\b(requireScope|requireTier|roleParts)\s*\(|\bBLOOM_AUTH_(SCOPES|TIERS)\b/, now: 'removed in 6.0 — matrix mode is gone; use the role ladder / BLOOM_AUTH_ROLES (MIGRATION-6.md)' },
   { pattern: /\b(canSeePII|maskPII)\s*\(/, now: 'removed in 6.0 — mask fields in the app serializer (MIGRATION-6.md)' },
   { pattern: /\bsecurity\.(forms|input|html|escape)\s*\(|\bBLOOM_SECURITY_(CSRF_\w+|MAX_INPUT_LENGTH|ALLOWED_TAGS|STRIP_ALL_TAGS)\b/, now: 'removed in 6.0 — security keeps requests() and encrypt/decrypt (MIGRATION-6.md)' },
+  { pattern: /\.(sendTemplate|renderTemplate)\s*\(/, now: 'removed in 6.0 — render html/text in the app and call send() (MIGRATION-6.md)' },
 
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },

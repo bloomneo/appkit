@@ -45,6 +45,8 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   required. `quickSetup()` returns just the rate limiter; `getStatus()` drops
   `csrf`. `requests()`, `encrypt()`, `decrypt()` and `generateKey()` are
   unchanged.
+- `email.sendTemplate()` and its two built-in templates. `send`, `sendBatch`,
+  `sendText`, `sendHtml` and the console / SMTP / Resend strategies remain.
 
 ### Changed
 

@@ -182,26 +182,6 @@ export class EmailClass {
   }
 
   /**
-   * Sends email with template (future extension point)
-   * @llm-rule WHEN: Sending templated emails with data substitution
-   * @llm-rule AVOID: Manual template processing - this will handle template rendering
-   * @llm-rule NOTE: Basic implementation - can be extended with template engines
-   */
-  async sendTemplate(templateName: string, data: any): Promise<EmailResult> {
-    // Simple template processing (can be extended)
-    const template = this.loadTemplate(templateName);
-    const processedHtml = this.processTemplate(template.html, data);
-    const processedText = this.processTemplate(template.text, data);
-    
-    return await this.send({
-      to: data.to,
-      subject: this.processTemplate(template.subject, data),
-      html: processedHtml,
-      text: processedText,
-    });
-  }
-
-  /**
    * Disconnects email strategy gracefully
    * @llm-rule WHEN: App shutdown or email cleanup
    * @llm-rule AVOID: Abrupt disconnection - graceful shutdown prevents connection issues
@@ -330,75 +310,6 @@ export class EmailClass {
       .replace(/<[^>]+>/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-  }
-
-  /**
-   * Loads email template (basic implementation)
-   */
-  private loadTemplate(templateName: string): { subject: string; html: string; text: string } {
-    // Basic built-in templates
-    const templates: Record<string, any> = {
-      welcome: {
-        subject: 'Welcome to {{appName}}!',
-        html: `
-          <h1>Welcome {{name}}!</h1>
-          <p>Thanks for joining {{appName}}. We're excited to have you!</p>
-          <p>Best regards,<br>The {{appName}} Team</p>
-        `,
-        text: `
-          Welcome {{name}}!
-          
-          Thanks for joining {{appName}}. We're excited to have you!
-          
-          Best regards,
-          The {{appName}} Team
-        `,
-      },
-      reset: {
-        subject: 'Reset your {{appName}} password',
-        html: `
-          <h1>Reset your password</h1>
-          <p>Hi {{name}},</p>
-          <p>Click the link below to reset your password:</p>
-          <a href="{{resetUrl}}">Reset Password</a>
-          <p>If you didn't request this, please ignore this email.</p>
-        `,
-        text: `
-          Reset your password
-          
-          Hi {{name}},
-          
-          Click the link below to reset your password:
-          {{resetUrl}}
-          
-          If you didn't request this, please ignore this email.
-        `,
-      },
-    };
-
-    const template = templates[templateName];
-    if (!template) {
-      throw new Error(
-        `[@bloomneo/appkit/email] Template not found: "${templateName}". Built-in templates: "welcome", "reset". See: ${DOCS_URL}#built-in-templates`
-      );
-    }
-
-    return template;
-  }
-
-  /**
-   * Processes template with data substitution
-   */
-  private processTemplate(template: string, data: any): string {
-    let processed = template;
-    
-    // Simple {{key}} substitution
-    for (const [key, value] of Object.entries(data)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      processed = processed.replace(regex, String(value));
-    }
-    
-    return processed.trim();
   }
 
   /**

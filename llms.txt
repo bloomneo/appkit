@@ -416,7 +416,7 @@ affect the queue (Redis transport removed in 6.0).
 
 ## Module 8 — Email (`@bloomneo/appkit/email`)
 
-Console → SMTP → Resend auto-scaling. Templates supported.
+Console → SMTP → Resend auto-scaling. No template engine: render the body yourself.
 
 ### Methods
 
@@ -433,16 +433,15 @@ await email.send({
   replyTo?: string,
   cc?: string | string[],
   bcc?: string | string[],
-  // NOTE: there are NO "template" or "data" fields — use sendTemplate() below.
+  // NOTE: there are NO "template" or "data" fields — render the body yourself.
 })
 
 // Convenience shortcuts
 await email.sendText(to: string, subject: string, text: string)
 await email.sendHtml(to: string, subject: string, html: string, text?: string)
 
-// Templated email — pass the template name + all variables in one object
-await email.sendTemplate(templateName: string, data: Record<string, any>)
-// e.g. await email.sendTemplate('password-reset', { to: addr, resetLink, expiresIn: '1 hour' })
+// No template engine (sendTemplate was removed in 6.0): render html/text in
+// the app — template literal, React Email, MJML — and pass them to send().
 
 await email.sendBatch(emails: EmailData[], batchSize?: number)
 ```

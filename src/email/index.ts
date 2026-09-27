@@ -48,7 +48,6 @@ export interface Email {
   sendBatch(emails: EmailData[], batchSize?: number): Promise<EmailResult[]>;
   sendText(to: string, subject: string, text: string): Promise<EmailResult>;
   sendHtml(to: string, subject: string, html: string, text?: string): Promise<EmailResult>;
-  sendTemplate(templateName: string, data: any): Promise<EmailResult>;
   disconnect(): Promise<void>;
   getStrategy(): string;
   getConfig(): any;

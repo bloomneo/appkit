@@ -32,30 +32,13 @@ describe('email.send()', () => {
     expect(typeof result.success).toBe('boolean');
   });
 
-  it('EmailData has no template or data fields — use sendTemplate() instead', async () => {
+  it('EmailData has no template or data fields — render the body yourself', async () => {
     // This is a type-level assertion captured as a runtime check:
     // passing template/data to send() would be ignored or cause a type error
     const email = emailClass.get();
     // send() only accepts: to, from, subject, text, html, attachments, replyTo, cc, bcc
     const result = await email.send({ to: 'x@y.com', subject: 'S', text: 'T' });
     expect(result).toBeDefined();
-  });
-});
-
-describe('email.sendTemplate()', () => {
-  it('calls sendTemplate with name and data object', async () => {
-    const email = emailClass.get();
-    try {
-      const result = await email.sendTemplate('welcome', {
-        to: 'user@example.com',
-        name: 'Alice',
-      });
-      expect(typeof result).toBe('object');
-      expect(typeof result.success).toBe('boolean');
-    } catch (e: any) {
-      // Template may not be registered in test env — that's acceptable
-      expect(e.message).toBeDefined();
-    }
   });
 });
 
@@ -105,12 +88,15 @@ describe('Public API surface — drift check', () => {
   ];
 
   const INSTANCE_METHODS = [
-    'send', 'sendBatch', 'sendText', 'sendHtml', 'sendTemplate',
+    'send', 'sendBatch', 'sendText', 'sendHtml',
     'disconnect', 'getStrategy', 'getConfig',
   ];
 
   // Instance methods that do NOT exist — previously hallucinated
-  const HALLUCINATED_INSTANCE = ['sendWithTemplate', 'queue', 'schedule'];
+  const HALLUCINATED_INSTANCE = [
+    'sendWithTemplate', 'queue', 'schedule',
+    'sendTemplate', // removed in 6.0 — render the body in the app, then send()
+  ];
 
   // Class-level methods that MUST NOT exist — `flush`/`connect` never existed.
   // `shutdown` was renamed to `disconnectAll` in 3.0.2. `clear` was removed
@@ -145,9 +131,4 @@ describe('Public API surface — drift check', () => {
       expect(typeof (email as any)[m]).not.toBe('function');
     });
   }
-
-  it('email.sendTemplate() is the correct template method (not send({template}))', () => {
-    expect(typeof email.sendTemplate).toBe('function');
-    // EmailData does not have a "template" field — enforced at type level
-  });
 });

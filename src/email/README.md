@@ -7,8 +7,9 @@
 > detection, zero configuration
 
 **One function** returns an email object with automatic strategy selection. Zero
-configuration needed, production-ready sending by default, with built-in
-template system and development preview.
+configuration needed, production-ready sending by default, with development
+preview. There is no template engine (`sendTemplate` was removed in 6.0):
+render the body in your app and pass `html` / `text` to `send()`.
 
 > **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/email.ts](../../examples/email.ts) · [cookbook/](../../cookbook/) (composed recipes)
 
@@ -18,7 +19,6 @@ template system and development preview.
 - **🎯 Auto-Strategy** - RESEND_API_KEY = Resend, SMTP_HOST = SMTP, default =
   Console
 - **🔧 Zero Configuration** - Smart defaults for everything
-- **📄 Built-in Templates** - Welcome, reset password templates included
 - **🎨 Development Preview** - See emails in console with beautiful formatting
 - **🛡️ Production Ready** - Retry logic, error handling, graceful shutdown
 - **🤖 AI-Ready** - Optimized for LLM code generation
@@ -120,13 +120,6 @@ await email.sendText('user@example.com', 'Subject', 'Text');
 // HTML email
 await email.sendHtml('user@example.com', 'Subject', '<h1>HTML</h1>');
 
-// Template email
-await email.sendTemplate('welcome', {
-  to: 'user@example.com',
-  name: 'John',
-  appName: 'MyApp',
-});
-
 // Batch emails
 await email.sendBatch([email1, email2, email3]);
 ```
@@ -211,24 +204,19 @@ async function sendOrderConfirmation(order) {
 }
 ```
 
-### **Built-in Templates**
+### **Rendering your own templates**
 
 ```typescript
 import { emailClass } from '@bloomneo/appkit/email';
 
-// Welcome template
-await emailClass.get().sendTemplate('welcome', {
-  to: 'user@example.com',
-  name: 'John',
-  appName: 'MyApp',
-});
+// Render with any engine (a template literal, React Email, MJML, Handlebars)…
+const welcomeHtml = (name: string) => `<h1>Welcome ${name}!</h1><p>Thanks for joining.</p>`;
 
-// Password reset template
-await emailClass.get().sendTemplate('reset', {
+// …then send the result.
+await emailClass.get().send({
   to: 'user@example.com',
-  name: 'John',
-  resetUrl: 'https://myapp.com/reset?token=abc123',
-  appName: 'MyApp',
+  subject: 'Welcome to MyApp!',
+  html: welcomeHtml('John'),
 });
 ```
 
@@ -672,12 +660,8 @@ await email.send({
 // ✅ Convenience methods
 await emailClass.sendText('user@example.com', 'Subject', 'Message');
 
-// ✅ Template usage
-await email.sendTemplate('welcome', {
-  to: 'user@example.com',
-  name: 'John',
-  appName: 'MyApp',
-});
+// ✅ Rendered body (no template engine in appkit)
+await email.send({ to: 'user@example.com', subject: 'Welcome', html: renderWelcome(user) });
 ```
 
 ### **Anti-Patterns to Avoid**
@@ -766,6 +750,8 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ---
 
 ## Agent-Dev Friendliness Score
+
+> Snapshot from before 6.0. `sendTemplate` it mentions has since been removed.
 
 **Score: 81/100 — 🟡 Solid**
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*
