@@ -4,6 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { rlsPolicySql, rlsPolicyStatements, tenantStore, currentTenant, onBypass, reportBypass, BYPASS_TOKEN } from './tenancy.js';
+import { databaseClass } from './index.js';
 
 describe('rlsPolicyStatements', () => {
   it('enables, forces and (re)creates one policy', () => {
@@ -51,5 +52,33 @@ describe('tenant context', () => {
     offBad();
     reportBypass('not seen');
     expect(seen).toEqual(['nightly export']);
+  });
+});
+
+describe('database.context() binds a tenant only in tenant mode', () => {
+  const run = (value: string | undefined) => {
+    const saved = process.env.BLOOM_DB_TENANT;
+    if (value === undefined) delete process.env.BLOOM_DB_TENANT;
+    else process.env.BLOOM_DB_TENANT = value;
+    try {
+      let seen: string | undefined = 'next() not called';
+      databaseClass.context()({ user: { tenantId: 't1' } }, {}, () => {
+        seen = currentTenant()?.tenantId;
+      });
+      return seen;
+    } finally {
+      if (saved === undefined) delete process.env.BLOOM_DB_TENANT;
+      else process.env.BLOOM_DB_TENANT = saved;
+    }
+  };
+
+  it('binds the token tenant when BLOOM_DB_TENANT is on', () => {
+    expect(run('auto')).toBe('t1');
+    expect(run('rls')).toBe('t1');
+  });
+
+  it("binds nothing when it is unset or 'false' (cache keys and jobs stay unprefixed)", () => {
+    expect(run(undefined)).toBeUndefined();
+    expect(run('false')).toBeUndefined();
   });
 });

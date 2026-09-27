@@ -84,7 +84,7 @@ let _tenantHintWarned = false;
  */
 function detectTenant(req?: any): string | null {
   if (!req) return null;
-  if (!process.env.BLOOM_DB_TENANT) return null;
+  if (!tenantModeOn()) return null;
 
   return req.user?.tenantId || req.user?.tenant_id || null;
 }
