@@ -155,6 +155,14 @@ PII helpers were removed in 6.0.
 
 - Put `tenantId` in the token at login; read it back with `auth.scopedWhere(req)`
   or let `database.tenant(req, fn)` apply it.
+- **Prefer `BLOOM_DB_TENANT=rls`** for multi-tenant apps on Postgres: apply
+  `database.rlsPolicyStatements({ table })` to every tenant table and mount
+  `database.context()` after `auth.requireLoginToken()`. The database then
+  refuses cross-tenant rows even where code forgets a filter.
+- **Never return a query out of `database.tenant(req, fn)` un-awaited from
+  somewhere else** — write `db => db.x.findMany()` (fine: appkit awaits it
+  inside the tenant context), not code that stores the query and awaits it
+  after `tenant()` returns.
 - Decide which fields a role may see in the app's own serializer.
 - **Gate CI on `verifyClass`.** It generates the cross-tenant attack matrix
   from the app itself — no per-endpoint tests to write. `report.ok` is true

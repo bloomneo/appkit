@@ -25,3 +25,13 @@ model Plan {
 
   @@map("appkit_tenant_plan")
 }
+
+// Row-level security fixture: the policy is created by the test with
+// rlsPolicyStatements(), and the app role it connects as is not a superuser.
+model RlsNote {
+  id        Int    @id @default(autoincrement())
+  tenant_id String
+  body      String
+
+  @@map("appkit_rls_note")
+}

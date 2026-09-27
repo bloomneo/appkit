@@ -6,6 +6,20 @@ All notable changes to AppKit will be documented in this file.
 
 Work in progress on the `next` branch; see `MIGRATION-6.md`.
 
+### Added
+
+- **Tenant isolation on Postgres row-level security** (`BLOOM_DB_TENANT=rls`).
+  Each model operation runs in its own transaction that sets
+  `app.tenant_id` (parameterised, transaction-local); `rlsPolicyStatements()`
+  writes the policy; `database.context()` binds the caller's tenant for the
+  rest of the request; `onBypass()` reports deliberate cross-tenant reads.
+  One client now serves every tenant (the tenant comes from AsyncLocalStorage)
+  instead of one Prisma client and pool per tenant. Moved from midhuna's
+  production implementation. Integration tests run as an ordinary Postgres
+  role: policy alone, `tenant()`, forced writes, 20 concurrent requests,
+  `context()`, fail-closed, reported bypass.
+- `BLOOM_PRISMA_CLIENT` for Prisma clients generated to a custom `output`.
+
 ### Removed
 
 - `eventClass` / `@bloomneo/appkit/event` and `EventError` (2,188 lines),
