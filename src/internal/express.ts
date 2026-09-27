@@ -39,6 +39,14 @@ declare global {
       user?: User;
       /** Verified API token claims — set by auth.requireApiToken(). */
       token?: JwtPayload;
+      /**
+       * Per-request metadata set by Bloom's server (request id, start time).
+       * Every Bloom app's routes read `req.requestMetadata?.requestId`; before
+       * 6.0 appkit's loose request type allowed it implicitly.
+       */
+      requestMetadata?: { requestId?: string; startTime?: number; [key: string]: unknown };
+      /** The request's correlation id, when the server sets one. */
+      requestId?: string;
     }
   }
 }
