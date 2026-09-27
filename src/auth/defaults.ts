@@ -1,5 +1,5 @@
 /**
- * Smart defaults and environment validation for role-level-permission authentication
+ * Smart defaults and environment validation for role.level authentication
  * @module @bloomneo/appkit/auth
  * @file src/auth/defaults.ts
  *
@@ -19,35 +19,6 @@ export interface RoleHierarchy {
   [roleLevel: string]: RoleConfig;
 }
 
-export interface PermissionDefaults {
-  [roleLevel: string]: string[];
-}
-
-/**
- * Two-axis ("matrix") role model.
- *
- * A linear ladder conflates two orthogonal things: how far a role *reaches*
- * (scope) and what it may *do* (tier). That's why `moderator.system` outranks
- * `admin.tenant` on a single list and silently inherits delete — the bug every
- * app then works around with ad-hoc `role === 'admin'` checks.
- *
- * Here inheritance is the product of two chains: a role satisfies a
- * requirement only when its scope AND its tier are both high enough. Some
- * roles are deliberately incomparable, which is the point.
- *
- * Populated only when BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS are set;
- * otherwise appkit stays in linear mode and nothing changes.
- */
-export interface RoleMatrix {
-  /** scope name → rank, low to high (client:0, tenant:1, org:2, system:3). */
-  scopeRank: Record<string, number>;
-  /** tier name → rank, low to high (user:0, moderator:1, admin:2). */
-  tierRank: Record<string, number>;
-  /** Ordered axis values as configured, for error messages. */
-  scopes: string[];
-  tiers: string[];
-}
-
 export interface AuthConfig {
   jwt: {
     secret: string;
@@ -58,20 +29,12 @@ export interface AuthConfig {
     saltRounds: number;
   };
   roles: RoleHierarchy;
-  /** Non-null only in matrix mode. Null means linear mode (the default). */
-  matrix: RoleMatrix | null;
-  permissions: {
-    coreActions: string[];
-    coreScopes: string[];
-    defaults: PermissionDefaults;
-  };
   middleware: {
     errorMessages: {
       noToken: string;
       invalidToken: string;
       expiredToken: string;
       insufficientRole: string;
-      insufficientPermissions: string;
     };
   };
   environment: {
@@ -124,31 +87,6 @@ const DEFAULT_ROLE_HIERARCHY: RoleHierarchy = {
 };
 
 /**
- * Core permission actions
- */
-const CORE_ACTIONS = ['view', 'create', 'edit', 'delete', 'manage'];
-
-/**
- * Core permission scopes
- */
-const CORE_SCOPES = ['own', 'tenant', 'org', 'system'];
-
-/**
- * Default permissions for each role.level
- */
-const DEFAULT_PERMISSIONS: PermissionDefaults = {
-  'user.basic': ['manage:own'],
-  'user.pro': ['manage:own'],
-  'user.max': ['manage:own'],
-  'moderator.review': ['view:tenant'],
-  'moderator.approve': ['view:tenant', 'create:tenant', 'edit:tenant'],
-  'moderator.manage': ['view:tenant', 'create:tenant', 'edit:tenant'],
-  'admin.tenant': ['manage:tenant'],
-  'admin.org': ['manage:tenant', 'manage:org'],
-  'admin.system': ['manage:tenant', 'manage:org', 'manage:system'],
-};
-
-/**
  * Gets smart defaults using BLOOM_AUTH_* environment variables
  * @llm-rule WHEN: App startup to get production-ready auth configuration
  * @llm-rule AVOID: Calling repeatedly - validates environment each time, expensive operation
@@ -171,19 +109,12 @@ export function getSmartDefaults(): AuthConfig {
       saltRounds: parseInt(process.env.BLOOM_AUTH_BCRYPT_ROUNDS || '10'),
     },
     roles: parseRoleHierarchy(),
-    matrix: parseRoleMatrix(),
-    permissions: {
-      coreActions: CORE_ACTIONS,
-      coreScopes: CORE_SCOPES,
-      defaults: parseDefaultPermissions(),
-    },
     middleware: {
       errorMessages: {
         noToken: 'Authentication required',
         invalidToken: 'Invalid authentication. Please sign in again.',
         expiredToken: 'Your session has expired. Please sign in again.',
         insufficientRole: 'Access denied. Insufficient role level.',
-        insufficientPermissions: 'Access denied. Insufficient permissions.',
       },
     },
     environment: {
@@ -254,58 +185,6 @@ function parseRoleHierarchy(): RoleHierarchy {
 }
 
 /**
- * Parses permission defaults from environment variable or uses defaults
- * @llm-rule WHEN: App startup to build permission configuration from BLOOM_AUTH_PERMISSIONS
- * @llm-rule AVOID: Using invalid permission format - must be action:scope
- * @llm-rule NOTE: Format: BLOOM_AUTH_PERMISSIONS=user.basic:view:own,admin.tenant:manage:tenant
- */
-function parseDefaultPermissions(): PermissionDefaults {
-  const envPermissions = process.env.BLOOM_AUTH_PERMISSIONS;
-  
-  if (!envPermissions) {
-    return DEFAULT_PERMISSIONS;
-  }
-
-  const parsedPermissions: PermissionDefaults = {};
-  const permissionPairs = envPermissions.split(',');
-
-  for (const permissionPair of permissionPairs) {
-    const parts = permissionPair.trim().split(':');
-    
-    if (parts.length !== 3) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] Invalid BLOOM_AUTH_PERMISSIONS entry: "${permissionPair}". Expected "role.level:action:scope". See: ${DOCS_URL}#role-level-permission-architecture`
-      );
-    }
-
-    const [roleLevel, action, scope] = parts;
-    const permission = `${action}:${scope}`;
-
-    if (!validateRoleLevelFormat(roleLevel)) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] Invalid role.level format: "${roleLevel}". Must be "role.level" (e.g., "admin.tenant"). See: ${DOCS_URL}#role-level-permission-architecture`
-      );
-    }
-
-    if (!validatePermissionFormat(permission)) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] Invalid permission format: "${permission}". Must be "action:scope" (e.g., "manage:tenant"). See: ${DOCS_URL}#role-level-permission-architecture`
-      );
-    }
-
-    if (!parsedPermissions[roleLevel]) {
-      parsedPermissions[roleLevel] = [];
-    }
-
-    if (!parsedPermissions[roleLevel].includes(permission)) {
-      parsedPermissions[roleLevel].push(permission);
-    }
-  }
-
-  return parsedPermissions;
-}
-
-/**
  * Validates JWT secret strength and format
  * @llm-rule WHEN: Setting custom JWT secret for token security
  * @llm-rule AVOID: Using weak secrets - minimum 32 characters required for security
@@ -359,81 +238,8 @@ export function validateRoleLevel(roleLevel: string, roles: RoleHierarchy): bool
 }
 
 /**
- * Validates permission format (action:scope)
- * @llm-rule WHEN: Checking if a permission string is properly formatted
- * @llm-rule AVOID: Using with malformed permissions - will return false
- */
-export function validatePermission(permission: string): boolean {
-  if (!permission || typeof permission !== 'string') {
-    return false;
-  }
-
-  return validatePermissionFormat(permission);
-}
-
-/**
  * Validates role.level format
  */
-/**
- * Build the two-axis role model from BLOOM_AUTH_SCOPES / BLOOM_AUTH_TIERS.
- *
- * @llm-rule WHEN: App startup - both axes set means matrix mode
- * @llm-rule AVOID: Setting only one axis - a half-configured lattice is ambiguous, so it throws
- * @llm-rule NOTE: Format is low→high, e.g. BLOOM_AUTH_SCOPES="client,tenant,org,system"
- *
- * Returns null (linear mode) when neither is set — existing apps are untouched.
- */
-function parseRoleMatrix(): RoleMatrix | null {
-  const rawScopes = process.env.BLOOM_AUTH_SCOPES?.trim();
-  const rawTiers = process.env.BLOOM_AUTH_TIERS?.trim();
-
-  if (!rawScopes && !rawTiers) return null;
-
-  // One axis alone can't express a lattice, and guessing the other would give
-  // an app a silently different authorization model than it asked for.
-  if (!rawScopes || !rawTiers) {
-    throw new Error(
-      `[@bloomneo/appkit/auth] Matrix mode needs BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS. ` +
-        `Got ${rawScopes ? 'SCOPES only' : 'TIERS only'}. Set both, or neither for linear mode. ` +
-        `See: ${DOCS_URL}#role-level-permission-architecture`
-    );
-  }
-
-  const parseAxis = (raw: string, name: string): string[] => {
-    const values = raw.split(',').map((v) => v.trim()).filter(Boolean);
-    if (values.length < 2) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] ${name} needs at least 2 comma-separated values, low to high. ` +
-          `Got: "${raw}". See: ${DOCS_URL}#role-level-permission-architecture`
-      );
-    }
-    for (const value of values) {
-      // Axis values become half of a `tier.scope` identifier, so a dot would
-      // make the pair unparseable.
-      if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
-        throw new Error(
-          `[@bloomneo/appkit/auth] Invalid ${name} value: "${value}". ` +
-            `Letters, numbers, underscore and hyphen only. See: ${DOCS_URL}#role-level-permission-architecture`
-        );
-      }
-    }
-    if (new Set(values).size !== values.length) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] ${name} has duplicate values: "${raw}". See: ${DOCS_URL}#role-level-permission-architecture`
-      );
-    }
-    return values;
-  };
-
-  const scopes = parseAxis(rawScopes, 'BLOOM_AUTH_SCOPES');
-  const tiers = parseAxis(rawTiers, 'BLOOM_AUTH_TIERS');
-
-  const rank = (values: string[]) =>
-    values.reduce<Record<string, number>>((acc, value, i) => ((acc[value] = i), acc), {});
-
-  return { scopeRank: rank(scopes), tierRank: rank(tiers), scopes, tiers };
-}
-
 function validateRoleLevelFormat(roleLevel: string): boolean {
   if (!roleLevel || typeof roleLevel !== 'string') {
     return false;
@@ -442,24 +248,6 @@ function validateRoleLevelFormat(roleLevel: string): boolean {
   // Must be in format: role.level (e.g., "admin.tenant")
   const parts = roleLevel.split('.');
   return parts.length === 2 && parts[0].length > 0 && parts[1].length > 0;
-}
-
-/**
- * Validates permission format
- */
-function validatePermissionFormat(permission: string): boolean {
-  if (!permission || typeof permission !== 'string') {
-    return false;
-  }
-
-  // Must be in format: action:scope (e.g., "manage:tenant")
-  const parts = permission.split(':');
-  if (parts.length !== 2) {
-    return false;
-  }
-
-  const [action, scope] = parts;
-  return action.length > 0 && scope.length > 0;
 }
 
 /**
@@ -539,7 +327,4 @@ function isValidTimespan(timespan: string | number): boolean {
 
 export {
   DEFAULT_ROLE_HIERARCHY,
-  DEFAULT_PERMISSIONS,
-  CORE_ACTIONS,
-  CORE_SCOPES,
 };

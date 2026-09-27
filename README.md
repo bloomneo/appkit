@@ -171,7 +171,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 
 | # | Module | Purpose | Auto-scales |
 |---|---|---|---|
-| 1 | **Auth** | JWT tokens, role.level permissions, middleware | — |
+| 1 | **Auth** | JWT tokens, role.level hierarchy, middleware | — |
 | 2 | **Database** | Prisma with multi-tenant filtering (tenant from the login token) | `BLOOM_DB_TENANT` |
 | 3 | **Security** | CSRF, rate limiting, AES-256-GCM, input sanitization | — |
 | 4 | **Error** | HTTP errors with semantic types + middleware | — |
@@ -248,7 +248,7 @@ Then:
 Apply everything above PLUS the pre-2.0 renames:
 
 - `auth.user(req)` → `auth.getUser(req)`
-- `auth.can(user, perm)` → `auth.hasPermission(user, perm)`
+- `auth.can(user, perm)` → `auth.hasPermission(user, perm)` (removed in 6.0; use `requireUserRoles` / `hasRole`)
 - `security.csrf()` → `security.forms()`
 - `error.handleErrors({ includeStack })` → `error.handleErrors({ showStack })`
 

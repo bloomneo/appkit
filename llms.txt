@@ -53,10 +53,10 @@ const logger = loggerClass.get('api');  // optional component param
 
 ## Module 1 — Auth (`@bloomneo/appkit/auth`)
 
-JWT tokens, role.level permissions, Express middleware. Two token types:
+JWT tokens, a role.level hierarchy, Express middleware. Two token types:
 **login tokens** (humans) and **API tokens** (services/webhooks).
 
-### Methods (verified by src/auth/auth.test.ts — 47/47 passing)
+### Methods (verified by src/auth/auth.test.ts)
 
 ```ts
 const auth = authClass.get();
@@ -64,11 +64,11 @@ const auth = authClass.get();
 // Token generation — these are the ONLY two public token-creation methods.
 // (`signToken` is a private internal — never call it from consumer code.)
 auth.generateLoginToken(payload, expiresIn?: string): string
-//   payload: { userId: string | number, role: string, level: string, permissions?: string[], email?: string }
+//   payload: { userId: string | number, role: string, level: string, tenantId?: string | null, clientId?: string | null, email?: string }
 //   default expiresIn: '7d'
 
 auth.generateApiToken(payload, expiresIn?: string): string
-//   payload: { keyId: string, role: string, level: string, permissions?: string[] }
+//   payload: { keyId: string, role: string, level: string }
 //   default expiresIn: '1y'
 
 // Token verification — handles BOTH login and API tokens. Throws on bad token.
@@ -83,64 +83,29 @@ auth.requireLoginToken(options?): ExpressMiddleware       // user authentication
 auth.requireApiToken(options?): ExpressMiddleware         // API token authentication
 auth.requireUserRoles(['admin.tenant']): ExpressMiddleware       // role check (OR within array)
 auth.requireUserRoles(['admin.tenant', 'admin.org']): ExpressMiddleware
-auth.requireUserPermissions(['manage:users']): ExpressMiddleware // permission check (AND within array)
 
 // Request helpers
 auth.getUser(req: ExpressRequest): JwtPayload | null   // null-safe extract from req.user OR req.token
 auth.hasRole(userRoleLevel: string, requiredRoleLevel: string): boolean   // inheritance-aware
-auth.hasPermission(user: JwtPayload, permission: string): boolean   // permission inheritance
+auth.scopedWhere(req): { tenantId?, clientId? }   // data scope from the token; throws if unknown
 ```
+
+There is no permissions model (`hasPermission`, `requireUserPermissions`), no
+matrix mode (`requireScope`, `requireTier`, `roleParts`, `BLOOM_AUTH_SCOPES`,
+`BLOOM_AUTH_TIERS`) and no `canSeePII` / `maskPII` — all removed in 6.0. Gate
+routes with `requireUserRoles()`; decide field masking in the app.
 
 ### Middleware chaining rules
 
 - `requireLoginToken()` MUST come first on user routes — it sets `req.user` for downstream.
-- `requireUserRoles([...])` and `requireUserPermissions([...])` chain AFTER `requireLoginToken()`.
+- `requireUserRoles([...])` chains AFTER `requireLoginToken()`.
   Never use them standalone, never on API token routes (API tokens don't have user roles).
 - `requireApiToken()` is for SERVICE routes only. Use it alone — never chain `requireUserRoles`
   after it.
 
-### Matrix mode — roles as (tier × scope), opt-in (4.2.0+)
-
-A single ladder conflates two orthogonal things: how far a role **reaches** and
-what it may **do**. On one list `moderator.system` outranks `admin.tenant` and
-therefore inherits delete — a platform moderator could delete firm data.
-
-Set both axes, low → high, and inheritance becomes the **product** of two chains:
-
-```bash
-BLOOM_AUTH_SCOPES="client,tenant,org,system"   # reach
-BLOOM_AUTH_TIERS="user,moderator,admin"        # capability
-```
-
-```
-granted  ⟺  scope(user) >= scope(required)  AND  tier(user) >= tier(required)
-```
-
-| Caller | Gate requires | Granted? |
-|---|---|:--:|
-| `admin.system` | `admin.tenant` | ✅ |
-| `moderator.system` | `moderator.tenant` | ✅ |
-| `moderator.system` | `admin.tenant` | **❌** platform mod can't delete firm data |
-| `admin.tenant` | `admin.client` | ✅ |
-| `moderator.tenant` | `admin.client` | ❌ |
-| `admin.tenant` | `admin.system` | ❌ |
-
-`role` IS the tier; `level` IS the scope. Same wire format — only the
-comparison changes. Any pair from the cross-product is valid with no per-pair
-registration. Setting only one axis throws rather than guessing the other.
-
-**Backward compatible:** leave both unset and appkit stays in linear mode with
-the 9-level ladder. Nothing changes for existing apps.
-
-```ts
-auth.roleParts('admin.tenant')  // { tier, scope, tierRank, scopeRank } | null in linear mode
-auth.requireTier('admin')       // capability, any reach
-auth.requireScope('tenant')     // reach, any capability
-```
-
 ### Capability vs data scope — never conflate them
 
-- **"May they do this?"** → the role (tier × scope), via `requireUserRoles()`.
+- **"May they do this?"** → the role, via `requireUserRoles()`.
 - **"On whose data?"** → `tenantId` / `clientId`, carried in the token.
 
 ```ts
@@ -158,16 +123,6 @@ a login that forgot the claim fails loudly instead of returning every row.
 Two users can both be `admin.tenant` with different `tenantId` — identical
 capability, disjoint data. Gating data access on the role alone is how a firm
 admin ends up reading another firm.
-
-### PII masking
-
-```ts
-auth.canSeePII(user): boolean                       // admin tier only
-auth.maskPII(value, { as: 'email' | 'phone' | 'name' | 'id' }): string
-```
-
-Mask at the serialization edge when `canSeePII()` is false. Lossy and one-way —
-for rendering, never for storage or comparison.
 
 ### Role hierarchy (9 levels, automatic inheritance)
 
@@ -714,8 +669,7 @@ verifyClass.reset() / verifyClass.disconnectAll()
 | `RESEND_API_KEY` | Production email | optional |
 | `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` | SMTP email | optional |
 | `BLOOM_LOGGER_FILE` / `BLOOM_LOGGER_DIR` | Logger file transport on/off and folder | optional |
-| `BLOOM_AUTH_SCOPES` | Reach axis, low→high — enables matrix mode | optional |
-| `BLOOM_AUTH_TIERS` | Capability axis, low→high — enables matrix mode | optional |
+| `BLOOM_AUTH_ROLES` | Custom role.level ladder (`role.level:number,...`) | optional |
 | `BLOOM_MCP_OAUTH_SECRET` | Signs MCP OAuth JWTs (falls back to `BLOOM_AUTH_SECRET`) | optional |
 | `BLOOM_MCP_NAME` / `BLOOM_MCP_VERSION` | Reported by MCP `initialize` | optional |
 | `BLOOM_MCP_PROTOCOL_VERSION` | Fallback MCP protocol version | optional |
@@ -818,7 +772,7 @@ required env vars are missing. No silent fallback.
 Apply the 2.0.0 → 4.0.0 list above plus:
 
 - `auth.user(req)` → `auth.getUser(req)`
-- `auth.can(user, perm)` → `auth.hasPermission(user, perm)`
+- `auth.can(user, perm)` → `auth.hasPermission(user, perm)` (itself removed in 6.0; use `requireUserRoles` / `hasRole`)
 - `security.csrf()` → `security.forms()`
 - `error.handleErrors({ includeStack })` → `error.handleErrors({ showStack })`
 

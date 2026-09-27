@@ -31,6 +31,9 @@ Nothing below was used by any of the four production apps (counted
 | Per-org databases: `databaseClass.org(id)`, `ORG_<NAME>` URLs, `{org}` in `DATABASE_URL`, `x-org-id` detection | One `DATABASE_URL` per app; tenants are rows (`tenant_id`) in it |
 | Tenant from `x-tenant-id` header, `:tenantId` route param, `?tenant=` query or subdomain | `req.user.tenantId` from the login token only: `auth.generateLoginToken({ …, tenantId })` + `auth.requireLoginToken()` before tenant routes |
 | `req` argument on `databaseClass.getTenants / list / exists / create / delete` (it only selected an org) | Call them without it |
+| Auth permissions model: `auth.hasPermission()`, `auth.requireUserPermissions()`, `authClass.getPermissions()`, `BLOOM_AUTH_PERMISSIONS`, the `permissions` token field | `auth.requireUserRoles([...])` / `auth.hasRole()` on the role ladder (`BLOOM_AUTH_ROLES` to customise). A `permissions` field in a payload is still signed but nothing reads it |
+| Auth matrix mode: `BLOOM_AUTH_SCOPES`, `BLOOM_AUTH_TIERS`, `auth.requireScope()`, `auth.requireTier()`, `auth.roleParts()`, `tier` / `scope` token fields | The linear 9-level ladder; the env vars are ignored |
+| `auth.canSeePII()`, `auth.maskPII()` | Decide and mask fields in the app's own serializer |
 
 ## Changed
 

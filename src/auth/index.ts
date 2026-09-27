@@ -1,9 +1,9 @@
 /**
- * Ultra-simple role-level-permission authentication that just works
+ * Ultra-simple role.level authentication that just works
  * @module @bloomneo/appkit/auth
  * @file src/auth/index.ts
  * 
- * @llm-rule WHEN: Building apps that need authentication with user roles and permissions
+ * @llm-rule WHEN: Building apps that need authentication with user roles
  * @llm-rule AVOID: Complex auth setups with multiple libraries - this handles JWT + bcrypt + middleware in one API
  * @llm-rule NOTE: Uses role.level hierarchy (user.basic → admin.system) with automatic inheritance
  * @llm-rule NOTE: Common pattern - auth.requireLoginToken() → auth.requireUserRoles() → handler
@@ -67,16 +67,6 @@ function getRoles(): RoleHierarchy {
 }
 
 /**
- * Get current permission configuration for inspection
- * @llm-rule WHEN: Need to see default permissions for debugging or documentation
- * @llm-rule AVOID: Using for permission checks - use auth.hasPermission(user, permission) instead
- */
-function getPermissions(): { coreActions: string[]; coreScopes: string[]; defaults: Record<string, string[]> } {
-  const auth = get();
-  return auth.config.permissions;
-}
-
-/**
  * Check if a role.level exists in current configuration
  * @llm-rule WHEN: Validating user input or config before creating tokens
  * @llm-rule AVOID: Using for runtime authorization - this is for validation only
@@ -108,7 +98,6 @@ export const authClass = {
   // Utility methods
   reset,
   getRoles,
-  getPermissions,
   isValidRole,
   getAllRoles,
 } as const;
@@ -118,7 +107,6 @@ export type {
   AuthConfig,
   RoleConfig,
   RoleHierarchy,
-  PermissionDefaults,
 } from './defaults.js';
 
 export type {

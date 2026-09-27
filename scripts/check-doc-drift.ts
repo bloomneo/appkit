@@ -24,7 +24,7 @@ type Banned = { pattern: RegExp; now: string };
 const BANNED: Banned[] = [
   // auth — 2.0.0 compatibility-break renames (no aliases kept)
   { pattern: /\bauth\.user\s*\(/,          now: 'auth.getUser(req)' },
-  { pattern: /\bauth\.can\s*\(/,           now: 'auth.hasPermission(user, permission)' },
+  { pattern: /\bauth\.can\s*\(/,           now: 'removed — use auth.requireUserRoles([...]) / auth.hasRole()' },
   { pattern: /\bauth\.requireLogin\s*\(/,  now: 'auth.requireLoginToken()' },
   { pattern: /\bauth\.requireRole\s*\(/,   now: 'auth.requireUserRoles([...])' },
 
@@ -57,6 +57,9 @@ const BANNED: Banned[] = [
   { pattern: /\bCLOUDFLARE_R2_\w+|\bR2_BUCKET\b|BLOOM_STORAGE_STRATEGY\s*=\s*['"]?r2\b/, now: 'removed in 6.0 — use the S3 strategy with S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com (MIGRATION-6.md)' },
   { pattern: /\bdatabaseClass\.org\s*\(|\bORG_[A-Z][A-Z0-9_]*\s*=/, now: 'removed in 6.0 — one DATABASE_URL per app (MIGRATION-6.md)' },
   { pattern: /\bMongooseAdapter\b/, now: 'removed in 6.0 — Prisma is the only adapter (MIGRATION-6.md)' },
+  { pattern: /\b(auth\.)?(hasPermission|requireUserPermissions)\s*\(|\bgetPermissions\s*\(|\bBLOOM_AUTH_PERMISSIONS\b/, now: 'removed in 6.0 — gate with auth.requireUserRoles([...]) (MIGRATION-6.md)' },
+  { pattern: /\b(requireScope|requireTier|roleParts)\s*\(|\bBLOOM_AUTH_(SCOPES|TIERS)\b/, now: 'removed in 6.0 — matrix mode is gone; use the role ladder / BLOOM_AUTH_ROLES (MIGRATION-6.md)' },
+  { pattern: /\b(canSeePII|maskPII)\s*\(/, now: 'removed in 6.0 — mask fields in the app serializer (MIGRATION-6.md)' },
 
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },

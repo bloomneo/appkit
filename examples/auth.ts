@@ -10,9 +10,9 @@
  *   4. Issuing an API token (service-to-service JWT)
  *   5. Verifying a token manually
  *   6. Reading the user off a request with getUser()
- *   7. Role and permission checks
+ *   7. Role checks
  *   8. Express middleware: requireLoginToken / requireUserRoles /
- *      requireUserPermissions / requireApiToken
+ *      requireApiToken
  *   9. Class-level helpers: getRoles / getAllRoles / isValidRole
  *
  * Prereqs:  BLOOM_AUTH_SECRET must be set (>= 32 chars).
@@ -56,14 +56,11 @@ async function main() {
   const user = auth.getUser(fakeReq);
   console.log('getUser() →', user?.userId);
 
-  // 7. Role + permission checks (role.level hierarchy)
+  // 7. Role checks (role.level hierarchy)
   console.log(
     "hasRole('admin.tenant' >= 'user.basic') =",
     auth.hasRole('admin.tenant', 'user.basic'),
   );
-  if (user) {
-    console.log("hasPermission(user, 'manage:tenant') =", auth.hasPermission(user, 'manage:tenant'));
-  }
 
   // 8. Express middleware — use these in routers, not standalone
   //
@@ -76,15 +73,13 @@ async function main() {
   //
   //    router.get('/internal/sync',
   //      auth.requireApiToken(),                              // validates API token
-  //      auth.requireUserPermissions(['read:users']),
   //      handler);
   //
   //    Building the middleware stack (do not invoke — Express supplies req/res/next):
   const loginMw = auth.requireLoginToken();
   const rolesMw = auth.requireUserRoles(['admin.tenant']);
-  const permsMw = auth.requireUserPermissions(['manage:tenant']);
   const apiMw   = auth.requireApiToken();
-  console.log('middleware built:', [loginMw, rolesMw, permsMw, apiMw].every(m => typeof m === 'function'));
+  console.log('middleware built:', [loginMw, rolesMw, apiMw].every(m => typeof m === 'function'));
 
   // 9. Class-level helpers (no instance needed)
   console.log('all role.levels =', authClass.getAllRoles());

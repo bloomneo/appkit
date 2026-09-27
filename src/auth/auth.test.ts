@@ -241,93 +241,6 @@ describe('hasRole — inheritance', () => {
   });
 });
 
-describe('hasPermission — permission inheritance + replacement', () => {
-  const auth = authClass.get();
-
-  // Build a JwtPayload by signing + verifying a token. Pass explicit
-  // permissions to test the "explicit replaces defaults" path. Omit them
-  // to test the "fall back to role defaults" path.
-  function makeUserWithExplicit(perms: string[]) {
-    const token = auth.generateLoginToken({
-      userId: 1,
-      role: 'admin',
-      level: 'tenant',
-      permissions: perms,
-    });
-    return auth.verifyToken(token);
-  }
-
-  function makeUserWithDefaults() {
-    // No explicit permissions — falls back to admin.tenant defaults from
-    // src/auth/defaults.ts which include manage:tenant (and inherited).
-    const token = auth.generateLoginToken({
-      userId: 1,
-      role: 'admin',
-      level: 'tenant',
-    });
-    return auth.verifyToken(token);
-  }
-
-  it('returns true when user has the exact explicit permission', () => {
-    const user = makeUserWithExplicit(['edit:tenant']);
-    expect(auth.hasPermission(user, 'edit:tenant')).toBe(true);
-  });
-
-  it('returns true when user has manage:scope (inherits all actions for that scope)', () => {
-    const user = makeUserWithExplicit(['manage:tenant']);
-    expect(auth.hasPermission(user, 'edit:tenant')).toBe(true);
-    expect(auth.hasPermission(user, 'view:tenant')).toBe(true);
-    expect(auth.hasPermission(user, 'delete:tenant')).toBe(true);
-  });
-
-  it('NO upward inheritance: edit:scope does NOT grant manage:scope', () => {
-    const user = makeUserWithExplicit(['edit:tenant']);
-    // Explicit permissions REPLACE role defaults, so admin.tenant's
-    // default manage:tenant is NOT consulted. Consumer wanted edit-only,
-    // they get edit-only.
-    expect(auth.hasPermission(user, 'manage:tenant')).toBe(false);
-  });
-
-  it('explicit permissions REPLACE role defaults (you CAN downgrade a user)', () => {
-    // A user with role='admin', level='tenant' would normally have
-    // admin.tenant's default permissions (which include manage:tenant).
-    // But because we passed explicit permissions=['view:own'], that array
-    // becomes the COMPLETE set — defaults are not consulted.
-    const user = makeUserWithExplicit(['view:own']);
-    expect(auth.hasPermission(user, 'view:own')).toBe(true);
-    expect(auth.hasPermission(user, 'manage:tenant')).toBe(false);
-    expect(auth.hasPermission(user, 'edit:tenant')).toBe(false);
-  });
-
-  it('explicit empty permissions array completely strips the user (zero permissions)', () => {
-    // Edge case: explicit `[]` is still an explicit array, so it replaces
-    // defaults. The user has no permissions despite their admin.tenant role.
-    const user = makeUserWithExplicit([]);
-    expect(auth.hasPermission(user, 'view:own')).toBe(false);
-    expect(auth.hasPermission(user, 'manage:tenant')).toBe(false);
-  });
-
-  it('NO explicit permissions falls back to role defaults', () => {
-    // When you don't pass a permissions field at all, the user's role.level
-    // defaults from the configured RolePermissionConfig apply.
-    // admin.tenant's defaults include manage:tenant.
-    const user = makeUserWithDefaults();
-    expect(auth.hasPermission(user, 'manage:tenant')).toBe(true);
-    expect(auth.hasPermission(user, 'edit:tenant')).toBe(true);  // via manage inheritance
-  });
-
-  it('returns false for null user or empty permission', () => {
-    const user = makeUserWithExplicit(['edit:tenant']);
-    expect(auth.hasPermission(null as any, 'edit:tenant')).toBe(false);
-    expect(auth.hasPermission(user, '')).toBe(false);
-  });
-
-  it('throws on malformed permission string (no colon)', () => {
-    const user = makeUserWithExplicit(['edit:tenant']);
-    expect(() => auth.hasPermission(user, 'notvalid')).toThrow(/Invalid permission/);
-  });
-});
-
 describe('Express middleware factories', () => {
   const auth = authClass.get();
 
@@ -346,11 +259,6 @@ describe('Express middleware factories', () => {
     expect(typeof mw).toBe('function');
   });
 
-  it('requireUserPermissions([...]) returns a function', () => {
-    const mw = auth.requireUserPermissions(['manage:users']);
-    expect(typeof mw).toBe('function');
-  });
-
   it('requireUserRoles throws if given an empty array', () => {
     expect(() => auth.requireUserRoles([])).toThrow(/non-empty/i);
   });
@@ -359,9 +267,6 @@ describe('Express middleware factories', () => {
     expect(() => auth.requireUserRoles(['not.real'])).toThrow(/Invalid role.level/);
   });
 
-  it('requireUserPermissions throws if given an empty array', () => {
-    expect(() => auth.requireUserPermissions([])).toThrow(/non-empty/i);
-  });
 });
 
 describe('Public API surface — drift check', () => {
@@ -384,11 +289,10 @@ describe('Public API surface — drift check', () => {
     // User extraction + authorization checks
     'getUser',
     'hasRole',
-    'hasPermission',
+    'scopedWhere',
     // Express middleware factories
     'requireLoginToken',
     'requireUserRoles',
-    'requireUserPermissions',
     'requireApiToken',
   ];
 
@@ -413,7 +317,15 @@ describe('Public API surface — drift check', () => {
     'requireLogin', // never existed — real name is requireLoginToken
     'requireRole',  // never existed — real name is requireUserRoles
     'user',         // renamed pre-v1 to getUser() per NAMING.md (no bare-noun methods)
-    'can',          // renamed pre-v1 to hasPermission() per NAMING.md (has/is/can are prefixes)
+    'can',          // renamed pre-v1, then removed with the permissions model in 6.0
+    // Removed in 6.0 — permissions model, matrix mode and PII helpers.
+    'hasPermission',
+    'requireUserPermissions',
+    'requireScope',
+    'requireTier',
+    'roleParts',
+    'canSeePII',
+    'maskPII',
   ];
 
   const auth = authClass.get();
@@ -431,18 +343,18 @@ describe('Public API surface — drift check', () => {
   }
 });
 
-describe('matrix mode — two-axis roles (scoped-roles RFC)', () => {
-  // A linear ladder conflates reach with capability, so moderator.system
-  // outranks admin.tenant and silently inherits delete. The product order
-  // makes those two roles incomparable, which is the whole point.
-  const withMatrix = <T>(fn: () => T, scopes = 'client,tenant,org,system', tiers = 'user,moderator,admin'): T => {
+describe('data scope claims (tenantId / clientId) and the linear ladder', () => {
+  it('ignores the removed matrix env vars — roles stay on the linear ladder (6.0)', () => {
     const savedScopes = process.env.BLOOM_AUTH_SCOPES;
     const savedTiers = process.env.BLOOM_AUTH_TIERS;
-    process.env.BLOOM_AUTH_SCOPES = scopes;
-    process.env.BLOOM_AUTH_TIERS = tiers;
-    authClass.reset();
+    process.env.BLOOM_AUTH_SCOPES = 'client,tenant,org,system';
+    process.env.BLOOM_AUTH_TIERS = 'user,moderator,admin';
     try {
-      return fn();
+      const auth = authClass.reset();
+      expect(auth.hasRole('admin.org', 'admin.tenant')).toBe(true);
+      expect(auth.hasRole('admin.tenant', 'admin.org')).toBe(false);
+      // A matrix-only pair is not a registered role.level.
+      expect(() => auth.generateLoginToken({ userId: 'u1', role: 'moderator', level: 'org' })).toThrow(/Invalid role.level/);
     } finally {
       if (savedScopes === undefined) delete process.env.BLOOM_AUTH_SCOPES;
       else process.env.BLOOM_AUTH_SCOPES = savedScopes;
@@ -450,109 +362,16 @@ describe('matrix mode — two-axis roles (scoped-roles RFC)', () => {
       else process.env.BLOOM_AUTH_TIERS = savedTiers;
       authClass.reset();
     }
-  };
-
-  // Straight from the RFC truth table.
-  const TRUTH_TABLE: Array<[string, string, boolean, string]> = [
-    ['admin.system', 'admin.tenant', true, 'platform admin reaches firm admin'],
-    ['admin.system', 'moderator.client', true, 'higher on both axes'],
-    ['moderator.system', 'moderator.tenant', true, 'same tier, greater reach'],
-    ['moderator.system', 'admin.tenant', false, 'platform mod must NOT inherit firm delete'],
-    ['admin.tenant', 'admin.client', true, 'firm admin manages its clients'],
-    ['moderator.tenant', 'admin.client', false, 'firm mod cannot client-admin'],
-    ['admin.tenant', 'admin.system', false, 'firm admin is not platform'],
-    ['user.client', 'user.client', true, 'identity'],
-    ['user.system', 'moderator.client', false, 'reach without capability'],
-  ];
-
-  for (const [user, required, expected, why] of TRUTH_TABLE) {
-    it(`${user} vs ${required} → ${expected} (${why})`, () => {
-      withMatrix(() => {
-        expect(authClass.get().hasRole(user, required)).toBe(expected);
-      });
-    });
-  }
-
-  it('the same comparison is TRUE on the linear ladder — this is the bug being fixed', () => {
-    // moderator.manage (6) > admin.tenant (7)? No — but the shape of the
-    // problem is that a single list forces an ordering between roles that
-    // should be incomparable. Verified here against the shipped hierarchy.
-    expect(authClass.get().hasRole('admin.org', 'admin.tenant')).toBe(true);
-    expect(authClass.get().hasRole('admin.tenant', 'admin.org')).toBe(false);
-  });
-
-  it('roleParts splits both axes with ranks', () => {
-    withMatrix(() => {
-      expect(authClass.get().roleParts('admin.tenant')).toEqual({
-        tier: 'admin', scope: 'tenant', tierRank: 2, scopeRank: 1,
-      });
-    });
-  });
-
-  it('roleParts returns null in linear mode', () => {
-    expect(authClass.get().roleParts('admin.tenant')).toBeNull();
-  });
-
-  it('roleParts returns null for a value outside the configured axes', () => {
-    withMatrix(() => {
-      expect(authClass.get().roleParts('wizard.tenant')).toBeNull();
-      expect(authClass.get().roleParts('admin.galaxy')).toBeNull();
-      expect(authClass.get().roleParts('nodot')).toBeNull();
-    });
-  });
-
-  it('accepts any pair from the cross-product without registration', () => {
-    withMatrix(() => {
-      const token = authClass.get().generateLoginToken({ userId: 'u1', role: 'moderator', level: 'org' });
-      const decoded = authClass.get().verifyToken(token);
-      expect(decoded.role).toBe('moderator');
-      expect(decoded.level).toBe('org');
-      // Split carried for convenience, per the RFC.
-      expect(decoded.tier).toBe('moderator');
-      expect(decoded.scope).toBe('org');
-    });
-  });
-
-  it('rejects a pair outside the axes with an actionable message', () => {
-    withMatrix(() => {
-      expect(() =>
-        authClass.get().generateLoginToken({ userId: 'u1', role: 'wizard', level: 'tenant' })
-      ).toThrow(/must be one of \[user, moderator, admin\]/);
-    });
   });
 
   it('carries tenantId and clientId as data scope', () => {
-    withMatrix(() => {
-      const token = authClass.get().generateLoginToken({
-        userId: 'u1', role: 'admin', level: 'tenant', tenantId: 'firm-1', clientId: null,
-      });
-      const decoded = authClass.get().verifyToken(token);
-      expect(decoded.tenantId).toBe('firm-1');
-      expect(decoded.clientId).toBeNull();
+    const auth = authClass.get();
+    const token = auth.generateLoginToken({
+      userId: 'u1', role: 'admin', level: 'tenant', tenantId: 'firm-1', clientId: null,
     });
-  });
-
-  it('requires BOTH axes — one alone throws rather than guessing', () => {
-    const saved = process.env.BLOOM_AUTH_SCOPES;
-    process.env.BLOOM_AUTH_SCOPES = 'client,tenant';
-    delete process.env.BLOOM_AUTH_TIERS;
-        try {
-      expect(() => authClass.reset()).toThrow(/BOTH BLOOM_AUTH_SCOPES and BLOOM_AUTH_TIERS/);
-    } finally {
-      if (saved === undefined) delete process.env.BLOOM_AUTH_SCOPES;
-      else process.env.BLOOM_AUTH_SCOPES = saved;
-      authClass.reset();
-    }
-  });
-
-  it('rejects a single-value axis and duplicates', () => {
-    const restore = () => { delete process.env.BLOOM_AUTH_SCOPES; delete process.env.BLOOM_AUTH_TIERS; authClass.reset(); };
-    process.env.BLOOM_AUTH_TIERS = 'user,admin';
-    process.env.BLOOM_AUTH_SCOPES = 'tenant';
-        expect(() => authClass.reset()).toThrow(/at least 2 comma-separated/);
-    process.env.BLOOM_AUTH_SCOPES = 'tenant,tenant,system';
-        expect(() => authClass.reset()).toThrow(/duplicate/);
-    restore();
+    const decoded = auth.verifyToken(token);
+    expect(decoded.tenantId).toBe('firm-1');
+    expect(decoded.clientId).toBeNull();
   });
 
   it('scopedWhere returns the caller binding, and {} for platform', () => {
@@ -569,67 +388,5 @@ describe('matrix mode — two-axis roles (scoped-roles RFC)', () => {
     // A token minted without the claim is not a platform account.
     expect(() => auth.scopedWhere({ headers: {}, user: { userId: 'u1', role: 'admin', level: 'tenant' } } as any))
       .toThrow(/no tenantId claim/);
-  });
-});
-
-describe('PII masking (scoped-roles RFC §6)', () => {
-  const auth = () => authClass.get();
-
-  it('canSeePII is admin-only in linear mode', () => {
-    expect(auth().canSeePII({ userId: 'u', role: 'admin', level: 'tenant' } as any)).toBe(true);
-    expect(auth().canSeePII({ userId: 'u', role: 'moderator', level: 'manage' } as any)).toBe(false);
-    expect(auth().canSeePII({ userId: 'u', role: 'user', level: 'basic' } as any)).toBe(false);
-    expect(auth().canSeePII(null)).toBe(false);
-    expect(auth().canSeePII(undefined)).toBe(false);
-  });
-
-  it('canSeePII reads the tier axis in matrix mode', () => {
-    process.env.BLOOM_AUTH_SCOPES = 'client,tenant,system';
-    process.env.BLOOM_AUTH_TIERS = 'user,moderator,admin';
-    authClass.reset();
-    try {
-      // A platform moderator has maximum reach and still cannot read PII —
-      // reach and capability are different questions.
-      expect(auth().canSeePII({ userId: 'u', role: 'moderator', level: 'system' } as any)).toBe(false);
-      expect(auth().canSeePII({ userId: 'u', role: 'admin', level: 'client' } as any)).toBe(true);
-    } finally {
-      delete process.env.BLOOM_AUTH_SCOPES;
-      delete process.env.BLOOM_AUTH_TIERS;
-      authClass.reset();
-    }
-  });
-
-  it('masks emails but keeps the domain recognisable', () => {
-    expect(auth().maskPII('krishna@voilacode.com', { as: 'email' })).toBe('k******@voilacode.com');
-    expect(auth().maskPII('a@b.com', { as: 'email' })).toBe('a*@b.com');
-  });
-
-  it('falls back to id masking for a non-address', () => {
-    expect(auth().maskPII('notanemail', { as: 'email' })).toBe('******mail');
-  });
-
-  it('masks phones to the last four digits', () => {
-    expect(auth().maskPII('+91 98765 43210', { as: 'phone' })).toBe('********3210');
-    expect(auth().maskPII('123', { as: 'phone' })).toBe('***');
-  });
-
-  it('masks names to initials', () => {
-    expect(auth().maskPII('Krishna Teja', { as: 'name' })).toBe('K***** T***');
-    expect(auth().maskPII('A', { as: 'name' })).toBe('A');
-  });
-
-  it('masks ids to the last four characters', () => {
-    expect(auth().maskPII('cmsvzv9zl0003yc2lwbao2zj0', { as: 'id' })).toBe('********2zj0');
-    expect(auth().maskPII('ab', { as: 'id' })).toBe('**');
-  });
-
-  it('returns an empty string for empty input rather than leaking "null"', () => {
-    expect(auth().maskPII(null, { as: 'email' })).toBe('');
-    expect(auth().maskPII(undefined, { as: 'name' })).toBe('');
-    expect(auth().maskPII('   ', { as: 'id' })).toBe('');
-  });
-
-  it('rejects an unknown mask kind', () => {
-    expect(() => auth().maskPII('x', { as: 'ssn' } as any)).toThrow(/email' \| 'phone' \| 'name' \| 'id'/);
   });
 });

@@ -1,11 +1,11 @@
 /**
- * Core authentication class with role-level-permission system
+ * Core authentication class with a linear role.level hierarchy
  * @module @bloomneo/appkit/auth
  * @file src/auth/auth.ts
  *
  * @llm-rule WHEN: Building apps that need JWT operations, password hashing, and role-based middleware
  * @llm-rule AVOID: Constructing AuthenticationClass directly — always get the instance via authClass.get()
- * @llm-rule NOTE: Use requireUserRoles() for hierarchy-based access, requireUserPermissions() for action-specific access
+ * @llm-rule NOTE: Use requireUserRoles() for access control; scopedWhere() for the caller's data scope
  * @llm-rule NOTE: Uses role.level format (user.basic, admin.tenant) with automatic inheritance
  */
 
@@ -15,7 +15,6 @@ import { AppKitError } from '../internal/errors.js';
 import {
   validateRounds,
   validateRoleLevel,
-  validatePermission,
   type AuthConfig,
 } from './defaults.js';
 
@@ -50,14 +49,8 @@ export interface JwtPayload {
   userId?: string | number;
   keyId?: string;
   type: 'login' | 'api_key';
-  /** Capability axis in matrix mode (same value as `tier`). */
   role: string;
-  /** Reach axis in matrix mode (same value as `scope`). */
   level: string;
-  /** Derived from role in matrix mode. Convenience only — role is canonical. */
-  tier?: string;
-  /** Derived from level in matrix mode. Convenience only — level is canonical. */
-  scope?: string;
   /**
    * Data scope: which tenant this identity is bound to. null/undefined means
    * platform-wide. This is NOT a capability — see auth.scopedWhere().
@@ -68,7 +61,6 @@ export interface JwtPayload {
   tenantId?: string | null;
   /** Data scope: which client within the tenant, when the app has that level. */
   clientId?: string | null;
-  permissions?: string[];
   [key: string]: any;
   iat?: number;
   exp?: number;
@@ -81,7 +73,6 @@ export interface LoginTokenPayload {
   type: 'login';
   role: string;
   level: string;
-  permissions?: string[];
   [key: string]: any;
 }
 
@@ -90,7 +81,6 @@ export interface ApiTokenPayload {
   type: 'api_key';
   role: string;
   level: string;
-  permissions?: string[];
   [key: string]: any;
 }
 
@@ -115,7 +105,7 @@ export interface MiddlewareOptions {
 export type ExpressMiddleware = (req: ExpressRequest, res: ExpressResponse, next: () => void) => void;
 
 /**
- * Authentication class with JWT, password, and role-level-permission system
+ * Authentication class with JWT, password, and role.level hierarchy
  */
 export class AuthenticationClass {
   public config: AuthConfig;
@@ -182,21 +172,7 @@ export class AuthenticationClass {
 
     // Validate role.level exists
     const roleLevel = `${payload.role}.${payload.level}`;
-    if (this.config.matrix) {
-      // Matrix mode: any pair from the cross-product is valid, so validate the
-      // two halves independently rather than against a registered pair list.
-      const parts = this.roleParts(roleLevel);
-      if (!parts) {
-        const { tiers, scopes } = this.config.matrix;
-        throw new Error(
-          `[@bloomneo/appkit/auth] Invalid role.level: "${roleLevel}". In matrix mode role must be one of [${tiers.join(', ')}] ` +
-            `and level one of [${scopes.join(', ')}] (BLOOM_AUTH_TIERS / BLOOM_AUTH_SCOPES). See: ${DOCS_URL}#role-level-permission-architecture`
-        );
-      }
-      // Carry the split so consumers don't have to re-derive it, per the RFC.
-      payload.tier = parts.tier;
-      payload.scope = parts.scope;
-    } else if (!validateRoleLevel(roleLevel, this.config.roles)) {
+    if (!validateRoleLevel(roleLevel, this.config.roles)) {
       throw new Error(`[@bloomneo/appkit/auth] Invalid role.level: "${roleLevel}". The default hierarchy ships with user.basic, user.pro, user.max, moderator.review, moderator.approve, moderator.manage, admin.tenant, admin.org, admin.system. To register custom roles, set BLOOM_AUTH_ROLES env var. See: ${DOCS_URL}#role-level-permission-architecture`);
     }
 
@@ -364,16 +340,6 @@ export class AuthenticationClass {
       return false;
     }
 
-    // MATRIX MODE: inheritance is the product of two independent chains, so a
-    // role must be high enough on BOTH axes. This is what stops
-    // moderator.system from inheriting admin.tenant's delete.
-    if (this.config.matrix) {
-      const user = this.roleParts(userRoleLevel);
-      const required = this.roleParts(requiredRoleLevel);
-      if (!user || !required) return false;
-      return user.scopeRank >= required.scopeRank && user.tierRank >= required.tierRank;
-    }
-
     if (!validateRoleLevel(userRoleLevel, this.config.roles)) {
       return false;
     }
@@ -394,90 +360,10 @@ export class AuthenticationClass {
   }
 
   /**
-   * Split a `tier.scope` identifier into its two axes and their ranks.
-   *
-   * @llm-rule WHEN: You need the capability or reach of a role separately
-   * @llm-rule AVOID: Splitting role.level by hand - ranks come from the configured axes
-   * @llm-rule NOTE: Returns null in linear mode, or when either half isn't a configured axis value
-   */
-  roleParts(
-    roleLevel: string
-  ): { tier: string; scope: string; tierRank: number; scopeRank: number } | null {
-    const matrix = this.config.matrix;
-    if (!matrix || !roleLevel || typeof roleLevel !== 'string') return null;
-
-    const parts = roleLevel.split('.');
-    if (parts.length !== 2) return null;
-
-    const [tier, scope] = parts;
-    const tierRank = matrix.tierRank[tier];
-    const scopeRank = matrix.scopeRank[scope];
-    if (tierRank === undefined || scopeRank === undefined) return null;
-
-    return { tier, scope, tierRank, scopeRank };
-  }
-
-  /**
-   * Capability check, any reach. `requireTier('admin')` admits admin.client
-   * through admin.system but never a moderator.
-   *
-   * @llm-rule WHEN: A route is about what the caller may DO, regardless of scope
-   * @llm-rule AVOID: Using in linear mode - there are no tiers, so it always denies
-   * @llm-rule NOTE: Chain AFTER requireLoginToken(), same as requireUserRoles()
-   */
-  requireTier(minimumTier: string): ExpressMiddleware {
-    return (req: ExpressRequest, res: ExpressResponse, next: () => void) => {
-      const user = this.getUser(req);
-      if (!user) {
-        res.status(401).json({ error: 'Authentication required', message: this.config.middleware.errorMessages.noToken });
-        return;
-      }
-      const parts = this.roleParts(`${(user as any).role}.${(user as any).level}`);
-      const required = this.config.matrix?.tierRank[minimumTier];
-      if (!parts || required === undefined || parts.tierRank < required) {
-        res.status(403).json({
-          error: 'Insufficient tier',
-          message: this.config.middleware.errorMessages.insufficientRole,
-        });
-        return;
-      }
-      next();
-    };
-  }
-
-  /**
-   * Reach check, any capability. `requireScope('tenant')` admits any role at
-   * tenant reach or above, whatever its tier.
-   *
-   * @llm-rule WHEN: A route is about WHERE the caller operates, not what they may do
-   * @llm-rule AVOID: Using it as a data filter - that's scopedWhere(), a separate concern
-   * @llm-rule NOTE: Chain AFTER requireLoginToken(), same as requireUserRoles()
-   */
-  requireScope(minimumScope: string): ExpressMiddleware {
-    return (req: ExpressRequest, res: ExpressResponse, next: () => void) => {
-      const user = this.getUser(req);
-      if (!user) {
-        res.status(401).json({ error: 'Authentication required', message: this.config.middleware.errorMessages.noToken });
-        return;
-      }
-      const parts = this.roleParts(`${(user as any).role}.${(user as any).level}`);
-      const required = this.config.matrix?.scopeRank[minimumScope];
-      if (!parts || required === undefined || parts.scopeRank < required) {
-        res.status(403).json({
-          error: 'Insufficient scope',
-          message: this.config.middleware.errorMessages.insufficientRole,
-        });
-        return;
-      }
-      next();
-    };
-  }
-
-  /**
    * Data scope for the caller, ready to spread into a query filter.
    *
-   * This is deliberately NOT a role check. "May they do this?" is the role
-   * (tier x scope); "on whose data?" is tenantId/clientId. Conflating them is
+   * This is deliberately NOT a role check. "May they do this?" is the role;
+   * "on whose data?" is tenantId/clientId. Conflating them is
    * how apps end up with a firm admin who can read another firm.
    *
    * ```ts
@@ -497,82 +383,6 @@ export class AuthenticationClass {
    * @llm-rule AVOID: Trusting it alone for authorization - pair it with requireUserRoles()
    * @llm-rule NOTE: Login tokens must carry tenantId (null for platform accounts) or this throws
    */
-  /**
-   * May this caller see unmasked personal data?
-   *
-   * Default rule: admin tier only. Moderators routinely need to review records
-   * without reading the person's identity, and every app was re-inventing that
-   * check at the serialization edge.
-   *
-   * @llm-rule WHEN: Deciding whether to mask PII before serialising a response
-   * @llm-rule AVOID: Using it as an access gate - it decides presentation, not permission
-   * @llm-rule NOTE: Matrix mode reads the tier; linear mode falls back to the role half
-   */
-  canSeePII(user: JwtPayload | null | undefined): boolean {
-    if (!user || typeof user !== 'object') return false;
-    const roleLevel = `${(user as any).role}.${(user as any).level}`;
-    const parts = this.roleParts(roleLevel);
-    // Matrix mode: the tier axis is the capability question. Linear mode has no
-    // tier, so the role half is the closest equivalent.
-    const tier = parts ? parts.tier : (user as any).role;
-    return tier === 'admin';
-  }
-
-  /**
-   * Mask a personal value for display.
-   *
-   * Deliberately lossy and one-way — this is for rendering, never for storage
-   * or comparison. Enough of the value survives that a human can recognise a
-   * record they already know without learning one they don't.
-   *
-   * @llm-rule WHEN: Serialising a record for a caller where canSeePII() is false
-   * @llm-rule AVOID: Masking then persisting - the original is unrecoverable
-   * @llm-rule NOTE: Pair with canSeePII(): mask only when it returns false
-   */
-  maskPII(value: unknown, options: { as: 'email' | 'phone' | 'name' | 'id' }): string {
-    if (value === null || value === undefined) return '';
-    const raw = String(value).trim();
-    if (!raw) return '';
-
-    const stars = (n: number) => '*'.repeat(Math.max(n, 1));
-
-    switch (options?.as) {
-      case 'email': {
-        const at = raw.lastIndexOf('@');
-        // Not an address — fall back to id masking rather than leaking it whole.
-        if (at <= 0) return this.maskPII(raw, { as: 'id' });
-        const local = raw.slice(0, at);
-        const domain = raw.slice(at);
-        // Domain is kept: it's rarely identifying on its own and it's what makes
-        // a masked address recognisable to staff reviewing records.
-        return `${local[0]}${stars(Math.min(local.length - 1, 6))}${domain}`;
-      }
-
-      case 'phone': {
-        const digits = raw.replace(/\D/g, '');
-        if (digits.length <= 4) return stars(digits.length || 4);
-        return `${stars(Math.min(digits.length - 4, 8))}${digits.slice(-4)}`;
-      }
-
-      case 'name': {
-        return raw
-          .split(/\s+/)
-          .map((word) => (word.length <= 1 ? word : `${word[0]}${stars(Math.min(word.length - 1, 5))}`))
-          .join(' ');
-      }
-
-      case 'id': {
-        if (raw.length <= 4) return stars(raw.length);
-        return `${stars(Math.min(raw.length - 4, 8))}${raw.slice(-4)}`;
-      }
-
-      default:
-        throw new Error(
-          `[@bloomneo/appkit/auth] maskPII needs { as: 'email' | 'phone' | 'name' | 'id' }. See: ${DOCS_URL}#role-level-permission-architecture`
-        );
-    }
-  }
-
   scopedWhere(req: ExpressRequest): { tenantId?: string; clientId?: string } {
     const user = this.getUser(req) as ({ tenantId?: string | null; clientId?: string | null } | null);
     if (!user) {
@@ -592,75 +402,6 @@ export class AuthenticationClass {
     if (user.tenantId) where.tenantId = user.tenantId;
     if (user.clientId) where.clientId = user.clientId;
     return where;
-  }
-
-  /**
-   * Checks if user has specific permission with automatic action inheritance.
-   *
-   * Permission resolution rule (REPLACEMENT, not additive):
-   *   - If `user.permissions` is set (an array, even empty), it is the COMPLETE
-   *     permission set for the user. Role defaults are NOT consulted.
-   *   - If `user.permissions` is undefined / null, the role.level's default
-   *     permissions from the configured RolePermissionConfig are used.
-   *
-   * This matches AWS IAM, Casbin, OPA, Auth0 RBAC, and every mainstream
-   * permission system: explicit permissions are the truth, defaults are the
-   * fallback. To downgrade a user below their role's defaults, pass an
-   * explicit `permissions: [...]` array (even an empty `[]` is valid — it
-   * means "no permissions despite the role").
-   *
-   * Action inheritance rule (within a scope):
-   *   - `manage:<scope>` includes view, create, edit, delete for that scope
-   *   - No upward inheritance: `edit:tenant` does NOT grant `manage:tenant`
-   *
-   * @llm-rule WHEN: Checking fine-grained permissions for specific actions
-   * @llm-rule AVOID: Hardcoding permission checks - this handles inheritance
-   * @llm-rule NOTE: 'manage:scope' includes ALL other actions for that scope
-   * @llm-rule NOTE: Explicit user.permissions REPLACES role defaults (not additive)
-   * @llm-rule NOTE: If user has 'manage:tenant' → hasPermission('edit:tenant') returns TRUE
-   * @llm-rule NOTE: If user has 'edit:tenant' → hasPermission('manage:tenant') returns FALSE
-   * @llm-rule NOTE: To downgrade a user, pass permissions: [] (empty array)
-   * @llm-rule NOTE: Actions hierarchy: manage > delete > edit > create > view
-   * @llm-rule NOTE: Previously named can(). Renamed to hasPermission() pre-v1 per
-   *                 NAMING.md (has/is/can are boolean prefixes, not bare verbs).
-   */
-  hasPermission(user: JwtPayload, permission: string): boolean {
-    if (!user || !permission) {
-      return false;
-    }
-
-    if (!validatePermission(permission)) {
-      throw new Error(
-        `[@bloomneo/appkit/auth] Invalid permission format: "${permission}". ` +
-        `Permissions must be in "action:scope" form (e.g. "edit:tenant", "manage:users"). ` +
-        `See: ${DOCS_URL}#role-level-permission-architecture`
-      );
-    }
-
-    // PERMISSION RESOLUTION: explicit user.permissions REPLACES role defaults.
-    // If you want a user to have ONLY a narrow set of permissions, pass them
-    // explicitly. If you want the role's defaults, omit user.permissions entirely.
-    const effectivePermissions: string[] =
-      user.permissions && Array.isArray(user.permissions)
-        ? user.permissions
-        : this.config.permissions.defaults[`${user.role}.${user.level}`] ?? [];
-
-    // Direct match
-    if (effectivePermissions.includes(permission)) {
-      return true;
-    }
-
-    // Action inheritance: manage:<scope> grants all other actions for that scope.
-    // No upward inheritance — edit:scope does NOT grant manage:scope.
-    const [action, scope] = permission.split(':');
-    if (action !== 'manage') {
-      const managePermission = `manage:${scope}`;
-      if (effectivePermissions.includes(managePermission)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   // ====================================================================
@@ -758,58 +499,6 @@ export class AuthenticationClass {
         return res.status(403).json({
           error: 'Access denied',
           message: this.config.middleware.errorMessages.insufficientRole,
-        });
-      }
-
-      next();
-    };
-  }
-
-  /**
-   * Creates Express permission-based authorization middleware for authenticated users
-   * @llm-rule WHEN: Protecting routes that require specific user permissions
-   * @llm-rule AVOID: Using without requireLoginToken - this assumes user is already authenticated
-   * @llm-rule AVOID: Using with API tokens - API tokens don't have user permissions
-   * @llm-rule NOTE: User needs ALL permissions from the array (AND logic)
-   * @llm-rule NOTE: Permission inheritance applies - manage:tenant can access edit:tenant routes
-   */
-  requireUserPermissions(requiredPermissions: string[]): ExpressMiddleware {
-    if (!Array.isArray(requiredPermissions) || requiredPermissions.length === 0) {
-      throw new Error(`[@bloomneo/appkit/auth] requiredPermissions must be a non-empty array. See: ${DOCS_URL}#role-level-permission-architecture`);
-    }
-
-    // Validate all permissions
-    for (const permission of requiredPermissions) {
-      if (!validatePermission(permission)) {
-        throw new Error(`[@bloomneo/appkit/auth] Invalid permission format for middleware: "${permission}". See: ${DOCS_URL}#role-level-permission-architecture`);
-      }
-    }
-
-    return (req: ExpressRequest, res: ExpressResponse, next: () => void): void => {
-      const user = this.getUser(req);
-
-      if (!user) {
-        return res.status(401).json({
-          error: 'Authentication required',
-          message: this.config.middleware.errorMessages.noToken,
-        });
-      }
-
-      if (user.type !== 'login') {
-        return res.status(403).json({
-          error: 'Access denied',
-          message: 'User permissions only apply to login tokens',
-        });
-      }
-
-      const hasAllPermissions = requiredPermissions.every(permission =>
-        this.hasPermission(user, permission)
-      );
-
-      if (!hasAllPermissions) {
-        return res.status(403).json({
-          error: 'Access denied',
-          message: this.config.middleware.errorMessages.insufficientPermissions,
         });
       }
 

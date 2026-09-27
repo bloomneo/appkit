@@ -3,9 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/@bloomneo/appkit.svg)](https://www.npmjs.com/package/@bloomneo/appkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> Ultra-simple authentication with JWT tokens, bcrypt passwords, and role-based permissions. Express-only middleware with clear separation between user authentication and API access.
+> Ultra-simple authentication with JWT tokens, bcrypt passwords, and a role hierarchy. Express-only middleware with clear separation between user authentication and API access.
 
-**Two token types** for different authentication needs: Login tokens for users, API tokens for external services. Built-in role hierarchy and permission inheritance. Production-ready security.
+**Two token types** for different authentication needs: Login tokens for users, API tokens for external services. Built-in role hierarchy with inheritance. Production-ready security.
 
 > **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/auth.ts](../../examples/auth.ts) · cookbook: [api-key-service.ts](../../cookbook/api-key-service.ts), [auth-protected-crud.ts](../../cookbook/auth-protected-crud.ts)
 
@@ -98,7 +98,7 @@ const apiToken = auth.generateApiToken({
   level: 'system'
 }, '1y'); // Long expiry
 
-// Protect API routes (no user roles/permissions)
+// Protect API routes (no user roles)
 app.post('/webhook/payment', auth.requireApiToken(), handler);
 app.get('/api/public-data', auth.requireApiToken(), handler);
 ```
@@ -125,10 +125,9 @@ app.get('/api/public-data', auth.requireApiToken(), handler);
 'admin.system'     // Level 9 - System admin
 ```
 
-**Permission System:**
-- **Actions**: `view`, `create`, `edit`, `delete`, `manage`
-- **Scopes**: `own`, `tenant`, `org`, `system`
-- **Format**: `action:scope` (e.g., `manage:tenant`)
+There is no separate permissions model (removed in 6.0): gate routes with
+`requireUserRoles([...])`. Matrix mode and the PII helpers were removed in 6.0
+too.
 
 **Inheritance Examples:**
 ```typescript
@@ -140,65 +139,11 @@ auth.hasRole('admin.system', 'user.basic'); // system > basic
 auth.hasRole('user.basic', 'admin.tenant'); // basic < tenant
 ```
 
-## 🧮 Matrix mode — two-axis roles (opt-in)
-
-A single ladder conflates two orthogonal things: how far a role **reaches**
-and what it may **do**. On one list `moderator.system` outranks `admin.tenant`
-and therefore inherits delete — which is wrong, and is why apps end up
-sprinkling ad-hoc `role === 'admin'` checks to compensate.
-
-Set both axes, low → high, and inheritance becomes the **product** of two
-chains instead of a single line:
-
-```bash
-BLOOM_AUTH_SCOPES="client,tenant,org,system"   # reach
-BLOOM_AUTH_TIERS="user,moderator,admin"        # capability
-```
-
-A role satisfies a requirement only when **both** are high enough:
-
-```
-scope(user) >= scope(required)  AND  tier(user) >= tier(required)
-```
-
-| Caller | Gate requires | Granted? | Why |
-|---|---|:--:|---|
-| `admin.system` | `admin.tenant` | ✅ | higher on both axes |
-| `moderator.system` | `moderator.tenant` | ✅ | same tier, greater reach |
-| `moderator.system` | `admin.tenant` | ❌ | **platform moderator can't delete firm data** |
-| `admin.tenant` | `admin.client` | ✅ | firm admin manages its clients |
-| `moderator.tenant` | `admin.client` | ❌ | firm moderator can't client-admin |
-| `admin.tenant` | `admin.system` | ❌ | firm admin is not platform |
-
-Some roles are deliberately **incomparable** — that's the feature. The two
-invariants apps keep re-implementing ("moderators never delete", "lower scope
-can't reach higher") now fall out of the model: gate delete at `admin.<scope>`
-and inheritance does the rest.
-
-Any pair from the cross-product is valid — no per-pair registration:
-
-```ts
-auth.generateLoginToken({ userId, role: 'admin', level: 'tenant', tenantId: 'firm-1' });
-```
-
-New helpers (matrix mode only):
-
-```ts
-auth.roleParts('admin.tenant')   // { tier, scope, tierRank, scopeRank } — null in linear mode
-auth.requireTier('admin')        // capability, any reach
-auth.requireScope('tenant')      // reach, any capability
-```
-
-**Backward compatible.** Leave both unset and appkit stays in linear mode with
-the 9-level ladder — nothing changes. Setting only one axis throws rather than
-guessing the other, because a half-configured lattice would silently give you a
-different authorization model than you asked for.
-
 ### Capability vs data scope — keep them separate
 
 Two different questions, two different mechanisms:
 
-- **"May they do this?"** → the role (tier × scope), via `requireUserRoles()`.
+- **"May they do this?"** → the role, via `requireUserRoles()`.
 - **"On whose data?"** → `tenantId` / `clientId`, carried in the token.
 
 `admin.tenant` grants firm-admin *capability*; the token's `tenantId` binds it
@@ -386,17 +331,11 @@ app.get('/admin/panel',
   handler
 );
 
-// Step 3: Require specific permissions (user needs ALL of these)
-app.post('/admin/users', 
-  auth.requireLoginToken(),
-  auth.requireUserPermissions(['manage:users', 'edit:tenant']),
-  handler
-);
 ```
 
 ### **API Access Flow**
 ```typescript
-// Simple API protection (no roles/permissions)
+// Simple API protection (no user roles)
 app.post('/api/webhook', auth.requireApiToken(), (req, res) => {
   const token = auth.getUser(req); // Gets API token info
   console.log('API call from:', token.keyId);
@@ -414,7 +353,7 @@ const loginToken = auth.generateLoginToken({
   userId: 123,           // Required: user identifier
   role: 'user',         // Required: role name
   level: 'basic',       // Required: level within role
-  permissions: ['manage:own']  // Optional: custom permissions
+  tenantId: 'firm-1'    // Optional: data scope (null for platform accounts)
 }, '7d');
 
 // ✅ CORRECT - API tokens for services
@@ -426,7 +365,6 @@ const apiToken = auth.generateApiToken({
   keyId: 'webhook_service',  // Required: service identifier
   role: 'admin',             // Required: role name (from configured hierarchy)
   level: 'system',           // Required: level within role
-  permissions: ['webhook:receive']  // Optional: custom permissions
 }, '1y');
 
 // ❌ WRONG - Don't mix these up
@@ -534,59 +472,7 @@ auth.requireUserRoles(['admin', 'tenant']); // Wrong format - should be role.lev
 // ✅ Correct array format
 auth.requireUserRoles(['admin.tenant']);
 auth.requireUserRoles(['admin.tenant', 'admin.org']); // Multiple roles (OR logic)
-auth.requireUserPermissions(['manage:users', 'edit:tenant']); // Multiple permissions (AND logic)
 ```
-
-### **Permissions: Replacement, not Additive**
-
-The `permissions` array on a JWT payload **replaces** the role's default
-permissions — it does NOT add to them. This matches AWS IAM, Casbin, OPA,
-and Auth0 RBAC: explicit permissions are the truth, defaults are the fallback.
-
-```typescript
-// ✅ NO explicit permissions → role defaults apply
-const u1 = auth.generateLoginToken({ userId: 1, role: 'admin', level: 'tenant' });
-// → user has all of admin.tenant's default permissions (manage:tenant, etc.)
-
-// ✅ Explicit permissions → defaults are IGNORED, only the explicit set applies
-const u2 = auth.generateLoginToken({
-  userId: 2,
-  role: 'admin',
-  level: 'tenant',
-  permissions: ['view:own'],   // ← user can ONLY view:own, despite being admin.tenant
-});
-// → auth.hasPermission(u2, 'manage:tenant') === false
-// → auth.hasPermission(u2, 'view:own')      === true
-
-// ✅ Empty array = ZERO permissions (explicit downgrade)
-const u3 = auth.generateLoginToken({
-  userId: 3,
-  role: 'admin',
-  level: 'tenant',
-  permissions: [],  // ← user has no permissions despite admin role
-});
-// → auth.hasPermission(u3, 'view:own') === false
-
-// ✅ Action inheritance still works WITHIN the explicit set
-const u4 = auth.generateLoginToken({
-  userId: 4,
-  role: 'admin',
-  level: 'tenant',
-  permissions: ['manage:tenant'],
-});
-// → auth.hasPermission(u4, 'edit:tenant') === true   (manage inherits all sub-actions)
-// → auth.hasPermission(u4, 'view:tenant') === true
-// → auth.hasPermission(u4, 'manage:org')  === false  (different scope)
-
-// ❌ Common mistake: assuming permissions are ADDITIVE
-// Old (pre-1.5.2) behavior was buggy and additive. If you've seen examples
-// or wrote code assuming `permissions: ['edit:own']` would extend the role
-// defaults, that's no longer how it works. Pass an explicit array only when
-// you want to OVERRIDE the role defaults.
-```
-
-**Mental model:** `permissions` is the user's complete capability list when
-present. To use the role's defaults, omit the field entirely.
 
 ## 🚨 Error Handling Patterns
 
@@ -652,9 +538,6 @@ BLOOM_AUTH_BCRYPT_ROUNDS=12
 # moderator.review, moderator.approve, moderator.manage, admin.tenant, admin.org,
 # admin.system. Set this var only if you need different role names.
 BLOOM_AUTH_ROLES=user.basic:1,user.premium:2,admin.super:10
-
-# ✅ Optional - Custom permissions (must reference roles defined above)
-BLOOM_AUTH_PERMISSIONS=user.premium:manage:own,admin.super:manage:system
 ```
 
 ### **Security Validation**
@@ -723,13 +606,12 @@ app.post('/admin/api-tokens',
   auth.requireLoginToken(),
   auth.requireUserRoles(['admin.tenant']),
   async (req, res) => {
-    const { name, permissions } = req.body;
+    const { name } = req.body;
     
     const apiToken = auth.generateApiToken({
       keyId: `api_${Date.now()}`,
       role: 'admin',     // role.level must exist in the configured hierarchy
       level: 'system',   // (default ships user.basic → admin.system)
-      permissions
     }, '1y');
     
     // Store token info in database (store hash, not plain token)
@@ -754,9 +636,6 @@ BLOOM_AUTH_EXPIRES_IN=1h           # Default: 7d
 
 # Custom role hierarchy (optional)
 BLOOM_AUTH_ROLES=user.basic:1,user.pro:2,admin.system:9
-
-# Custom permissions (optional)
-BLOOM_AUTH_PERMISSIONS=user.basic:view:own,admin.tenant:manage:tenant
 ```
 
 ## 📖 API Reference
@@ -770,8 +649,8 @@ const auth = authClass.get(); // One function, all methods
 ### **Token Generation**
 
 ```typescript
-auth.generateLoginToken({ userId, role, level, permissions }, expiresIn); // Create login JWT
-auth.generateApiToken({ keyId, role, level, permissions }, expiresIn);    // Create API JWT
+auth.generateLoginToken({ userId, role, level, tenantId? }, expiresIn); // Create login JWT
+auth.generateApiToken({ keyId, role, level }, expiresIn);              // Create API JWT
 auth.verifyToken(token); // Verify any JWT token
 ```
 
@@ -792,7 +671,7 @@ auth.getUser(req); // Safe user extraction (returns null if not authenticated)
 
 ```typescript
 auth.hasRole(userRole, requiredRole); // Check role hierarchy
-auth.hasPermission(user, permission); // Check permission
+auth.scopedWhere(req); // { tenantId?, clientId? } for query filters; throws if unknown
 ```
 
 ### **Express Middleware**
@@ -801,14 +680,12 @@ auth.hasPermission(user, permission); // Check permission
 auth.requireLoginToken(options); // Login token authentication
 auth.requireApiToken(options);   // API token authentication
 auth.requireUserRoles(roles);    // User role authorization (array of strings)
-auth.requireUserPermissions(permissions); // User permission authorization (array of strings)
 ```
 
 ### **Utility Methods**
 
 ```typescript
 authClass.getRoles(); // Get role hierarchy
-authClass.getPermissions(); // Get permission config
 authClass.getAllRoles(); // Get all roles sorted by level
 authClass.isValidRole(roleLevel); // Validate role format
 authClass.reset(newConfig); // Reset instance (testing only)
@@ -820,16 +697,12 @@ authClass.reset(newConfig); // Reset instance (testing only)
 
 ```bash
 BLOOM_AUTH_ROLES=customer.basic:1,customer.premium:2,vendor.starter:3,vendor.pro:4,staff.support:5,admin.store:6
-
-BLOOM_AUTH_PERMISSIONS=customer.basic:view:own,customer.premium:manage:own,vendor.starter:manage:products,admin.store:manage:store
 ```
 
 ### **Healthcare System**
 
 ```bash
 BLOOM_AUTH_ROLES=patient.basic:1,nurse.junior:2,nurse.senior:3,doctor.resident:4,doctor.attending:5,admin.clinic:6
-
-BLOOM_AUTH_PERMISSIONS=patient.basic:view:own,nurse.junior:view:patient,doctor.resident:manage:patient,admin.clinic:manage:clinic
 ```
 
 ## 🧪 Testing
@@ -905,10 +778,12 @@ A: The middleware automatically returns 401 with "Token has expired" message. Ha
 **Q: Can I customize the role hierarchy?**
 A: Yes, use environment variables or pass custom config to `authClass.get()`.
 
-**Q: What's the difference between roles and permissions?**
-A: Roles are hierarchical (admin.org > admin.tenant), permissions are specific actions (edit:tenant).
+**Q: Where did permissions go?**
+A: The permissions model (`hasPermission`, `requireUserPermissions`, `BLOOM_AUTH_PERMISSIONS`) was removed in 6.0. Roles are hierarchical (admin.org > admin.tenant); gate routes with `requireUserRoles()`.
 
 ## Agent-Dev Friendliness Score
+
+> Snapshot from before 6.0. `hasPermission` / `requireUserPermissions` it mentions have since been removed.
 
 **Score: 89/100 — 🟢 Exemplary** *(no cap applies)*
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*

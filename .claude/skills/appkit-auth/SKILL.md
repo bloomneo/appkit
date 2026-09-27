@@ -2,8 +2,8 @@
 name: appkit-auth
 description: >-
   Use when writing code that authenticates users, issues or verifies JWTs,
-  hashes passwords, protects Express/Fastify routes, or checks roles and
-  permissions via `@bloomneo/appkit/auth`. Covers the canonical issue →
+  hashes passwords, protects Express/Fastify routes, or checks roles via
+  `@bloomneo/appkit/auth`. Covers the canonical issue →
   verify → protect → extract flow and the role.level hierarchy.
 ---
 
@@ -88,15 +88,13 @@ auth.generateApiToken(payload, expiresIn?)     // → string
 auth.verifyToken(token)                        // → payload | throws
 auth.getUser(req)                              // → payload | null (never throws)
 auth.hasRole(userRole, required)               // → boolean
-auth.hasPermission(user, permission)           // → boolean
+auth.scopedWhere(req)                          // → { tenantId?, clientId? } (throws if unknown)
 auth.requireLoginToken(options?)               // → middleware
 auth.requireApiToken(options?)                 // → middleware
 auth.requireUserRoles(['admin.system'])        // → middleware (OR semantics)
-auth.requireUserPermissions(['manage:all'])    // → middleware (AND semantics)
 
 // Class (from authClass directly)
 authClass.getRoles()                           // → RoleHierarchy
-authClass.getPermissions()                     // → PermissionConfig
 authClass.getAllRoles()                        // → string[] (sorted low→high)
 authClass.isValidRole(roleLevel)               // → boolean
 authClass.reset(newConfig?)                    // → void (tests only)
@@ -107,8 +105,7 @@ authClass.reset(newConfig?)                    // → void (tests only)
 - `BLOOM_AUTH_SECRET` — **required**, ≥32 random chars
 - `BLOOM_AUTH_EXPIRES_IN` — default `7d`
 - `BLOOM_AUTH_BCRYPT_ROUNDS` — default `10`
-- `BLOOM_AUTH_ROLES` — override default hierarchy
-- `BLOOM_AUTH_PERMISSIONS` — custom permissions list
+- `BLOOM_AUTH_ROLES` — override default hierarchy (`role.level:number,...`)
 
 ## Methods that DO NOT exist (common hallucinations)
 
@@ -116,4 +113,7 @@ authClass.reset(newConfig?)                    // → void (tests only)
 - `auth.requireRole('admin')` — use `requireUserRoles(['admin.system'])`
 - `auth.requireLogin()` — use `requireLoginToken()`
 - `auth.user(req)` — use `getUser(req)`
-- `auth.can(user, ...)` — use `hasPermission(user, permission)`
+- `auth.can(user, ...)` / `auth.hasPermission()` / `auth.requireUserPermissions()` —
+  the permissions model was removed in 6.0; gate with `requireUserRoles([...])`
+- `auth.requireScope()` / `requireTier()` / `roleParts()` — matrix mode was removed in 6.0
+- `auth.canSeePII()` / `maskPII()` — removed in 6.0; mask fields in your own serializer

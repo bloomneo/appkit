@@ -46,7 +46,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 
 | Module | Import | Purpose |
 |---|---|---|
-| `authClass` | `from '@bloomneo/appkit/auth'` | JWT tokens, role.level permissions, middleware |
+| `authClass` | `from '@bloomneo/appkit/auth'` | JWT tokens, role.level hierarchy, middleware |
 | `databaseClass` | `from '@bloomneo/appkit/database'` | Prisma with multi-tenant filtering |
 | `securityClass` | `from '@bloomneo/appkit/security'` | CSRF, rate limiting, encryption, sanitization |
 | `errorClass` | `from '@bloomneo/appkit/error'` | HTTP errors with semantic types |
@@ -70,7 +70,7 @@ Every file path below ships inside the npm tarball at `node_modules/@bloomneo/ap
 |---|---|
 | Authenticate a user with password + JWT | [`examples/auth.ts`](./examples/auth.ts) |
 | Protect a route by login | [`examples/auth.ts`](./examples/auth.ts) → [`cookbook/auth-protected-crud.ts`](./cookbook/auth-protected-crud.ts) |
-| Protect a route by role or permission | [`cookbook/auth-protected-crud.ts`](./cookbook/auth-protected-crud.ts) |
+| Protect a route by role | [`cookbook/auth-protected-crud.ts`](./cookbook/auth-protected-crud.ts) |
 | Issue and verify API keys (service-to-service) | [`cookbook/api-key-service.ts`](./cookbook/api-key-service.ts) |
 | Query a tenant-aware database | [`examples/database.ts`](./examples/database.ts) |
 | Build a multi-tenant SaaS (auth + db + tenant scoping) | [`cookbook/multi-tenant-saas.ts`](./cookbook/multi-tenant-saas.ts) |
@@ -148,27 +148,15 @@ BLOOM_DB_TENANT=auto                   # → multi-tenant mode
   `admin.tenant` and must not see each other's rows — spread
   `auth.scopedWhere(req)` into the query.
 
-## Multi-tenant apps — matrix mode (4.2.0+)
+## Multi-tenant apps
 
-If the app has more than one level of tenancy, set both axes and get a lattice
-instead of a ladder:
+Roles are one linear 9-level ladder (`BLOOM_AUTH_ROLES` to customise). Matrix
+mode (`BLOOM_AUTH_SCOPES` / `BLOOM_AUTH_TIERS`), the permissions model and the
+PII helpers were removed in 6.0.
 
-```bash
-BLOOM_AUTH_SCOPES="client,tenant,org,system"   # reach,      low → high
-BLOOM_AUTH_TIERS="user,moderator,admin"        # capability, low → high
-```
-
-`role` IS the tier, `level` IS the scope — same wire format. A role satisfies a
-requirement only when **both** axes are high enough, so `moderator.system` no
-longer inherits `admin.tenant`'s delete. Gate destructive routes at
-`admin.<scope>` and the "moderators never delete" rule stops needing a
-per-route workaround.
-
-- Set **both** vars or neither. One alone throws.
-- Leave both unset → linear mode, the 9-level ladder, nothing changes.
-- `auth.roleParts()` / `requireTier()` / `requireScope()` only work in matrix mode.
-- Put `tenantId` in the token at login; read it back with `auth.scopedWhere(req)`.
-- Mask personal data for non-admins: `if (!auth.canSeePII(user)) auth.maskPII(v, { as: 'email' })`.
+- Put `tenantId` in the token at login; read it back with `auth.scopedWhere(req)`
+  or let `database.tenant(req, fn)` apply it.
+- Decide which fields a role may see in the app's own serializer.
 - **Gate CI on `verifyClass`.** It generates the cross-tenant attack matrix
   from the app itself — no per-endpoint tests to write. `report.ok` is true
   only when checks ran and nothing was skipped, so an incomplete run fails
@@ -259,17 +247,17 @@ unscoped. That is the point of the major, not a side effect.
 
 Headline renames you will hit:
 - **From 1.5.x or earlier:** `auth.user()` → `auth.getUser(req)`,
-  `auth.can()` → `auth.hasPermission()`, `security.csrf()` → `security.forms()`.
+  `auth.can()` → `auth.hasPermission()` (removed in 6.0), `security.csrf()` → `security.forms()`.
 - **Also in 4.0.0:** every stateful module's teardown is now
   `xxxClass.disconnectAll()` — the old `shutdown()` and class-level `clear()`
   are removed. `databaseClass.disconnect()` → `databaseClass.disconnectAll()`.
 - **Error handling:** every typed error now extends `AppKitError`
   (`import { AppKitError } from '@bloomneo/appkit'`) so `catch (err) { if (err instanceof AppKitError) ... }` matches every module.
 
-Everything added in 4.1 → 5.1 is additive: `mcpClass`, `verifyClass`, matrix
-mode (`BLOOM_AUTH_SCOPES` + `BLOOM_AUTH_TIERS`), `tenantId`/`clientId` token
-claims, `auth.scopedWhere()`, `auth.maskPII()`, and `queue.repeat()`. None
-requires a change to existing code.
+Everything added in 4.1 → 5.1 was additive: `mcpClass`, `verifyClass`,
+`tenantId`/`clientId` token claims, `auth.scopedWhere()` and `queue.repeat()`.
+**6.0 removes** features no production app used; see
+[`MIGRATION-6.md`](./MIGRATION-6.md) for the list and replacements.
 
 ## Where to look next
 

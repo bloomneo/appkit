@@ -34,6 +34,12 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   `?tenant=` query and subdomain. These are caller-controlled, so any client
   could pick its tenant. The tenant now comes only from `req.user.tenantId`
   (or the pre-4.2 `tenant_id`) set by the login token.
+- Auth permissions model (`hasPermission`, `requireUserPermissions`,
+  `authClass.getPermissions`, `BLOOM_AUTH_PERMISSIONS`), matrix mode
+  (`requireScope`, `requireTier`, `roleParts`, `BLOOM_AUTH_SCOPES`,
+  `BLOOM_AUTH_TIERS`) and `canSeePII` / `maskPII`. The 9-level role ladder,
+  `BLOOM_AUTH_ROLES`, `scopedWhere()` and the `tenantId` / `clientId` claims
+  are unchanged.
 
 ### Changed
 
