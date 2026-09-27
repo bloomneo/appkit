@@ -37,6 +37,7 @@ Nothing below was used by any of the four production apps (counted
 | `security.forms()` (CSRF), `BLOOM_SECURITY_CSRF_*`, `quickSetup({ csrf })`, `validateRequired({ csrf })`, `getStatus().csrf` | Bearer-token APIs need no CSRF token. Cookie-session HTML forms: `SameSite=Lax/Strict` session cookies or a maintained CSRF middleware. `BLOOM_SECURITY_CSRF_SECRET` is no longer required anywhere |
 | `security.input()`, `security.html()`, `security.escape()`, `BLOOM_SECURITY_MAX_INPUT_LENGTH`, `BLOOM_SECURITY_ALLOWED_TAGS`, `BLOOM_SECURITY_STRIP_ALL_TAGS` | Validate input with a schema (zod, valibot); let the template engine or React escape output; a dedicated sanitizer (e.g. DOMPurify) if you must accept HTML |
 | `email.sendTemplate()` and its built-in `welcome` / `reset` templates | Render `html` / `text` in the app (template literal, React Email, MJML) and call `email.send()` |
+| Declared dependencies appkit no longer imports: `ioredis`, `pg`, `mysql2`, `sqlite`, `sqlite3`, `mongoose`, `bull`, `memcached`, `@sendgrid/mail`, `mailgun.js`, `@aws-sdk/client-ses`, and the optional peers `express-session`, `fastify`, `@fastify/*`, `multer` | If your app imports any of these itself, add it to your own `package.json` |
 
 ## Changed
 

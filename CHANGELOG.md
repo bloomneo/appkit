@@ -47,6 +47,12 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
   unchanged.
 - `email.sendTemplate()` and its two built-in templates. `send`, `sendBatch`,
   `sendText`, `sendHtml` and the console / SMTP / Resend strategies remain.
+- Dependencies no source file imports any more: `ioredis`; optional `pg`,
+  `mysql2`, `sqlite`, `sqlite3`, `mongoose`, `bull`, `memcached`,
+  `@sendgrid/mail`, `mailgun.js`, `@aws-sdk/client-ses`; optional peers
+  `express-session`, `fastify`, `@fastify/cookie`, `@fastify/formbody`,
+  `@fastify/helmet`, `@fastify/session`, `multer`; dev `@types/pg`. The
+  lockfile drops 216 packages.
 
 ### Changed
 
