@@ -108,7 +108,7 @@ Nothing below was used by any of the four production apps (counted
   - `database.context()` — Express middleware; mount after
     `auth.requireLoginToken()`. Every database call for the rest of the
     request runs in the caller's tenant, including `get()`.
-  - `database.rlsPolicyStatements({ table, column?, policy?, schema? })` /
+  - `database.rlsPolicyStatements({ table, column?, policy?, schema? })` / Child tables without a tenant column: `rlsPolicyStatements({ table, via: { parent, foreignKey } })` (`column: false` for grandchildren).
     `database.rlsPolicySql(...)` — the idempotent policy SQL for one table.
   - `database.onBypass(listener)` — audit hook for `bypass()`; returns an
     unsubscribe function.

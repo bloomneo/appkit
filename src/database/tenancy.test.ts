@@ -82,3 +82,26 @@ describe('database.context() binds a tenant only in tenant mode', () => {
     expect(run('false')).toBeUndefined();
   });
 });
+
+describe('rlsPolicyStatements({ via }) scopes a child table through its parent', () => {
+  it('checks the parent row\'s tenant column, keeps the bypass, and validates identifiers', () => {
+    const [enable, force, drop, create] = rlsPolicyStatements({
+      table: 'deployments',
+      column: 'customerId',
+      via: { parent: 'deploy_targets', foreignKey: 'deployTargetId' },
+    });
+    expect(enable).toBe('ALTER TABLE "deployments" ENABLE ROW LEVEL SECURITY;');
+    expect(force).toBe('ALTER TABLE "deployments" FORCE ROW LEVEL SECURITY;');
+    expect(drop).toBe('DROP POLICY IF EXISTS "tenant_isolation" ON "deployments";');
+    expect(create).toContain(
+      `EXISTS (SELECT 1 FROM "deploy_targets" bloom_parent WHERE bloom_parent."id" = "deployments"."deployTargetId" AND bloom_parent."customerId"::text = current_setting('app.tenant_id', true))`,
+    );
+    expect(create).toContain(`OR current_setting('app.tenant_id', true) = '${BYPASS_TOKEN}'`);
+    expect(create).toMatch(/USING \(.+\) WITH CHECK \(.+\);$/);
+    expect(() => rlsPolicyStatements({ table: 'c', via: { parent: 'p; DROP TABLE x', foreignKey: 'p_id' } })).toThrow(/via\.parent/);
+
+    const [, , , grandchild] = rlsPolicyStatements({ table: 'reactions', via: { parent: 'comments', foreignKey: 'comment_id', column: false } });
+    expect(grandchild).toContain('EXISTS (SELECT 1 FROM "comments" bloom_parent WHERE bloom_parent."id" = "reactions"."comment_id")');
+    expect(grandchild).not.toContain('bloom_parent."tenant_id"');
+  });
+});

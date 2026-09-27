@@ -40,6 +40,8 @@ describe.skipIf(!ADMIN_URL)('database: tenant isolation with Postgres row-level 
       IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${APP_ROLE}') THEN
         CREATE ROLE ${APP_ROLE} LOGIN PASSWORD '${APP_ROLE}' NOSUPERUSER NOBYPASSRLS;
       END IF; END $$`);
+    await admin.$executeRawUnsafe('DROP TABLE IF EXISTS appkit_rls_reaction');
+    await admin.$executeRawUnsafe('DROP TABLE IF EXISTS appkit_rls_comment');
     await admin.$executeRawUnsafe('DROP TABLE IF EXISTS appkit_rls_note');
     await admin.$executeRawUnsafe(
       'CREATE TABLE appkit_rls_note (id SERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, body TEXT NOT NULL)',
@@ -50,12 +52,44 @@ describe.skipIf(!ADMIN_URL)('database: tenant isolation with Postgres row-level 
     const { rlsPolicyStatements } = await import('../../src/database/tenancy.js');
     for (const sql of rlsPolicyStatements({ table: 'appkit_rls_note' })) await admin.$executeRawUnsafe(sql);
 
+    // A child table with no tenant column of its own, scoped through its note.
+    await admin.$executeRawUnsafe(
+      'CREATE TABLE appkit_rls_comment (id SERIAL PRIMARY KEY, note_id INT REFERENCES appkit_rls_note(id), body TEXT NOT NULL)',
+    );
+    await admin.$executeRawUnsafe(`GRANT SELECT, INSERT, UPDATE, DELETE ON appkit_rls_comment TO ${APP_ROLE}`);
+    await admin.$executeRawUnsafe(`GRANT USAGE, SELECT ON SEQUENCE appkit_rls_comment_id_seq TO ${APP_ROLE}`);
+    for (const sql of rlsPolicyStatements({
+      table: 'appkit_rls_comment',
+      via: { parent: 'appkit_rls_note', foreignKey: 'note_id' },
+    })) {
+      await admin.$executeRawUnsafe(sql);
+    }
+    // A grandchild: scoped by "its comment is visible", i.e. the comment's policy.
+    await admin.$executeRawUnsafe(
+      'CREATE TABLE appkit_rls_reaction (id SERIAL PRIMARY KEY, comment_id INT REFERENCES appkit_rls_comment(id), emoji TEXT NOT NULL)',
+    );
+    await admin.$executeRawUnsafe(`GRANT SELECT, INSERT ON appkit_rls_reaction TO ${APP_ROLE}`);
+    await admin.$executeRawUnsafe(`GRANT USAGE, SELECT ON SEQUENCE appkit_rls_reaction_id_seq TO ${APP_ROLE}`);
+    for (const sql of rlsPolicyStatements({
+      table: 'appkit_rls_reaction',
+      via: { parent: 'appkit_rls_comment', foreignKey: 'comment_id', column: false },
+    })) {
+      await admin.$executeRawUnsafe(sql);
+    }
+
     // Seed through the policy's own escape hatch, so it works whether or not
     // the admin connection is a superuser.
     await admin.$transaction(async (tx: any) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', '__BYPASS__', true)`;
       await tx.$executeRawUnsafe(
         "INSERT INTO appkit_rls_note (tenant_id, body) VALUES ('a','a1'),('a','a2'),('b','b1')",
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO appkit_rls_comment (note_id, body)
+         SELECT id, body || '-c' FROM appkit_rls_note UNION ALL SELECT NULL, 'orphan'`,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO appkit_rls_reaction (comment_id, emoji) SELECT id, body || '-r' FROM appkit_rls_comment`,
       );
     });
 
@@ -159,6 +193,42 @@ describe.skipIf(!ADMIN_URL)('database: tenant isolation with Postgres row-level 
     } finally {
       console.warn = quiet;
       off();
+    }
+  });
+
+  it('a child table scoped via its parent follows the parent\'s tenant', async () => {
+    const { PrismaClient } = require(join(fixture, 'generated'));
+    const raw = new PrismaClient({ datasources: { db: { url: appUrl } } });
+    const as = (tenant: string, sql: string) =>
+      raw.$transaction(async (tx: any) => {
+        await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenant}, true)`;
+        return tx.$queryRawUnsafe(sql);
+      });
+    try {
+      expect(await raw.$queryRawUnsafe('SELECT body FROM appkit_rls_comment')).toEqual([]);
+      const a = await as('a', 'SELECT body FROM appkit_rls_comment ORDER BY body');
+      expect(a.map((r: any) => r.body)).toEqual(['a1-c', 'a2-c']); // not b's, not the orphan
+      const b = await as('b', 'SELECT body FROM appkit_rls_comment ORDER BY body');
+      expect(b.map((r: any) => r.body)).toEqual(['b1-c']);
+
+      // Tenant a cannot attach a comment to b's note.
+      const bNoteId = (await as('b', "SELECT id FROM appkit_rls_note WHERE body = 'b1'"))[0].id;
+      await expect(
+        as('a', `INSERT INTO appkit_rls_comment (note_id, body) VALUES (${Number(bNoteId)}, 'sneaky')`),
+      ).rejects.toThrow(/row-level security/);
+
+      const all = await as('__BYPASS__', 'SELECT count(*)::int AS n FROM appkit_rls_comment');
+      expect(all[0].n).toBe(4); // bypass sees every row, the orphan included
+
+      // Grandchild, through the comment's own policy.
+      const ra = await as('a', 'SELECT emoji FROM appkit_rls_reaction ORDER BY emoji');
+      expect(ra.map((r: any) => r.emoji)).toEqual(['a1-c-r', 'a2-c-r']);
+      const bCommentId = (await as('b', "SELECT id FROM appkit_rls_comment WHERE body = 'b1-c'"))[0].id;
+      await expect(
+        as('a', `INSERT INTO appkit_rls_reaction (comment_id, emoji) VALUES (${Number(bCommentId)}, 'sneaky')`),
+      ).rejects.toThrow(/row-level security/);
+    } finally {
+      await raw.$disconnect();
     }
   });
 });

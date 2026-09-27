@@ -139,6 +139,28 @@ export interface RlsPolicyOptions {
   /** Policy name. Default `tenant_isolation`. */
   policy?: string;
   schema?: string;
+  /**
+   * Scope a child table through its parent instead of its own tenant column:
+   * a row is visible, and writable, only when the parent row it points at
+   * belongs to the caller's tenant. For tables like `deployments` whose
+   * tenant is their `deploy_targets` row's. The parent must carry the tenant
+   * column (`column`); a row whose foreign key is null is visible to no tenant.
+   */
+  via?: {
+    /** Parent table (it has the tenant column). */
+    parent: string;
+    /** Column in this table pointing at the parent. */
+    foreignKey: string;
+    /** Parent's key the foreign key references. Default `id`. */
+    parentKey?: string;
+    /**
+     * `false` when the parent has no tenant column itself but is scoped by
+     * its own policy (a grandchild: comments → notes → projects). The check
+     * is then "the parent row is visible", which Postgres answers with the
+     * parent's forced policy — so chains of any depth work.
+     */
+    column?: false;
+  };
 }
 
 /**
@@ -152,11 +174,19 @@ export interface RlsPolicyOptions {
 export function rlsPolicyStatements(options: RlsPolicyOptions): string[] {
   const column = options.column ?? tenantColumn();
   const policy = options.policy ?? 'tenant_isolation';
+  const via = options.via;
   for (const [label, value] of [
     ['table', options.table],
     ['column', column],
     ['policy', policy],
     ['schema', options.schema ?? 'public'],
+    ...(via
+      ? ([
+          ['via.parent', via.parent],
+          ['via.foreignKey', via.foreignKey],
+          ['via.parentKey', via.parentKey ?? 'id'],
+        ] as const)
+      : []),
   ] as const) {
     if (!IDENT.test(value)) {
       throw new DatabaseError(`[@bloomneo/appkit/database] rlsPolicySql: ${label} "${value}" is not a plain SQL identifier`, {
@@ -165,7 +195,16 @@ export function rlsPolicyStatements(options: RlsPolicyOptions): string[] {
     }
   }
   const table = options.schema ? `${quote(options.schema)}.${quote(options.table)}` : quote(options.table);
-  const check = `${quote(column)}::text = current_setting('app.tenant_id', true) OR current_setting('app.tenant_id', true) = '${BYPASS_TOKEN}'`;
+  const qualify = (name: string) => (options.schema ? `${quote(options.schema)}.${quote(name)}` : quote(name));
+  const parentRow = via
+    ? `SELECT 1 FROM ${qualify(via.parent)} bloom_parent WHERE bloom_parent.${quote(via.parentKey ?? 'id')} = ${table}.${quote(via.foreignKey)}`
+    : '';
+  const tenantMatch = !via
+    ? `${quote(column)}::text = current_setting('app.tenant_id', true)`
+    : via.column === false
+      ? `EXISTS (${parentRow})`
+      : `EXISTS (${parentRow} AND bloom_parent.${quote(column)}::text = current_setting('app.tenant_id', true))`;
+  const check = `${tenantMatch} OR current_setting('app.tenant_id', true) = '${BYPASS_TOKEN}'`;
   return [
     `ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`,
     `ALTER TABLE ${table} FORCE ROW LEVEL SECURITY;`,

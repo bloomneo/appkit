@@ -8,6 +8,8 @@ Released in lockstep with `@bloomneo/uikit` and `@bloomneo/bloom` 6.0.0. The
 upgrade guide, with a replacement for every removal, is
 [`MIGRATION-6.md`](./MIGRATION-6.md).
 
+
+- **Child-table policies** (after rc.0): `rlsPolicyStatements({ table, via: { parent, foreignKey, parentKey?, column? } })` scopes a table through its parent row; `column: false` for grandchildren relies on the parent's own policy. Integration-tested on Postgres: reads, cross-tenant inserts refused, null parents hidden, bypass sees all.
 ### Added
 
 - **`@bloomneo/appkit/server`** (also exported from the package root).

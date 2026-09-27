@@ -251,6 +251,8 @@ for (const sql of database.rlsPolicyStatements({ table: 'invoices' })) {
   await db.$executeRawUnsafe(sql);
 }
 
+Child tables with no tenant column of their own are scoped through their parent: `rlsPolicyStatements({ table: 'deployments', via: { parent: 'deploy_targets', foreignKey: 'targetId' } })` — a row is visible and writable only when its parent row is the caller's tenant's. For a grandchild whose parent has no tenant column, add `column: false`: the parent's own policy decides. `bloom check` reports child tables left without one (`RLS_CHILD_UNPROTECTED`).
+
 // 2. Bind the tenant for a whole request (after the login check):
 router.use(auth.requireLoginToken(), database.context());
 //    …then any database call in the request is scoped, including get():

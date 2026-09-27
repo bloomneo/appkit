@@ -203,6 +203,8 @@ PII helpers were removed in 6.0.
   only when checks ran and nothing was skipped, so an incomplete run fails
   rather than going green.
 
+Child tables with no tenant column of their own are scoped through their parent: `rlsPolicyStatements({ table: 'deployments', via: { parent: 'deploy_targets', foreignKey: 'targetId' } })` — a row is visible and writable only when its parent row is the caller's tenant's. For a grandchild whose parent has no tenant column, add `column: false`: the parent's own policy decides. `bloom check` reports child tables left without one (`RLS_CHILD_UNPROTECTED`).
+
 ## Route contracts on the server (6.0)
 
 Declare routes with `defineRoute()` from `@bloomneo/bloom` and serve them with
