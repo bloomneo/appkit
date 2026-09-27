@@ -10,7 +10,6 @@
  * @llm-rule VARIABLE: const {orgName}Db = await databaseClass.org('{orgName}').get() - org-specific data
  * @llm-rule VARIABLE: const {orgName}DbTenants = await databaseClass.org('{orgName}').getTenants() - all tenants in org
  */
-import fs from 'fs';
 import { PrismaAdapter } from './adapters/prisma.js';
 import { MongooseAdapter } from './adapters/mongoose.js';
 import { AppKitError } from '../util/errors.js';
@@ -33,33 +32,8 @@ export class DatabaseError extends AppKitError {
 }
 // Global instances cache for performance
 const connections = new Map();
-let envWatcher = null;
 // One-shot warn flag so the tenant-filter hint only fires once per process.
 let _tenantHintWarned = false;
-/**
- * Environment file watcher for hot reload
- */
-function setupEnvWatcher() {
-    if (envWatcher)
-        return;
-    try {
-        envWatcher = fs.watch('.env', (eventType) => {
-            if (eventType === 'change') {
-                // Clear require cache and reload
-                delete require.cache[require.resolve('dotenv')];
-                require('dotenv').config();
-                // Clear connection cache to use new URLs
-                connections.clear();
-                if (process.env.NODE_ENV === 'development') {
-                    console.log('[@bloomneo/appkit/database] .env file reloaded, connections reset');
-                }
-            }
-        });
-    }
-    catch (error) {
-        // .env file doesn't exist or can't be watched - continue without watching
-    }
-}
 /**
  * Detect organization from request context
  */
@@ -218,7 +192,6 @@ export const databaseClass = {
      */
     async get(req = null) {
         // Setup env watching on first use
-        setupEnvWatcher();
         // Tenant-filter safety net: if BLOOM_DB_TENANT isn't set, warn once
         // per process. If a consumer's schema has tenant_id columns and they
         // forgot the env var, every query silently returns unfiltered data —
@@ -345,7 +318,6 @@ export const databaseClass = {
      * @returns {Promise<DatabaseClientUnion>} Database client with no tenant filtering
      */
     async getTenants(req = null) {
-        setupEnvWatcher();
         const orgId = detectOrg(req);
         const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
         if (!url) {
@@ -481,10 +453,6 @@ export const databaseClass = {
         }
         await Promise.all(disconnectPromises);
         connections.clear();
-        if (envWatcher) {
-            envWatcher.close();
-            envWatcher = null;
-        }
     },
     // Private helper methods
     /**

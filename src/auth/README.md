@@ -211,8 +211,16 @@ const invoices = await db.invoice.findMany({
 });
 ```
 
-`scopedWhere()` returns `{}` for a platform account (null bindings), so it is
-always safe to spread. Carrying the binding in the token also removes a
+`scopedWhere()` returns `{}` for a platform account, which must carry an
+explicit `tenantId: null`. It throws when there is no authenticated user or
+the token has no `tenantId` claim at all, because `{}` means "all data" and
+must never be a guess. Always pass `tenantId` to `generateLoginToken()`:
+
+```ts
+auth.generateLoginToken({ userId: user.id, role: user.role, level: user.level, tenantId: user.tenantId ?? null });
+```
+
+Carrying the binding in the token also removes a
 per-request lookup, and lets an offline or mobile client know its own reach
 without a round trip.
 

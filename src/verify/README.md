@@ -37,7 +37,7 @@ Ids are **discovered, not declared**. The verifier:
 1. Logs in as every identity you give it.
 2. Asks the FBCA api-router at `/api` which features exist.
 3. Harvests the ids each identity can legitimately see.
-4. **Replays every id against every other identity** — GET, PATCH, DELETE.
+4. **Replays every id against every other identity** — GET and PATCH, plus DELETE when `allowDestructive: true`.
 5. Flags anything that isn't a 404.
 
 That's what makes it a generator rather than a template: no per-app manifest
@@ -80,8 +80,12 @@ Causes of a skip — each is reported in `report.skipped`:
 
 ## Known limits
 
-- **It issues writes and deletes.** Run it against a seeded test database,
-  never production.
+- **It issues writes.** Run it against a seeded test database, never
+  production. It refuses a `baseUrl` that isn't localhost unless you pass
+  `allowRemote: true`.
+- **DELETE probes are opt-in.** When the app leaks, the probe really deletes
+  the other tenant's row, so it only runs with `allowDestructive: true`.
+  `report.destructive` records whether it did.
 - **`PATCH` returning 400/422 is reported as a leak.** The reasoning: the row
   was found before validation rejected it. An app that validates the body
   *before* looking up the row will false-positive here. False positives in a

@@ -25,9 +25,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS = join(ROOT, '.claude/skills');
 
+// A check that skips reports green. Without dist/ nothing below can be
+// verified, so that is a failure, not a pass.
 if (!existsSync(join(ROOT, 'dist'))) {
-  console.log('SKIP: dist/ not built — run `npm run build` first.');
-  process.exit(0);
+  console.error('FAIL: dist/ not built — run `npm run build` before `npm run check:skills`.');
+  process.exit(1);
 }
 
 /**
@@ -57,7 +59,11 @@ for (const dir of readdirSync(SKILLS)) {
 
   const skillPath = join(SKILLS, dir, 'SKILL.md');
   const distPath = join(ROOT, 'dist', moduleName, 'index.js');
-  if (!existsSync(skillPath) || !existsSync(distPath)) continue;
+  if (!existsSync(skillPath)) continue;
+  if (!existsSync(distPath)) {
+    console.error(`FAIL: skill ${dir} documents dist/${moduleName}, which is not built.`);
+    process.exit(1);
+  }
 
   const mod = await import(distPath);
   const cls = mod[`${moduleName}Class`];

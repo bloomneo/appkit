@@ -62,6 +62,12 @@ export interface RateLimitOptions {
   windowMs?: number;
   message?: string;
   keyGenerator?: (req: ExpressRequest) => string;
+  /**
+   * Bucket name for this limiter. Each `requests()` call counts separately;
+   * limiters that share a name share a count (e.g. one login budget across
+   * two routes). Defaults to a name unique to the call.
+   */
+  name?: string;
 }
 
 export interface InputOptions {
@@ -87,6 +93,7 @@ export class SecurityClass {
   public config: SecurityConfig;
   private requestStore: Map<string, RateLimitRecord>;
   private cleanupInitialized: boolean;
+  private limiterCount = 0;
 
   constructor(config: SecurityConfig) {
     this.config = config;
@@ -166,6 +173,11 @@ export class SecurityClass {
     const window = windowMs || this.config.rateLimit.windowMs;
     const message = options.message || this.config.rateLimit.message;
     const keyGenerator = options.keyGenerator || this.getClientKey;
+    // One store serves every limiter, so each needs its own key space.
+    // Without it a 5-per-15-minutes login limiter and a 100-per-minute API
+    // limiter counted the same IP together: ordinary API traffic locked the
+    // user out of login.
+    const bucket = options.name || `limiter-${++this.limiterCount}`;
 
     // Validate configuration
     if (max < 0 || window <= 0) {
@@ -176,7 +188,7 @@ export class SecurityClass {
     this.initializeCleanup(window);
 
     return (req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction): void => {
-      const key = keyGenerator(req);
+      const key = `${bucket}:${keyGenerator(req)}`;
       const now = Date.now();
 
       // Get or create rate limit record

@@ -1,0 +1,27 @@
+// Fixture for tests/integration/tenant.integration.test.ts.
+// Generated client goes to ./generated (git-ignored).
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("APPKIT_TEST_POSTGRES_URL")
+}
+
+model Note {
+  id        Int    @id @default(autoincrement())
+  tenant_id String
+  body      String
+
+  @@map("appkit_tenant_note")
+}
+
+// A model without the tenant field must pass through untouched.
+model Plan {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  @@map("appkit_tenant_plan")
+}

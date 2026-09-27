@@ -40,6 +40,12 @@ export interface RateLimitOptions {
     windowMs?: number;
     message?: string;
     keyGenerator?: (req: ExpressRequest) => string;
+    /**
+     * Bucket name for this limiter. Each `requests()` call counts separately;
+     * limiters that share a name share a count (e.g. one login budget across
+     * two routes). Defaults to a name unique to the call.
+     */
+    name?: string;
 }
 export interface InputOptions {
     maxLength?: number;
@@ -57,6 +63,7 @@ export declare class SecurityClass {
     config: SecurityConfig;
     private requestStore;
     private cleanupInitialized;
+    private limiterCount;
     constructor(config: SecurityConfig);
     /**
      * Creates CSRF protection middleware for forms and AJAX requests

@@ -25,6 +25,38 @@ describe('security.requests() — rate limiting', () => {
     const mw = securityClass.get().requests(100, 60_000);
     expect(typeof mw).toBe('function');
   });
+
+  // Drives a limiter with fake req/res and returns the status each call got.
+  function hit(mw: any, times: number, ip = '10.0.0.1'): number[] {
+    const statuses: number[] = [];
+    for (let i = 0; i < times; i++) {
+      let status = 200;
+      mw({ ip, headers: {}, connection: { remoteAddress: ip } }, { setHeader() {} }, (err?: any) => {
+        if (err) status = err.statusCode ?? err.status ?? 500;
+      });
+      statuses.push(status);
+    }
+    return statuses;
+  }
+
+  it('counts each limiter separately for the same client', () => {
+    const security = securityClass.get();
+    const login = security.requests(2, 60_000);
+    const api = security.requests(100, 60_000);
+
+    // Ordinary API traffic must not spend the login budget.
+    hit(api, 10);
+    expect(hit(login, 3)).toEqual([200, 200, 429]);
+  });
+
+  it('shares a count between limiters given the same name', () => {
+    const security = securityClass.get();
+    const a = security.requests(2, 60_000, { name: 'login' });
+    const b = security.requests(2, 60_000, { name: 'login' });
+
+    hit(a, 2);
+    expect(hit(b, 1)).toEqual([429]);
+  });
 });
 
 describe('security.forms() — CSRF', () => {

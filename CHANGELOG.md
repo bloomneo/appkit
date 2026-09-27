@@ -2,6 +2,45 @@
 
 All notable changes to AppKit will be documented in this file.
 
+## [5.1.4] - 2026-09-27
+
+### Fixed
+
+- **Tenant mode on Prisma threw on its first query.** The Prisma adapter scoped
+  tenants with `client.$use`, which Prisma removed in 6.14; appkit depends on
+  `^6.16.2`. Scoping is now a `$extends({ query })` extension that returns a new
+  client (the old code also mutated the shared client, so each tenant's filter
+  stacked on the last). Creates and upserts are forced into the scoped tenant
+  even when the caller names another, updates cannot move a row to another
+  tenant, and models without the tenant field pass through. Raw SQL is not
+  filtered; use Postgres row-level security for that. Covered by
+  `tests/integration/tenant.integration.test.ts` against real Postgres.
+- **Rate limiters shared one counter.** Every `security.requests()` limiter used
+  the same client-IP key, so ordinary API traffic spent the login budget. Each
+  limiter now has its own key space; pass `{ name }` to share one deliberately.
+
+### Security
+
+- **`auth.scopedWhere()` returned `{}` — every tenant's rows — when it could not
+  tell.** It did so with no authenticated user and for any token minted without
+  a `tenantId` claim. It now throws in both cases (`AUTH_SCOPE_NO_USER`,
+  `AUTH_SCOPE_MISSING_CLAIM`). Platform accounts must carry an explicit
+  `tenantId: null`.
+- **`verifyClass` deleted real rows.** DELETE probes now run only with
+  `allowDestructive: true`, and a non-local `baseUrl` is refused unless
+  `allowRemote: true`. `report.destructive` records whether deletes ran.
+
+### Removed
+
+- The database module's `.env` file watcher. It called `require` inside an ESM
+  package, so it threw on the first `.env` change, and it dropped cached
+  clients without disconnecting them.
+
+### Changed
+
+- `check:skills` fails, instead of passing, when `dist/` is missing;
+  `prepublishOnly` builds before it tests.
+
 ## [5.1.3] - 2026-08-25
 
 ### Fixed

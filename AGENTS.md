@@ -258,7 +258,7 @@ backend, no frontend.
 
 ## Migration notes
 
-**Current release: 5.1.3.** The file, database and HTTP transports no longer discard diagnostic metadata in `minimal` scope. 5.1.2 fixed this for the console; these three kept their own copy of the filter, which kept correlation IDs and dropped every measurement. Filtering now follows cost, not field name.
+**Current release: 5.1.4.** Security and correctness fixes: tenant mode on Prisma works again (`$use` was removed in Prisma 6.14; scoping now uses `$extends` and forces writes into the caller's tenant), `auth.scopedWhere()` throws instead of returning `{}` when the token has no `tenantId` claim, each `security.requests()` limiter counts separately, and `verifyClass` refuses non-local targets and sends DELETE probes only with `allowDestructive: true`.
 See [`CHANGELOG.md`](./CHANGELOG.md) for the complete migration tables.
 
 **5.0.0 — the one breaking change that matters.** In multi-tenant mode

@@ -19,7 +19,8 @@ export declare class VerifierClass {
      * Run the matrix against a live server.
      *
      * @llm-rule WHEN: A CI step, or a test that boots the app and asserts report.ok
-     * @llm-rule AVOID: Running against production - it issues writes and deletes
+     * @llm-rule AVOID: Running against production - refuses non-local URLs unless allowRemote
+     * @llm-rule NOTE: DELETE probes run only with allowDestructive: true (use a disposable database)
      */
     run(options: VerifyOptions): Promise<VerifyReport>;
     /**

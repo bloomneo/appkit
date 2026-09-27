@@ -560,7 +560,15 @@ describe('matrix mode — two-axis roles (scoped-roles RFC)', () => {
     expect(auth.scopedWhere({ headers: {}, user: { userId: 'u1', tenantId: 'firm-1', clientId: 'c-9' } } as any))
       .toEqual({ tenantId: 'firm-1', clientId: 'c-9' });
     expect(auth.scopedWhere({ headers: {}, user: { userId: 'u1', tenantId: null, clientId: null } } as any)).toEqual({});
-    expect(auth.scopedWhere({ headers: {} } as any)).toEqual({});
+  });
+
+  it('scopedWhere throws instead of returning all data when it cannot tell', () => {
+    const auth = authClass.get();
+    // No authenticated user.
+    expect(() => auth.scopedWhere({ headers: {} } as any)).toThrow(/needs an authenticated user/);
+    // A token minted without the claim is not a platform account.
+    expect(() => auth.scopedWhere({ headers: {}, user: { userId: 'u1', role: 'admin', level: 'tenant' } } as any))
+      .toThrow(/no tenantId claim/);
   });
 });
 

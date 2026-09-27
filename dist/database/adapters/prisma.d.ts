@@ -46,7 +46,20 @@ export declare class PrismaAdapter {
      */
     createClient(config: PrismaClientConfig): Promise<PrismaClient>;
     /**
-     * Apply tenant filtering middleware to Prisma client
+     * Scope a Prisma client to one tenant.
+     *
+     * Returns a NEW client built with `$extends({ query })`; the base client is
+     * untouched and stays shared. (5.1.3 and earlier called `client.$use`, which
+     * Prisma removed in 6.14 — tenant mode threw on the first query. It also
+     * mutated the shared client, so each tenant's middleware stacked on the last.)
+     *
+     * Rules, for models that have the tenant field:
+     * - reads, updates, deletes and counts are filtered to the tenant;
+     * - creates and upserts always write this tenant, whatever the caller passed,
+     *   so a request cannot write into another tenant by setting the field;
+     * - an update cannot move a row to another tenant.
+     * Models without the field pass through unchanged. Raw SQL ($queryRaw,
+     * $executeRaw) is not filtered — use Postgres row-level security for that.
      */
     applyTenantMiddleware(client: PrismaClient, tenantId: string, options?: TenantMiddlewareOptions): Promise<PrismaClient>;
     /**

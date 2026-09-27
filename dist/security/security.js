@@ -16,6 +16,7 @@ export class SecurityClass {
     config;
     requestStore;
     cleanupInitialized;
+    limiterCount = 0;
     constructor(config) {
         this.config = config;
         this.requestStore = new Map();
@@ -81,6 +82,11 @@ export class SecurityClass {
         const window = windowMs || this.config.rateLimit.windowMs;
         const message = options.message || this.config.rateLimit.message;
         const keyGenerator = options.keyGenerator || this.getClientKey;
+        // One store serves every limiter, so each needs its own key space.
+        // Without it a 5-per-15-minutes login limiter and a 100-per-minute API
+        // limiter counted the same IP together: ordinary API traffic locked the
+        // user out of login.
+        const bucket = options.name || `limiter-${++this.limiterCount}`;
         // Validate configuration
         if (max < 0 || window <= 0) {
             throw createSecurityError('Invalid rate limit configuration', 500);
@@ -88,7 +94,7 @@ export class SecurityClass {
         // Initialize cleanup for memory management
         this.initializeCleanup(window);
         return (req, res, next) => {
-            const key = keyGenerator(req);
+            const key = `${bucket}:${keyGenerator(req)}`;
             const now = Date.now();
             // Get or create rate limit record
             let record = this.requestStore.get(key);

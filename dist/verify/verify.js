@@ -21,7 +21,8 @@ export class VerifierClass {
      * Run the matrix against a live server.
      *
      * @llm-rule WHEN: A CI step, or a test that boots the app and asserts report.ok
-     * @llm-rule AVOID: Running against production - it issues writes and deletes
+     * @llm-rule AVOID: Running against production - refuses non-local URLs unless allowRemote
+     * @llm-rule NOTE: DELETE probes run only with allowDestructive: true (use a disposable database)
      */
     async run(options) {
         this.validate(options);
@@ -160,7 +161,8 @@ export class VerifierClass {
             }
         }
         // Deletes run last: they mutate, so everything else observes clean state.
-        for (const victim of tenantSessions) {
+        // Opt-in only: when the app leaks, this really deletes the victim's row.
+        for (const victim of options.allowDestructive ? tenantSessions : []) {
             for (const actor of tenantSessions) {
                 if (actor.identity.label === victim.identity.label)
                     continue;
@@ -197,6 +199,7 @@ export class VerifierClass {
             probed: paths,
             harvested: Object.fromEntries(sessions.map((s) => [s.identity.label, [...s.ids.values()].reduce((n, ids) => n + ids.length, 0)])),
             skipped,
+            destructive: options.allowDestructive === true,
         };
     }
     /**
@@ -253,6 +256,19 @@ export class VerifierClass {
     validate(options) {
         if (!options?.baseUrl || typeof options.baseUrl !== 'string') {
             throw new Error(`[@bloomneo/appkit/verify] baseUrl is required. See: ${DOCS_URL}#usage`);
+        }
+        let host;
+        try {
+            host = new URL(options.baseUrl).hostname;
+        }
+        catch {
+            throw new Error(`[@bloomneo/appkit/verify] baseUrl is not a valid URL: ${options.baseUrl}. See: ${DOCS_URL}#usage`);
+        }
+        const local = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host) || host.endsWith('.localhost');
+        if (!local && !options.allowRemote) {
+            throw new Error(`[@bloomneo/appkit/verify] Refusing to probe ${host}: the verifier logs in as real users and replays ` +
+                `writes against other tenants' rows. Point it at a local server, or pass allowRemote: true for a ` +
+                `disposable staging deployment. See: ${DOCS_URL}#usage`);
         }
         if (!Array.isArray(options.identities) || options.identities.length < 2) {
             throw new Error(`[@bloomneo/appkit/verify] At least two identities are required — isolation is only ` +

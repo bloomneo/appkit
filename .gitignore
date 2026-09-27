@@ -54,3 +54,6 @@ scripts/*
 temp/
 tmp/
 uploads/
+
+# Generated Prisma client for the tenant integration fixture
+tests/integration/fixtures/tenant/generated/

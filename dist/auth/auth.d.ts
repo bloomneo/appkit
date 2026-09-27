@@ -203,12 +203,18 @@ export declare class AuthenticationClass {
      * const rows = await db.invoice.findMany({ where: { ...auth.scopedWhere(req), status } });
      * ```
      *
-     * A platform account carries null and gets `{}` — no filter, cross-tenant by
-     * design. Anything narrower gets the columns it is bound to.
+     * A platform account carries an explicit `tenantId: null` and gets `{}` —
+     * no filter, cross-tenant by design. Anything narrower gets the columns it
+     * is bound to.
+     *
+     * It throws, rather than returning `{}`, when it cannot tell: no
+     * authenticated user, or a token with no `tenantId` claim at all. `{}` means
+     * "all data", so guessing it on a missing claim turned a forgotten login
+     * field into every tenant's rows.
      *
      * @llm-rule WHEN: Filtering a query by the caller's tenant/client binding
      * @llm-rule AVOID: Trusting it alone for authorization - pair it with requireUserRoles()
-     * @llm-rule NOTE: Returns {} for platform scopes, so it is safe to always spread
+     * @llm-rule NOTE: Login tokens must carry tenantId (null for platform accounts) or this throws
      */
     /**
      * May this caller see unmasked personal data?

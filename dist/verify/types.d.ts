@@ -38,6 +38,17 @@ export interface VerifyOptions {
     exclude?: string[];
     /** Milliseconds per request before giving up. Default 5000. */
     timeoutMs?: number;
+    /**
+     * Also replay DELETE against another tenant's rows. Off by default: when the
+     * app leaks, the probe really deletes that row. Turn it on only against a
+     * disposable database.
+     */
+    allowDestructive?: boolean;
+    /**
+     * Allow a baseUrl that is not localhost / 127.0.0.1 / [::1]. Off by default
+     * so the verifier cannot be pointed at a live deployment by accident.
+     */
+    allowRemote?: boolean;
 }
 export type FindingKind = 'cross-tenant-read' | 'cross-tenant-write' | 'cross-tenant-delete' | 'unauthenticated-read';
 export interface VerifyFinding {
@@ -62,5 +73,7 @@ export interface VerifyReport {
     harvested: Record<string, number>;
     /** Anything that stopped a check from running, so a skip never reads as a pass. */
     skipped: string[];
+    /** Whether DELETE probes ran (`allowDestructive`). */
+    destructive: boolean;
 }
 //# sourceMappingURL=types.d.ts.map

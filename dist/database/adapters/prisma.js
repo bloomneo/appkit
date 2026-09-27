@@ -68,85 +68,73 @@ export class PrismaAdapter {
         return this.clients.get(clientKey);
     }
     /**
-     * Apply tenant filtering middleware to Prisma client
+     * Scope a Prisma client to one tenant.
+     *
+     * Returns a NEW client built with `$extends({ query })`; the base client is
+     * untouched and stays shared. (5.1.3 and earlier called `client.$use`, which
+     * Prisma removed in 6.14 — tenant mode threw on the first query. It also
+     * mutated the shared client, so each tenant's middleware stacked on the last.)
+     *
+     * Rules, for models that have the tenant field:
+     * - reads, updates, deletes and counts are filtered to the tenant;
+     * - creates and upserts always write this tenant, whatever the caller passed,
+     *   so a request cannot write into another tenant by setting the field;
+     * - an update cannot move a row to another tenant.
+     * Models without the field pass through unchanged. Raw SQL ($queryRaw,
+     * $executeRaw) is not filtered — use Postgres row-level security for that.
      */
     async applyTenantMiddleware(client, tenantId, options = {}) {
-        const tenantField = options.fieldName || 'tenant_id';
-        // Add tenant middleware for automatic filtering and insertion
-        client.$use(async (params, next) => {
-            // Add tenant to create operations
-            if (params.action === 'create' && params.args?.data) {
-                if (!params.args.data[tenantField]) {
-                    params.args.data[tenantField] = tenantId;
-                }
-            }
-            // Add tenant to createMany operations
-            if (params.action === 'createMany' && params.args?.data) {
-                params.args.data = params.args.data.map((item) => ({
-                    ...item,
-                    [tenantField]: item[tenantField] || tenantId,
-                }));
-            }
-            // Add tenant to upsert operations
-            if (params.action === 'upsert') {
-                if (params.args?.create && !params.args.create[tenantField]) {
-                    params.args.create[tenantField] = tenantId;
-                }
-                if (params.args?.update && !params.args.update[tenantField]) {
-                    params.args.update[tenantField] = tenantId;
-                }
-                if (params.args?.where && !params.args.where[tenantField]) {
-                    params.args.where[tenantField] = tenantId;
-                }
-            }
-            // Add tenant filter to read/update/delete operations
-            const filterActions = [
-                'findFirst',
-                'findMany',
-                'findUnique',
-                'update',
-                'updateMany',
-                'delete',
-                'deleteMany',
-                'count',
-                'aggregate',
-                'groupBy',
-            ];
-            if (filterActions.includes(params.action)) {
-                if (!params.args)
-                    params.args = {};
-                if (!params.args.where)
-                    params.args.where = {};
-                // Handle complex where clauses
-                if (params.args.where.AND) {
-                    // Check if tenant filter already exists
-                    const hasTenantFilter = params.args.where.AND.some((condition) => typeof condition === 'object' &&
-                        condition !== null &&
-                        condition[tenantField] !== undefined);
-                    if (!hasTenantFilter) {
-                        params.args.where.AND.push({ [tenantField]: tenantId });
-                    }
-                }
-                else if (params.args.where.OR) {
-                    // Wrap OR in AND with tenant filter
-                    params.args.where = {
-                        AND: [{ [tenantField]: tenantId }, { OR: params.args.where.OR }],
-                    };
-                    delete params.args.where.OR;
-                }
-                else {
-                    // Add tenant filter to simple where
-                    if (params.args.where[tenantField] === undefined) {
-                        params.args.where[tenantField] = tenantId;
-                    }
-                }
-            }
-            return next(params);
+        const field = options.fieldName || 'tenant_id';
+        // Which models carry the tenant field. Prisma exposes its data model at
+        // runtime; if it ever stops doing so, scope every model (fail closed).
+        const runtimeModels = client._runtimeDataModel?.models;
+        const hasField = (model) => {
+            if (!model)
+                return false;
+            const def = runtimeModels?.[model];
+            return def ? def.fields.some((f) => f.name === field) : true;
+        };
+        const force = (data) => data && typeof data === 'object' ? { ...data, [field]: tenantId } : data;
+        const scopeUnique = (where) => ({ ...(where || {}), [field]: tenantId });
+        const scopeMany = (where) => where && Object.keys(where).length ? { AND: [{ [field]: tenantId }, where] } : { [field]: tenantId };
+        const UNIQUE = new Set(['findUnique', 'findUniqueOrThrow', 'update', 'delete']);
+        const MANY = new Set([
+            'findFirst', 'findFirstOrThrow', 'findMany', 'updateMany', 'updateManyAndReturn',
+            'deleteMany', 'count', 'aggregate', 'groupBy',
+        ]);
+        const scoped = client.$extends({
+            name: 'appkit-tenant',
+            query: {
+                $allModels: {
+                    async $allOperations({ model, operation, args, query }) {
+                        if (!hasField(model))
+                            return query(args);
+                        const a = { ...(args || {}) };
+                        if (UNIQUE.has(operation))
+                            a.where = scopeUnique(a.where);
+                        if (MANY.has(operation))
+                            a.where = scopeMany(a.where);
+                        if (operation === 'create')
+                            a.data = force(a.data);
+                        if (operation === 'createMany' || operation === 'createManyAndReturn') {
+                            a.data = Array.isArray(a.data) ? a.data.map(force) : force(a.data);
+                        }
+                        if (operation === 'upsert') {
+                            a.where = scopeUnique(a.where);
+                            a.create = force(a.create);
+                            if (a.update && field in a.update)
+                                a.update = force(a.update);
+                        }
+                        if ((operation === 'update' || operation === 'updateMany' || operation === 'updateManyAndReturn')
+                            && a.data && field in a.data) {
+                            a.data = force(a.data);
+                        }
+                        return query(a);
+                    },
+                },
+            },
         });
-        // Mark as tenant-filtered
-        client._tenantId = tenantId;
-        client._tenantFiltered = true;
-        return client;
+        return scoped;
     }
     /**
      * Auto-discover Bloomneo apps with Prisma clients
