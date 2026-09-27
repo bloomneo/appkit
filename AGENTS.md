@@ -258,7 +258,7 @@ backend, no frontend.
 
 ## Migration notes
 
-**Current release: 5.1.4.** Security and correctness fixes: tenant mode on Prisma works again (`$use` was removed in Prisma 6.14; scoping now uses `$extends` and forces writes into the caller's tenant), `auth.scopedWhere()` throws instead of returning `{}` when the token has no `tenantId` claim, each `security.requests()` limiter counts separately, and `verifyClass` refuses non-local targets and sends DELETE probes only with `allowDestructive: true`.
+**Current release: 6.0.0-alpha.0.** Pre-release of 6.0; 5.1.4 is the stable line. Security and correctness fixes: tenant mode on Prisma works again (`$use` was removed in Prisma 6.14; scoping now uses `$extends` and forces writes into the caller's tenant), `auth.scopedWhere()` throws instead of returning `{}` when the token has no `tenantId` claim, each `security.requests()` limiter counts separately, and `verifyClass` refuses non-local targets and sends DELETE probes only with `allowDestructive: true`.
 See [`CHANGELOG.md`](./CHANGELOG.md) for the complete migration tables.
 
 **5.0.0 — the one breaking change that matters.** In multi-tenant mode

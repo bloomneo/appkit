@@ -206,9 +206,9 @@ console.log(`OK: all ${exportedClasses.length} modules documented in ${AGENT_DOC
 
 const pkgVersion = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version as string;
 const versionClaims: Array<{ file: string; re: RegExp; label: string }> = [
-  { file: 'llms.txt', re: /^# @bloomneo\/appkit v([0-9]+\.[0-9]+\.[0-9]+)/m, label: 'llms.txt header' },
-  { file: 'AGENTS.md', re: /\*\*Current release: ([0-9]+\.[0-9]+\.[0-9]+)\.\*\*/, label: 'AGENTS.md "Current release"' },
-  { file: 'README.md', re: /\*\*Current release: ([0-9]+\.[0-9]+\.[0-9]+)\.\*\*/, label: 'README "Current release"' },
+  { file: 'llms.txt', re: /^# @bloomneo\/appkit v([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)/m, label: 'llms.txt header' },
+  { file: 'AGENTS.md', re: /\*\*Current release: ([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)\.\*\*/, label: 'AGENTS.md "Current release"' },
+  { file: 'README.md', re: /\*\*Current release: ([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)\.\*\*/, label: 'README "Current release"' },
 ];
 
 const versionErrors: string[] = [];
