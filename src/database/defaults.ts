@@ -7,7 +7,6 @@
  *
  * Optional Environment Variables:
  * - BLOOM_DB_TENANT: Enable tenant mode (auto/true/false)
- * - ORG_{NAME}: Organization-specific database URLs
  *
  * @module @bloomneo/appkit/database
  * @file src/database/defaults.ts
@@ -18,10 +17,6 @@
  */
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
-
-function validateOrgId(orgId: string): boolean {
-  return typeof orgId === 'string' && /^[a-zA-Z0-9_-]+$/.test(orgId) && orgId.length <= 63;
-}
 
 function validateDatabaseUrl(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
@@ -75,28 +70,9 @@ function detectProvider(url: string): string {
   return 'unknown';
 }
 
-function detectAdapter(url: string): string {
-  const provider = detectProvider(url);
-  if (provider === 'mongodb') return 'mongoose';
+// Prisma is the only adapter (the Mongoose adapter was removed in 6.0).
+function detectAdapter(_url: string): string {
   return 'prisma';
-}
-
-function getOrgEnvironmentVars(): Record<string, string> {
-  const orgVars: Record<string, string> = {};
-  Object.keys(process.env).forEach(key => {
-    if (key.startsWith('ORG_') && key !== 'ORG_') {
-      const orgId = key.replace('ORG_', '').toLowerCase();
-      const url = process.env[key];
-      if (url && validateDatabaseUrl(url)) {
-        orgVars[orgId] = url;
-      } else {
-        console.warn(
-          `[@bloomneo/appkit/database] Invalid database URL for organization '${orgId}': ${url}. See: ${DOCS_URL}#environment-variables`
-        );
-      }
-    }
-  });
-  return orgVars;
 }
 
 function validateEnvironment() {
@@ -108,8 +84,6 @@ function validateEnvironment() {
     warnings,
     hasDatabase: false,
     hasTenants: false,
-    hasOrgs: false,
-    orgCount: 0,
   };
 
   const databaseUrl = process.env.DATABASE_URL;
@@ -131,16 +105,6 @@ function validateEnvironment() {
     }
   }
 
-  const orgVars = getOrgEnvironmentVars();
-  config.orgCount = Object.keys(orgVars).length;
-  config.hasOrgs = config.orgCount > 0;
-
-  Object.keys(orgVars).forEach(orgId => {
-    if (!validateOrgId(orgId)) {
-      warnings.push(`Invalid organization ID format: ${orgId}`);
-    }
-  });
-
   const nodeEnv = process.env.NODE_ENV;
   if (!nodeEnv) {
     warnings.push('NODE_ENV not set. Defaulting to development mode');
@@ -150,10 +114,6 @@ function validateEnvironment() {
 
   if (config.hasTenants && !config.hasDatabase) {
     errors.push('Tenant mode enabled but no valid DATABASE_URL found');
-  }
-
-  if (config.hasOrgs && config.orgCount > 10) {
-    warnings.push(`Large number of organizations configured (${config.orgCount}). Consider using dynamic URL resolution`);
   }
 
   config.valid = errors.length === 0;
@@ -192,11 +152,6 @@ export function getSmartDefaults() {
       enabled: validation.hasTenants,
       mode: process.env.BLOOM_DB_TENANT?.toLowerCase() || 'false',
       fieldName: 'tenant_id',
-    },
-    org: {
-      enabled: validation.hasOrgs,
-      count: validation.orgCount,
-      urls: getOrgEnvironmentVars(),
     },
     environment: {
       isDevelopment,

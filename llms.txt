@@ -243,7 +243,8 @@ app.delete(
 
 ## Module 2 — Database (`@bloomneo/appkit/database`)
 
-Multi-tenant Prisma/Mongoose with automatic tenant filtering.
+Prisma with automatic tenant filtering. Prisma is the only adapter (Mongoose
+was removed in 6.0).
 
 ### Scoped access (5.0) — only when BLOOM_DB_TENANT is enabled
 
@@ -251,7 +252,8 @@ Multi-tenant Prisma/Mongoose with automatic tenant filtering.
 exactly as before. Nothing below applies.**
 
 ```ts
-// Scoped — tenant from req.user.tenantId / x-tenant-id / :tenantId / subdomain
+// Scoped — tenant from req.user.tenantId (login-token claim) only; headers,
+// route params and subdomains are not read (6.0)
 await database.tenant(req, (db) => db.client.findMany());
 
 // Cross-tenant on purpose — reason is mandatory and logged
@@ -285,17 +287,16 @@ database.user.create({ data: {...} })             // auto-stamps tenant_id
 // Cross-tenant queries (admin only)
 const dbAll = await databaseClass.getTenants();   // unfiltered, all tenants
 dbAll.user.groupBy({ by: ['tenant_id'], _count: true })
-
-// Org-level (multi-org SaaS)
-const acmeDb = await databaseClass.org('acme').get();  // ORG_ACME=postgresql://acme.../prod
 ```
+
+One database per app. Per-org databases (`databaseClass.org()`, `ORG_<NAME>`
+URLs, `{org}` URL templates) were removed in 6.0.
 
 ### Required env
 
 ```bash
 DATABASE_URL=postgresql://...        # required
 BLOOM_DB_TENANT=auto              # optional, enables multi-tenant filtering
-ORG_<NAME>=postgresql://...          # optional, enables per-org databases
 ```
 
 ---
@@ -713,7 +714,6 @@ verifyClass.reset() / verifyClass.disconnectAll()
 | `RESEND_API_KEY` | Production email | optional |
 | `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` | SMTP email | optional |
 | `BLOOM_LOGGER_FILE` / `BLOOM_LOGGER_DIR` | Logger file transport on/off and folder | optional |
-| `ORG_<NAME>` | Per-org database (multi-org SaaS) | optional |
 | `BLOOM_AUTH_SCOPES` | Reach axis, low→high — enables matrix mode | optional |
 | `BLOOM_AUTH_TIERS` | Capability axis, low→high — enables matrix mode | optional |
 | `BLOOM_MCP_OAUTH_SECRET` | Signs MCP OAuth JWTs (falls back to `BLOOM_AUTH_SECRET`) | optional |

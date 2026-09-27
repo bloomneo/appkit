@@ -172,7 +172,7 @@ const logger   = loggerClass.get('api');     // component-tagged
 | # | Module | Purpose | Auto-scales |
 |---|---|---|---|
 | 1 | **Auth** | JWT tokens, role.level permissions, middleware | — |
-| 2 | **Database** | Prisma/Mongoose with multi-tenant filtering | per-org databases |
+| 2 | **Database** | Prisma with multi-tenant filtering (tenant from the login token) | `BLOOM_DB_TENANT` |
 | 3 | **Security** | CSRF, rate limiting, AES-256-GCM, input sanitization | — |
 | 4 | **Error** | HTTP errors with semantic types + middleware | — |
 | 5 | **Cache** | Memory → Redis | `REDIS_URL` |

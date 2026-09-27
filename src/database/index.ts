@@ -1,18 +1,16 @@
 /**
- * Ultra-simple database API with org/tenant support and smart connection management
+ * Ultra-simple Prisma database API with tenant scoping and smart connection management
  * @module @bloomneo/appkit/database
  * @file src/database/index.ts
  * 
  * @llm-rule WHEN: ALWAYS add tenant_id text field to ALL tables (nullable for future compatibility)
  * @llm-rule NOTE: tenant_id = null (single tenant) or "team-1" (multi-tenant)
  * @llm-rule VARIABLE: const db = await databaseClass.get() - user's data (single or tenant-filtered)
+ * @llm-rule VARIABLE: const rows = await databaseClass.tenant(req, db => db.x.findMany()) - tenant-scoped
  * @llm-rule VARIABLE: const dbTenants = await databaseClass.getTenants() - all tenants (admin access)
- * @llm-rule VARIABLE: const {orgName}Db = await databaseClass.org('{orgName}').get() - org-specific data
- * @llm-rule VARIABLE: const {orgName}DbTenants = await databaseClass.org('{orgName}').getTenants() - all tenants in org
  */
 
 import { PrismaAdapter } from './adapters/prisma.js';
-import { MongooseAdapter } from './adapters/mongoose.js';
 import { AppKitError } from '../internal/errors.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/database/README.md';
@@ -37,7 +35,6 @@ export class DatabaseError extends AppKitError {
 // Type definitions for database clients
 interface DatabaseClient {
   _appKit?: boolean;
-  _orgId?: string;
   _tenantId?: string;
   _url?: string;
   [key: string]: any;
@@ -50,15 +47,7 @@ interface PrismaClient extends DatabaseClient {
   $use?: (middleware: any) => void;
 }
 
-interface MongooseConnection extends DatabaseClient {
-  db: any;
-  close: () => Promise<void>;
-  model: (name: string, schema?: any, collection?: string) => any;
-  models: Record<string, any>;
-  on: (event: string, callback: (...args: any[]) => void) => void;
-}
-
-type DatabaseClientUnion = PrismaClient | MongooseConnection;
+type DatabaseClientUnion = PrismaClient;
 
 interface DatabaseAdapter {
   createClient: (config: any) => Promise<DatabaseClientUnion>;
@@ -78,109 +67,32 @@ const connections = new Map<string, DatabaseClientUnion>();
 let _tenantHintWarned = false;
 
 /**
- * Detect organization from request context
- */
-function detectOrg(req?: any): string | null {
-  if (!req) return null;
-  
-  return (
-    req.headers?.['x-org-id'] ||
-    req.user?.org_id ||
-    req.params?.orgId ||
-    req.query?.org ||
-    extractFromSubdomain(req, 'org') ||
-    null
-  );
-}
-
-/**
- * Detect tenant from request context
+ * Resolve the tenant for a request.
+ *
+ * 6.0: only the verified login token counts — `req.user.tenantId`, or the
+ * pre-4.2 `tenant_id` shape. Headers, route params, query strings and
+ * subdomains are caller-controlled, so reading them let any client pick its
+ * own tenant.
  */
 function detectTenant(req?: any): string | null {
   if (!req) return null;
   if (!process.env.BLOOM_DB_TENANT) return null;
-  
-  return (
-    req.headers?.['x-tenant-id'] ||
-    // The auth module puts `tenantId` in the login token (4.2.0+). `tenant_id`
-    // is the pre-4.2 shape and is still read so existing apps keep working.
-    req.user?.tenantId ||
-    req.user?.tenant_id ||
-    req.params?.tenantId ||
-    req.query?.tenant ||
-    extractFromSubdomain(req, 'tenant') ||
-    null
-  );
-}
 
-/**
- * Extract org/tenant from subdomain
- */
-function extractFromSubdomain(req: any, type: 'org' | 'tenant'): string | null {
-  try {
-    const host = req.headers?.host || req.hostname;
-    if (!host) return null;
-    
-    const parts = host.split('.');
-    if (parts.length >= 3) {
-      const subdomain = parts[0];
-      // Skip common subdomains
-      if (!['www', 'api', 'admin', 'app'].includes(subdomain)) {
-        return subdomain;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Auto-detect database adapter from URL
- */
-function detectAdapter(url: string): 'prisma' | 'mongoose' {
-  if (url.includes('postgresql') || url.includes('postgres')) {
-    return 'prisma';
-  }
-  if (url.includes('mongodb')) {
-    return 'mongoose';
-  }
-  return 'prisma'; // Default fallback
-}
-
-/**
- * Get database URL for organization
- */
-function getOrgUrl(orgId?: string): string {
-  if (!orgId) return process.env.DATABASE_URL || '';
-  
-  // Check for specific org URL
-  const orgUrl = process.env[`ORG_${orgId.toUpperCase()}`];
-  if (orgUrl) return orgUrl;
-  
-  // Check for pattern in base URL
-  const baseUrl = process.env.DATABASE_URL;
-  if (baseUrl?.includes('{org}')) {
-    return baseUrl.replace('{org}', orgId);
-  }
-  
-  return baseUrl || '';
+  return req.user?.tenantId || req.user?.tenant_id || null;
 }
 
 /**
  * Create database client with caching
  */
-async function createClient(url: string, tenantId: string | null = null, orgId: string | null = null): Promise<DatabaseClientUnion> {
-  const cacheKey = `${url}_${tenantId || 'null'}_${orgId || 'null'}`;
+async function createClient(url: string, tenantId: string | null = null): Promise<DatabaseClientUnion> {
+  const cacheKey = `${url}_${tenantId || 'null'}_`;
   
   if (connections.has(cacheKey)) {
     return connections.get(cacheKey)!;
   }
   
   try {
-    // Detect and create adapter
-    const adapterType = detectAdapter(url);
-    const adapter: DatabaseAdapter = adapterType === 'mongoose' ? new MongooseAdapter({ url }) : new PrismaAdapter({ url });
+    const adapter: DatabaseAdapter = new PrismaAdapter({ url });
     
     // Create client
     let client: any = await adapter.createClient({ url });
@@ -189,13 +101,11 @@ async function createClient(url: string, tenantId: string | null = null, orgId: 
     if (tenantId && adapter.applyTenantMiddleware) {
       client = await adapter.applyTenantMiddleware(client, tenantId, {
         fieldName: 'tenant_id',
-        orgId
       });
     }
     
     // Add metadata
     client._appKit = true;
-    client._orgId = orgId || undefined;
     client._tenantId = tenantId || undefined;
     client._url = url;
     
@@ -207,49 +117,6 @@ async function createClient(url: string, tenantId: string | null = null, orgId: 
     throw new Error(
       `[@bloomneo/appkit/database] Failed to create database connection: ${error.message}. See: ${DOCS_URL}#troubleshooting`
     );
-  }
-}
-
-/**
- * Organization database builder
- */
-class OrgDatabase {
-
-  private orgId: string;
-  constructor(orgId: string) {
-    this.orgId = orgId;
-  }
-  
-  /**
-   * Get organization database (tenant-filtered if tenant mode enabled)
-   */
-  async get(req: any = null) {
-    const tenantId = detectTenant(req);
-    const url = getOrgUrl(this.orgId);
-    
-    if (!url) {
-      throw new Error(
-        `[@bloomneo/appkit/database] No database URL found for organization '${this.orgId}'. See: ${DOCS_URL}#environment-variables`
-      );
-    }
-
-    return await createClient(url, tenantId, this.orgId);
-  }
-
-  /**
-   * Get all tenants in organization (admin access)
-   */
-  async getTenants(req: any = null) {
-    const url = getOrgUrl(this.orgId);
-
-    if (!url) {
-      throw new Error(
-        `[@bloomneo/appkit/database] No database URL found for organization '${this.orgId}'. See: ${DOCS_URL}#environment-variables`
-      );
-    }
-    
-    // No tenant filtering - admin sees all data
-    return await createClient(url, null, this.orgId);
   }
 }
 
@@ -279,8 +146,6 @@ export const databaseClass = {
       );
     }
 
-    // Detect context
-    const orgId = detectOrg(req);
     const tenantId = detectTenant(req);
 
     // 5.0: in tenant mode, get() may no longer hand back an unscoped client.
@@ -303,8 +168,7 @@ export const databaseClass = {
       );
     }
 
-    // Get appropriate URL
-    const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
+    const url = process.env.DATABASE_URL;
 
     if (!url) {
       throw new DatabaseError(
@@ -313,17 +177,16 @@ export const databaseClass = {
       );
     }
 
-    return await createClient(url, tenantId, orgId);
+    return await createClient(url, tenantId);
   },
   
   /**
    * Run a callback against a tenant-scoped client.
    *
    * This is the safe path, and in tenant mode it is the ONLY ergonomic one.
-   * The tenant is resolved from the request — `req.user.tenantId` (the claim
-   * auth puts in the login token), `x-tenant-id`, route params, or subdomain —
-   * and a caller with no resolvable tenant is refused rather than silently
-   * handed every row.
+   * The tenant is resolved from the verified login token only —
+   * `req.user.tenantId` (or the pre-4.2 `tenant_id`) — and a caller with no
+   * tenant claim is refused rather than silently handed every row.
    *
    * ```ts
    * const clients = await database.tenant(req, (db) => db.client.findMany());
@@ -362,15 +225,15 @@ export const databaseClass = {
       // silently reads every row is the leak this API exists to prevent.
       throw new DatabaseError(
         `[@bloomneo/appkit/database] No tenant resolved for this request. ` +
-          `Expected req.user.tenantId (set it in the login token), an x-tenant-id header, ` +
-          `a :tenantId route param, or a subdomain. For deliberate cross-tenant access use ` +
+          `Expected req.user.tenantId — put tenantId in the login token and mount ` +
+          `auth.requireLoginToken() before this route. Headers, route params and subdomains ` +
+          `are not read (6.0). For deliberate cross-tenant access use ` +
           `database.bypass('reason', fn). See: ${DOCS_URL}#multi-tenant-mode`,
         { code: 'DATABASE_NO_TENANT' },
       );
     }
 
-    const orgId = detectOrg(req);
-    const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
+    const url = process.env.DATABASE_URL;
     if (!url) {
       throw new DatabaseError(
         `[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`,
@@ -378,7 +241,7 @@ export const databaseClass = {
       );
     }
 
-    const client = await createClient(url, tenantId, orgId);
+    const client = await createClient(url, tenantId);
     return await fn(client);
   },
 
@@ -426,20 +289,17 @@ export const databaseClass = {
       console.warn(`[@bloomneo/appkit/database] tenant bypass: ${reason}`);
     }
 
-    const client = await createClient(url, null, null);
+    const client = await createClient(url, null);
     return await fn(client);
   },
 
   /**
    * Get all tenants data (admin access - no tenant filtering)
-   * @param {Object} [req] - Request object for org context
    * @returns {Promise<DatabaseClientUnion>} Database client with no tenant filtering
    */
-  async getTenants(req: any = null): Promise<DatabaseClientUnion> {
-    
-    const orgId = detectOrg(req);
-    const url = getOrgUrl(orgId || undefined) || process.env.DATABASE_URL;
-    
+  async getTenants(): Promise<DatabaseClientUnion> {
+    const url = process.env.DATABASE_URL;
+
     if (!url) {
       throw new Error(
         `[@bloomneo/appkit/database] Database URL required. Set DATABASE_URL environment variable. See: ${DOCS_URL}#environment-variables`
@@ -447,22 +307,7 @@ export const databaseClass = {
     }
     
     // No tenant filtering - admin sees all data
-    return await createClient(url, null, orgId);
-  },
-  
-  /**
-   * Get organization-specific database
-   * @param {string} orgId - Organization ID
-   * @returns {OrgDatabase} Organization database instance
-   */
-  org(orgId: string) {
-    if (!orgId || typeof orgId !== 'string') {
-      throw new Error(
-        `[@bloomneo/appkit/database] Organization ID is required and must be a string. See: ${DOCS_URL}#organization-support`
-      );
-    }
-    
-    return new OrgDatabase(orgId);
+    return await createClient(url, null);
   },
   
   /**
@@ -475,11 +320,7 @@ export const databaseClass = {
       
       // Simple connectivity test
       if (db.$queryRaw) {
-        // Prisma client
         await db.$queryRaw`SELECT 1`;
-      } else if (db.db) {
-        // Mongoose connection
-        await db.db.admin().ping();
       }
       
       return {
@@ -498,13 +339,12 @@ export const databaseClass = {
   },
   
   /**
-   * List tenants in current context
-   * @param {Object} [req] - Request object for org context
+   * List tenant IDs that have rows
    * @returns {Promise<string[]>} Array of tenant IDs
    */
-  async list(req: any = null): Promise<string[]> {
+  async list(): Promise<string[]> {
     try {
-      const db = await this.getTenants(req);
+      const db = await this.getTenants();
       return await this._getDistinctTenantIds(db);
     } catch (error: any) {
       throw new Error(
@@ -516,14 +356,13 @@ export const databaseClass = {
   /**
    * Check if tenant exists
    * @param {string} tenantId - Tenant ID
-   * @param {Object} [req] - Request object for org context
    * @returns {Promise<boolean>} Whether tenant exists
    */
-  async exists(tenantId: string, req: any = null): Promise<boolean> {
+  async exists(tenantId: string): Promise<boolean> {
     if (!tenantId) return false;
     
     try {
-      const db = await this.getTenants(req);
+      const db = await this.getTenants();
       return await this._tenantHasData(db, tenantId);
     } catch {
       return false;
@@ -533,10 +372,9 @@ export const databaseClass = {
   /**
    * Create tenant (registers tenant for future use)
    * @param {string} tenantId - Tenant ID
-   * @param {Object} [req] - Request object for org context
    * @returns {Promise<void>}
    */
-  async create(tenantId: string, req: any = null): Promise<void> {
+  async create(tenantId: string): Promise<void> {
     if (!tenantId || typeof tenantId !== 'string') {
       throw new Error(
         `[@bloomneo/appkit/database] Tenant ID is required and must be a string. See: ${DOCS_URL}#tenant-mode`
@@ -559,10 +397,9 @@ export const databaseClass = {
    * @param {string} tenantId - Tenant ID
    * @param {Object} options - Options object
    * @param {boolean} options.confirm - Confirmation flag (required)
-   * @param {Object} [req] - Request object for org context
    * @returns {Promise<void>}
    */
-  async delete(tenantId: string, options: any, req: any = null): Promise<void> {
+  async delete(tenantId: string, options: any): Promise<void> {
     if (!tenantId) {
       throw new Error(
         `[@bloomneo/appkit/database] Tenant ID is required. See: ${DOCS_URL}#tenant-mode`
@@ -575,7 +412,7 @@ export const databaseClass = {
       );
     }
     
-    const db = await this.getTenants(req);
+    const db = await this.getTenants();
     await this._deleteAllTenantData(db, tenantId);
     
     // Clear cached connections for this tenant
@@ -583,8 +420,8 @@ export const databaseClass = {
   },
   
   /**
-   * Close every cached org/tenant connection and reset internal state — the
-   * canonical teardown call. Named to match cache/queue/email/event/storage/logger
+   * Close every cached tenant connection and reset internal state — the
+   * canonical teardown call. Named to match cache/queue/email/storage/logger
    * per NAMING.md §Bulk-and-Lifecycle-Ops so agents see one teardown verb
    * across every appkit module.
    *
@@ -759,8 +596,6 @@ export const databaseClass = {
     try {
       if (connection.$disconnect) {
         await connection.$disconnect();
-      } else if (connection.close) {
-        await connection.close();
       }
     } catch {
       // Ignore disconnect errors

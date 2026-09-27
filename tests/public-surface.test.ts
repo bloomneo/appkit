@@ -147,7 +147,7 @@ describe('Class re-exports — available for advanced consumers', () => {
   //
   // Not every module ships one:
   // - `database` is an adapter factory — no single class to subclass; uses
-  //   per-provider adapters (PrismaAdapter, MongooseAdapter) internally.
+  //   the Prisma adapter internally.
   // - `error` is a value factory — ErrorClass IS exported but usually not
   //   what a consumer reaches for. Keeping it here for symmetry.
   //

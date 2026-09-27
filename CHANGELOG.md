@@ -26,6 +26,14 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
 - Storage R2 strategy (556 lines) and `CLOUDFLARE_R2_*` / `CLOUDFLARE_ACCOUNT_ID`
   detection. The S3 strategy already takes `S3_ENDPOINT` (and
   `S3_FORCE_PATH_STYLE` for MinIO), which covers R2, Wasabi and MinIO.
+- Database Mongoose adapter (607 lines); Prisma is the only adapter.
+- Per-org databases: `databaseClass.org()`, `ORG_<NAME>` URLs, `{org}` URL
+  templates and `x-org-id` detection. The org-only `req` argument on
+  `getTenants / list / exists / create / delete` is gone.
+- Tenant detection from the `x-tenant-id` header, `:tenantId` route param,
+  `?tenant=` query and subdomain. These are caller-controlled, so any client
+  could pick its tenant. The tenant now comes only from `req.user.tenantId`
+  (or the pre-4.2 `tenant_id`) set by the login token.
 
 ### Changed
 

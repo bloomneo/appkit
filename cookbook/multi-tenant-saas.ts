@@ -3,11 +3,12 @@
  *
  * Modules:    auth + database + cache + error + logger
  * Required:   BLOOM_AUTH_SECRET, DATABASE_URL, BLOOM_DB_TENANT=auto
- * Optional:   REDIS_URL, ORG_<NAME>=... per-org URLs
+ * Optional:   REDIS_URL
  *
- * How databaseClass resolves tenant/org from the request:
- *   org:    x-org-id header → req.user.org_id → req.params.orgId → ?org=
- *   tenant: x-tenant-id header → req.user.tenantId → req.params.tenantId → ?tenant=
+ * How databaseClass resolves the tenant from the request:
+ *   req.user.tenantId (the login-token claim) → req.user.tenant_id (pre-4.2).
+ *   Nothing else: headers, route params and subdomains are caller-controlled
+ *   and are not read (6.0).
  *
  * 5.0: with BLOOM_DB_TENANT enabled, databaseClass.get() THROWS when no tenant
  * resolves rather than returning an unscoped client. Use:
@@ -81,7 +82,7 @@ router.get(
     // Cross-tenant BY DESIGN — so it says so, in a form you can grep for.
     const tenants = await databaseClass.bypass(
       `org admin listing tenants for ${user.org_id}`,
-      async () => databaseClass.list(req),
+      async () => databaseClass.list(),
     );
     logger.info('admin listing tenants', { org: user.org_id, count: tenants.length });
 
@@ -100,7 +101,7 @@ router.post(
     }
 
     // Row-level strategy: create() validates the id shape. No tables created.
-    await databaseClass.create(tenantId, req);
+    await databaseClass.create(tenantId);
     logger.info('tenant registered', { tenantId });
     res.status(201).json({ tenantId });
   }),
@@ -112,10 +113,10 @@ router.delete(
   auth.requireUserRoles(['admin.org']),
   errorClass.asyncRoute(async (req, res) => {
     const { tenantId } = req.params;
-    const exists = await databaseClass.exists(tenantId, req);
+    const exists = await databaseClass.exists(tenantId);
     if (!exists) throw errorClass.notFound('Tenant not found');
 
-    await databaseClass.delete(tenantId, { confirm: true }, req);
+    await databaseClass.delete(tenantId, { confirm: true });
     logger.warn('tenant purged', { tenantId });
     res.json({ deleted: true });
   }),

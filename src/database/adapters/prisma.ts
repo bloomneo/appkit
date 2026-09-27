@@ -4,7 +4,7 @@
  * @file src/database/adapters/prisma.ts
  * 
  * @llm-rule WHEN: Using Prisma ORM with PostgreSQL, MySQL, or SQLite databases in Bloomneo framework
- * @llm-rule AVOID: Using with MongoDB - use mongoose adapter instead
+ * @llm-rule NOTE: The only adapter since 6.0 (Mongoose was removed); MongoDB goes through Prisma's mongodb provider
  * @llm-rule NOTE: Auto-discovers apps from /apps directory structure, applies tenant filtering
  */
 
@@ -27,7 +27,6 @@ interface DiscoveredApp {
 
 interface TenantMiddlewareOptions {
   fieldName?: string;
-  orgId?: string;
 }
 
 interface PrismaClient {

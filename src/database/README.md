@@ -4,13 +4,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-> Ultra-simple database wrapper with automatic tenant isolation and progressive
-> multi-organization support that grows with your needs
+> Ultra-simple Prisma wrapper with automatic tenant isolation
 
-**One simple function** - `databaseClass.get()` - handles everything from single
-databases to complex multi-org, multi-tenant architectures. **Zero configuration
-needed**, production-ready by default, with **mandatory future-proofing** built
-in.
+**One simple function** - `databaseClass.get()` - covers single-tenant apps;
+`database.tenant(req, fn)` and `database.bypass(reason, fn)` cover multi-tenant
+ones. **Zero configuration needed**, production-ready by default, with
+**mandatory future-proofing** built in.
 
 > **See also:** [AGENTS.md](../../AGENTS.md) (agent rules) · [llms.txt](../../llms.txt) (full API reference) · [examples/database.ts](../../examples/database.ts) · cookbook: [auth-protected-crud.ts](../../cookbook/auth-protected-crud.ts), [multi-tenant-saas.ts](../../cookbook/multi-tenant-saas.ts)
 
@@ -19,12 +18,12 @@ in.
 - **⚡ One Function** - `databaseClass.get()` handles all use cases, environment
   controls behavior
 - **🔧 Zero Configuration** - Just `DATABASE_URL`, everything else is optional
-- **📈 Progressive Scaling** - Start simple, add tenants/orgs with zero code
-  changes
+- **📈 Progressive Scaling** - Start single-tenant, turn on tenant scoping with
+  one env var
 - **🛡️ Future-Proof Schema** - Mandatory `tenant_id` field prevents migration
   pain
-- **🔥 Hot Reload** - Change `.env` file, connections update instantly
-- **🌍 Multi-Cloud Ready** - Each org can use different cloud providers
+- **🔐 Token-Sourced Tenants** - The tenant comes only from the verified login
+  token (`req.user.tenantId`), never from headers or URLs
 - **🤖 LLM-Optimized** - Clear variable naming patterns for AI code generation
 
 ## 📦 Installation
@@ -36,15 +35,12 @@ npm install @bloomneo/appkit
 ### Database-Specific Dependencies
 
 ```bash
-# PostgreSQL/MySQL/SQLite with Prisma
+# PostgreSQL / MySQL / SQLite with Prisma (the only adapter)
 npm install @bloomneo/appkit @prisma/client
-
-# MongoDB with Mongoose
-npm install @bloomneo/appkit mongoose
-
-# Multi-database setup (both ORMs)
-npm install @bloomneo/appkit @prisma/client mongoose
 ```
+
+The Mongoose adapter was removed in 6.0. For MongoDB, use Prisma's `mongodb`
+provider.
 
 ## 🏃‍♂️ Quick Start (30 seconds)
 
@@ -53,64 +49,28 @@ npm install @bloomneo/appkit @prisma/client mongoose
 ```typescript
 import { databaseClass } from '@bloomneo/appkit/database';
 
-// PostgreSQL/MySQL with Prisma
+// PostgreSQL / MySQL / SQLite with Prisma
 const database = await databaseClass.get();
 const users = await database.user.findMany();
-
-// MongoDB with Mongoose
-const database = await databaseClass.get();
-const users = await database.User.find();
 ```
 
-### Multi-Tenant (Month 6 - Zero Code Changes!)
+### Multi-Tenant (Month 6)
 
 ```bash
-# Add to .env file - code stays exactly the same
+# Add to .env file, then route tenant data through tenant(req, fn)
 BLOOM_DB_TENANT=auto
 ```
 
 ```typescript
-// Same code, now tenant-filtered automatically
-const database = await databaseClass.get(); // User's tenant data only
+// Request-scoped: every query in the callback is filtered to the caller's tenant
+const users = await databaseClass.tenant(req, (db) => db.user.findMany());
 
-// Prisma (SQL databases)
-const users = await database.user.findMany(); // Auto-filtered by tenant
-
-// Mongoose (MongoDB)
-const users = await database.User.find(); // Auto-filtered by tenant
-
-// Admin access to all tenants
-const dbTenants = await databaseClass.getTenants();
-const allUsers = await dbTenants.user.findMany(); // Prisma - All tenant data
-const allUsers = await dbTenants.User.find(); // Mongoose - All tenant data
+// Admin access to all tenants, on purpose
+const allUsers = await databaseClass.bypass('admin user list', (db) => db.user.findMany());
 ```
 
-### Multi-Organization (Year 1 - Still Zero Code Changes!)
-
-```bash
-# Add org-specific databases to .env
-ORG_ACME=postgresql://acme.aws.com/prod      # PostgreSQL on AWS
-ORG_TECH=mongodb://tech.azure.com/prod       # MongoDB on Azure
-ORG_STARTUP=mysql://startup.gcp.com/prod     # MySQL on GCP
-```
-
-```typescript
-// Same code, now org-aware with auto-adapter detection
-const acmedatabase = await databaseClass.org('acme').get(); // Uses Prisma for PostgreSQL
-const techdatabase = await databaseClass.org('tech').get(); // Uses Mongoose for MongoDB
-const startupdatabase = await databaseClass.org('startup').get(); // Uses Prisma for MySQL
-
-// Different database queries, same simple API
-const acmeUsers = await acmedatabase.user.findMany(); // Prisma syntax
-const techUsers = await techdatabase.User.find(); // Mongoose syntax
-const startupUsers = await startupdatabase.user.findMany(); // Prisma syntax
-
-// Org admin access
-const acmeDbTenants = await databaseClass.org('acme').getTenants();
-const techDbTenants = await databaseClass.org('tech').getTenants();
-```
-
-**That's it!** Your code never changes, only your environment evolves.
+**That's it!** The tenant comes from `req.user.tenantId`, which
+`auth.requireLoginToken()` puts on the request from the login token.
 
 ## 🔒 Multi-tenant mode (5.0)
 
@@ -128,8 +88,9 @@ found 4 of 44 route files in exactly that state.
 So in tenant mode the unscoped call is no longer available by accident:
 
 ```ts
-// ✅ Scoped. The tenant comes from req.user.tenantId (the login-token claim),
-//    x-tenant-id, a :tenantId param, or the subdomain.
+// ✅ Scoped. The tenant comes from req.user.tenantId (the login-token claim).
+//    Headers, route params, query strings and subdomains are NOT read (6.0):
+//    they are caller-controlled, so reading them let a client pick its tenant.
 const clients = await database.tenant(req, (db) => db.client.findMany());
 
 // ✅ Cross-tenant, on purpose. The reason is mandatory and logged.
@@ -175,12 +136,11 @@ auth.generateLoginToken({ userId: user.id, role: user.role, level: user.level, t
 // Normal user access (single tenant or their specific tenant)
 const database = await databaseClass.get();
 
+// Tenant-scoped access (multi-tenant apps)
+const users = await databaseClass.tenant(req, (db) => db.user.findMany());
+
 // Admin access to all tenants
 const dbTenants = await databaseClass.getTenants();
-
-// Organization-specific access
-const acmedatabase = await databaseClass.org('acme').get();
-const acmeDbTenants = await databaseClass.org('acme').getTenants();
 ```
 
 ### **LLM-Friendly Variable Naming**
@@ -189,15 +149,13 @@ const acmeDbTenants = await databaseClass.org('acme').getTenants();
 // Standard patterns for AI code generation:
 const database = await databaseClass.get(); // Single/tenant user data
 const dbTenants = await databaseClass.getTenants(); // All tenants (admin)
-const acmedatabase = await databaseClass.org('acme').get(); // Acme org data
-const acmeDbTenants = await databaseClass.org('acme').getTenants(); // All Acme tenants
 ```
 
 ## 🛡️ Mandatory Future-Proofing
 
 ### **Required Schema Pattern**
 
-**EVERY table/collection MUST include `tenant_id` field from Day 1:**
+**EVERY table MUST include `tenant_id` field from Day 1:**
 
 #### **SQL Databases (Prisma)**
 
@@ -253,35 +211,6 @@ model Post {
 }
 ```
 
-#### **MongoDB (Mongoose)**
-
-```javascript
-// Mongoose schema example
-const userSchema = new Schema({
-  email: { type: String, unique: true, required: true },
-  name: { type: String, required: true },
-  tenant_id: { type: String, index: true }, // MANDATORY: indexed for performance
-  createdAt: { type: Date, default: Date.now },
-});
-
-// MANDATORY: Index for performance
-userSchema.index({ tenant_id: 1 });
-
-const postSchema = new Schema({
-  title: { type: String, required: true },
-  content: { type: String, required: true },
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  tenant_id: { type: String, index: true }, // MANDATORY: on EVERY schema
-  createdAt: { type: Date, default: Date.now },
-});
-
-// MANDATORY: Index on every schema
-postSchema.index({ tenant_id: 1 });
-
-export const User = model('User', userSchema);
-export const Post = model('Post', postSchema);
-```
-
 ### **Why Mandatory `tenant_id`?**
 
 - ✅ **Zero Migration Pain** - Enable multi-tenancy later with just environment
@@ -298,45 +227,19 @@ export const Post = model('Post', postSchema);
 # Required: Main database connection
 DATABASE_URL=postgresql://localhost:5432/myapp  # PostgreSQL
 # OR
-DATABASE_URL=mongodb://localhost:27017/myapp    # MongoDB
-# OR
 DATABASE_URL=mysql://localhost:3306/myapp       # MySQL
+# OR
+DATABASE_URL=file:./dev.db                      # SQLite (Prisma)
 
-# Optional: Enable tenant mode (auto-detects from requests)
+# Optional: Enable tenant mode (tenant read from req.user.tenantId)
 BLOOM_DB_TENANT=auto
-```
-
-### **Multi-Database & Multi-Organization Setup**
-
-```bash
-# Fallback database
-DATABASE_URL=postgresql://localhost:5432/main
-
-# Organization-specific databases (any provider)
-ORG_ACME=postgresql://acme.aws.com/prod         # PostgreSQL on AWS
-ORG_TECH=mongodb://tech.azure.com/db            # MongoDB on Azure
-ORG_STARTUP=mysql://startup.gcp.com/prod        # MySQL on GCP
-ORG_LOCAL=sqlite:///local/dev.db                # SQLite for development
-ORG_LEGACY=mongodb://legacy.onprem.com/data     # On-premise MongoDB
-
-# Enable tenant mode within each org
-BLOOM_DB_TENANT=auto
-```
-
-### **Hot Reload Magic**
-
-```bash
-# Change .env file while app is running:
-echo "ORG_NEWCLIENT=postgresql://newclient.com/db" >> .env
-
-# Connections update instantly - no server restart needed! 🔥
 ```
 
 ### **App Discovery (Monorepo)**
 
 ```bash
-# Optional: Override the apps directory used by the Prisma / Mongoose
-# adapters for auto-discovering per-app clients and models.
+# Optional: Override the apps directory used by the Prisma adapter for
+# auto-discovering per-app clients.
 # Defaults to searching upwards from process.cwd() for an `apps/` folder.
 BLOOM_APPS_DIR=/absolute/path/to/apps
 ```
@@ -358,34 +261,23 @@ async function getBlogPosts() {
 }
 
 /**
- * Month 6: Add team workspaces (zero code changes!)
- * Just add: BLOOM_DB_TENANT=auto to .env
+ * Month 6: Add team workspaces
+ * Add BLOOM_DB_TENANT=auto to .env and pass the request through.
  */
-async function getBlogPosts() {
-  const database = await databaseClass.get(); // Now auto-filters by tenant
-  return await database.posts.findMany({
-    include: { user: true },
-    orderBy: { createdAt: 'desc' },
-  });
-}
-
-/**
- * Year 1: Multi-organization SaaS (still zero code changes!)
- * Just add org URLs to .env
- */
-async function getBlogPosts() {
-  const database = await databaseClass.get(); // Now org + tenant aware
-  return await database.posts.findMany({
-    include: { user: true },
-    orderBy: { createdAt: 'desc' },
-  });
+async function getBlogPosts(req) {
+  return await databaseClass.tenant(req, (db) =>
+    db.posts.findMany({
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+  );
 }
 
 /**
  * Admin dashboard (any time)
  */
-async function getAllOrgPosts(orgId) {
-  const dbTenants = await databaseClass.org(orgId).getTenants();
+async function getAllPosts() {
+  const dbTenants = await databaseClass.getTenants();
   return await dbTenants.posts.findMany({
     include: { user: true },
     orderBy: { createdAt: 'desc' },
@@ -398,18 +290,16 @@ async function getAllOrgPosts(orgId) {
 ```typescript
 import { databaseClass } from '@bloomneo/appkit/database';
 
-// User endpoints - auto-filtered by tenant
-app.get('/api/users', async (req, res) => {
-  const database = await databaseClass.get();
-  const users = await database.user.findMany();
+// User endpoints - filtered to the tenant in the login token
+app.get('/api/users', auth.requireLoginToken(), async (req, res) => {
+  const users = await databaseClass.tenant(req, (db) => db.user.findMany());
   res.json(users); // Only user's tenant data
 });
 
-app.post('/api/users', async (req, res) => {
-  const database = await databaseClass.get();
-  const user = await database.user.create({
-    data: req.body, // tenant_id added automatically
-  });
+app.post('/api/users', auth.requireLoginToken(), async (req, res) => {
+  const user = await databaseClass.tenant(req, (db) =>
+    db.user.create({ data: req.body }), // tenant_id added automatically
+  );
   res.json(user);
 });
 
@@ -421,96 +311,24 @@ app.get('/api/admin/users', requireUserRoles(['admin']), async (req, res) => {
   });
   res.json(users); // All tenants data
 });
-
-// Organization management
-app.get('/api/orgs/:orgId/users', requireUserRoles(['admin']), async (req, res) => {
-  const { orgId } = req.params;
-  const orgDatabase = await databaseClass.org(orgId).get();
-  const users = await orgDatabase.user.findMany();
-  res.json(users); // Specific org data
-});
-```
-
-### **Multi-Cloud Enterprise Setup**
-
-```typescript
-/**
- * Enterprise deployment with different cloud providers and databases per organization
- */
-
-// Environment configuration supports any database provider:
-const envConfig = `
-# System/Admin database
-DATABASE_URL=postgresql://admin.company.com/system
-
-# Customer organizations on different clouds and databases
-ORG_ENTERPRISE_CORP=postgresql://enterprise.dedicated.aws.com/prod
-ORG_TECH_STARTUP=mongodb://tech.shared.azure.com/startup_db  
-ORG_LOCAL_BUSINESS=mysql://local.gcp.com:3306/business_db
-ORG_DEV_TESTING=sqlite:///tmp/testing.db
-
-# Enable tenant mode across all orgs
-BLOOM_DB_TENANT=auto
-`;
-
-// Code remains identical regardless of backend:
-async function getUserData(orgId, userId) {
-  const database = await databaseClass.org(orgId).get();
-
-  // Works with any database type - AppKit handles the differences
-  if (database.user?.findUnique) {
-    // Prisma client (PostgreSQL, MySQL, SQLite)
-    return await database.user.findUnique({
-      where: { id: userId },
-      include: { posts: true, profile: true },
-    });
-  } else if (database.User?.findOne) {
-    // Mongoose client (MongoDB)
-    return await database.User.findOne({ _id: userId })
-      .populate('posts')
-      .populate('profile');
-  }
-}
 ```
 
 ## 🔧 Automatic Context Detection
 
-### **Tenant Detection Sources** (when `BLOOM_DB_TENANT=auto`)
+### **Tenant Source** (when `BLOOM_DB_TENANT=auto`)
 
 ```typescript
-// AppKit automatically detects tenant from:
+// The only sources AppKit reads:
 const tenantId =
-  req.headers['x-tenant-id'] || // API header (recommended)
-  req.user?.tenant_id || // Authenticated user metadata
-  req.params?.tenantId || // URL parameter
-  req.query?.tenant || // Query parameter
-  req.subdomain || // Subdomain (team.app.com)
-  null; // Single tenant mode
+  req.user?.tenantId || // login-token claim (auth 4.2.0+)
+  req.user?.tenant_id || // pre-4.2 claim shape
+  null; // no tenant → tenant() and get() throw
 ```
 
-### **Organization Detection Sources**
-
-```typescript
-// AppKit automatically detects organization from:
-const orgId =
-  req.headers['x-org-id'] || // API header (recommended)
-  req.user?.org_id || // Authenticated user metadata
-  req.params?.orgId || // URL parameter
-  req.query?.org || // Query parameter
-  req.subdomain || // Subdomain (acme.app.com)
-  null; // Single org mode
-```
-
-### **Manual Override** (when needed)
-
-```typescript
-// Override auto-detection by passing a request-like object with the
-// expected headers. databaseClass.get(req) reads x-tenant-id / x-org-id.
-const specificTenantDatabase = await databaseClass.get({
-  headers: { 'x-tenant-id': 'specific-tenant' },
-});
-const specificOrgDatabase = await databaseClass.org('specific-org').get();
-```
+`x-tenant-id` headers, `:tenantId` route params, `?tenant=` and subdomains are
+not read (removed in 6.0). Any client can set those, so trusting them let a
+caller choose someone else's tenant. Put `tenantId` in the login token and mount
+`auth.requireLoginToken()` before tenant routes.
 
 ## 🚀 Framework Integration
 
@@ -637,8 +455,7 @@ process.on('SIGTERM', async () => {
 
 ### **Connection Pooling**
 
-- **Automatic caching** - Connections reused per org/tenant combination
-- **Hot reload** - New .env configurations picked up instantly
+- **Automatic caching** - Connections reused per tenant
 - **Memory efficient** - Connections shared across requests
 
 ### **Database Performance**
@@ -651,8 +468,6 @@ process.on('SIGTERM', async () => {
 
 - **Single tenant**: 1 connection per app
 - **Multi-tenant**: 1 connection (shared filtering)
-- **Multi-org**: 1 connection per organization
-- **Multi-org + tenant**: 1 connection per org (shared tenant filtering)
 
 ## 🔍 Migration Guide
 
@@ -679,8 +494,7 @@ const users = await prisma.user.findMany({
 });
 
 // After: Automatic tenant filtering
-const database = await databaseClass.get();
-const users = await database.user.findMany(); // tenant_id added automatically
+const users = await databaseClass.tenant(req, (db) => db.user.findMany()); // tenant_id added automatically
 ```
 
 ### **Schema Migration**
@@ -710,17 +524,11 @@ CREATE INDEX idx_comments_tenant ON comments(tenant_id);
 // Normal user access (single or tenant mode)
 const database = await databaseClass.get();
 
+// Tenant-scoped access (multi-tenant apps)
+const users = await databaseClass.tenant(req, (db) => db.user.findMany());
+
 // Admin access to all tenants
 const dbTenants = await databaseClass.getTenants();
-
-// Organization-specific access (use org name in variable)
-const acmedatabase = await databaseClass.org('acme').get();
-const techdatabase = await databaseClass.org('tech').get();
-const startupdatabase = await databaseClass.org('startup').get();
-
-// Organization admin access (use org name + DbTenants)
-const acmeDbTenants = await databaseClass.org('acme').getTenants();
-const techDbTenants = await databaseClass.org('tech').getTenants();
 ```
 
 ### **Common Patterns**
@@ -734,16 +542,11 @@ const users = await database.user.findMany();
 const dbTenants = await databaseClass.getTenants();
 const allUsers = await dbTenants.user.findMany();
 
-// ✅ Organization management
-const acmedatabase = await databaseClass.org('acme').get();
-const acmeUsers = await acmedatabase.user.findMany();
-
 // ✅ Cross-tenant analytics (admin)
-const acmeDbTenants = await databaseClass.org('acme').getTenants();
-const analytics = await acmeDbTenants.user.groupBy({
+const analytics = await databaseClass.bypass('tenant usage report', (db) => db.user.groupBy({
   by: ['tenant_id'],
   _count: true,
-});
+}));
 ```
 
 ### **Schema Requirements**
@@ -758,12 +561,6 @@ model AnyTable {
   @@index([tenant_id])  // MANDATORY: performance index
 }
 
-// ✅ ALWAYS include in ALL schemas (MongoDB):
-const anySchema = new Schema({
-  // ... your fields ...
-  tenant_id: { type: String, index: true } // MANDATORY: indexed
-});
-anySchema.index({ tenant_id: 1 }); // MANDATORY: performance index
 ```
 
 ## 🚨 Common Mistakes to Avoid
@@ -789,23 +586,6 @@ CREATE TABLE users (
 );
 ```
 
-```javascript
-// ❌ DON'T: Missing tenant_id field (MongoDB)
-const userSchema = new Schema({
-  email: String,
-  name: String,
-  // Missing tenant_id - will need painful migration later
-});
-
-// ✅ DO: Always include tenant_id (MongoDB)
-const userSchema = new Schema({
-  email: String,
-  name: String,
-  tenant_id: { type: String, index: true }, // Future-proof from day 1
-});
-userSchema.index({ tenant_id: 1 });
-```
-
 ### **❌ API Usage Mistakes**
 
 ```typescript
@@ -813,12 +593,12 @@ userSchema.index({ tenant_id: 1 });
 const users = await prisma.user.findMany({
   where: { tenant_id: 'hardcoded-tenant' },
 });
-const users = await User.find({ tenant_id: 'hardcoded-tenant' });
 
-// ✅ DO: Use databaseClass.get() for automatic filtering
-const database = await databaseClass.get();
-const users = await database.user.findMany(); // Prisma - Auto-filtered
-const users = await database.User.find(); // Mongoose - Auto-filtered
+// ✅ DO: Use databaseClass.tenant() for automatic filtering
+const users = await databaseClass.tenant(req, (db) => db.user.findMany()); // Auto-filtered
+
+// ❌ DON'T: Take the tenant from a header or URL
+const users = await databaseClass.tenant({ user: { tenantId: req.headers['x-tenant-id'] } }, fn); // caller picks the tenant
 
 // ❌ DON'T: Mix access patterns
 const database = await databaseClass.get();
@@ -828,8 +608,7 @@ const users = await database.user.findMany(); // Which database am I using?
 // ✅ DO: Clear variable naming
 const database = await databaseClass.get(); // User data
 const dbTenants = await databaseClass.getTenants(); // Admin data
-const users = await database.user.findMany(); // Clear intent (Prisma)
-const users = await database.User.find(); // Clear intent (Mongoose)
+const users = await database.user.findMany(); // Clear intent
 ```
 
 ## 🔧 Troubleshooting
@@ -888,6 +667,8 @@ MIT © [Bloomneo](https://github.com/bloomneo)
 ---
 
 ## Agent-Dev Friendliness Score
+
+> Snapshot from before 6.0. `org()`, per-org databases and the Mongoose adapter it mentions have since been removed.
 
 **Score: 75/100 — 🟡 Solid** *(capped at 75: module README has zero pointers to `AGENTS.md`, `examples/`, or `llms.txt`; weighted raw = 75.5)*
 *Scored 2026-04-14 by Claude · Rubric [`AGENT_DEV_SCORING_ALGORITHM.md`](../../docs/AGENT_DEV_SCORING_ALGORITHM.md) v1.1*

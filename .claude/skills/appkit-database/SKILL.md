@@ -1,7 +1,7 @@
 ---
 name: appkit-database
 description: >-
-  Use when writing code that queries Postgres, MySQL, SQLite, or MongoDB via
+  Use when writing code that queries Postgres, MySQL or SQLite (via Prisma) through
   `@bloomneo/appkit/database`. Covers `database.tenant(req, fn)` for
   multi-tenant apps, `databaseClass.get()` for single-tenant ones, and
   provider auto-detection from `DATABASE_URL`.
@@ -35,8 +35,8 @@ row and looked like it worked; a production audit found 4 of 44 route files in
 exactly that state.
 
 ```ts
-// ✅ Scoped. Tenant comes from req.user.tenantId (the login-token claim),
-//    x-tenant-id, a :tenantId param, or the subdomain.
+// ✅ Scoped. Tenant comes from req.user.tenantId (the login-token claim) only.
+//    Headers, route params and subdomains are not read (6.0).
 const clients = await database.tenant(req, (db) => db.client.findMany());
 
 // ✅ Cross-tenant on purpose. The reason is mandatory and logged.
@@ -61,10 +61,10 @@ auth.generateLoginToken({ userId, role, level, tenantId: user.firmId });
 |---|---|---|
 | `postgresql://…` / `postgres://…` | postgresql | Prisma |
 | `mysql://…` | mysql | Prisma |
-| `mongodb://…` / `mongodb+srv://…` | mongodb | Mongoose |
 | `file:./…` (Prisma's SQLite form) / `sqlite://…` | sqlite | Prisma |
 
-Don't import Prisma or Mongoose directly — let the module pick.
+Prisma is the only adapter (Mongoose was removed in 6.0). Don't import Prisma
+directly — let the module build the client.
 
 ## Public API
 
@@ -74,8 +74,7 @@ Verified against `src/database/index.ts`.
 await databaseClass.get(req?)                  // client (throws unscoped in tenant mode)
 await databaseClass.tenant(req, fn)            // scoped callback
 await databaseClass.bypass(reason, fn)         // unscoped callback, logged
-await databaseClass.getTenants(req?)           // unfiltered client (admin)
-databaseClass.org(orgId)                       // per-org database handle
+await databaseClass.getTenants()               // unfiltered client (admin)
 await databaseClass.health()
 await databaseClass.list() / .exists(id) / .create(id) / .delete(id)
 await databaseClass.disconnectAll()            // teardown
@@ -83,7 +82,8 @@ await databaseClass.disconnectAll()            // teardown
 
 There is no `getProvider()`, no `getActiveTenantIds()`, and no
 `databaseClass.reset()` — earlier versions of this file listed all three and
-none has ever existed.
+none has ever existed. `databaseClass.org()` and `ORG_<NAME>` per-org databases
+were removed in 6.0.
 
 ## Env vars
 
@@ -107,3 +107,5 @@ none has ever existed.
 - Reaching for `bypass()` because `tenant()` threw — that throw usually means
   the login token is missing its `tenantId` claim. Fix the token.
 - Importing Prisma directly — bypasses every scoping guarantee above.
+- Sending an `x-tenant-id` header and expecting it to pick the tenant — it is
+  ignored. The tenant is whatever the login token says.

@@ -3,14 +3,15 @@
  *
  * Runnable tour of the @bloomneo/appkit/database module.
  *
- * Auto-detects the adapter from DATABASE_URL:
- *   • postgresql:// | postgres://  → Prisma
- *   • mongodb://                    → Mongoose
+ * Prisma is the only adapter. DATABASE_URL picks the provider:
+ *   • postgresql:// | postgres://  → PostgreSQL
+ *   • mysql://                      → MySQL
+ *   • file:./dev.db                 → SQLite
  *
  * Multi-tenancy (optional):
- *   Set BLOOM_DB_TENANT=auto and the tenant is resolved from the request:
- *     x-tenant-id header → req.user.tenantId → req.params.tenantId →
- *     req.query.tenant → subdomain.
+ *   Set BLOOM_DB_TENANT=auto. The tenant comes only from the verified login
+ *   token: req.user.tenantId (or the pre-4.2 tenant_id). Headers, route params,
+ *   query strings and subdomains are not read.
  *
  *   In that mode databaseClass.get() THROWS rather than returning an unscoped
  *   client (5.0). Use instead:
@@ -18,10 +19,6 @@
  *     await databaseClass.bypass('platform report', (db) => db.firm.findMany())
  *
  *   Single-tenant apps leave BLOOM_DB_TENANT unset and keep using get().
- *
- * Multi-org (optional):
- *   Per-org databases via ORG_<NAME> env vars, or a {org} placeholder in
- *   DATABASE_URL. Use databaseClass.org('<id>').get() to select one.
  *
  * Prereqs:  DATABASE_URL set, schema already migrated by YOUR ORM.
  * Run:      tsx examples/database.ts
@@ -34,26 +31,23 @@ async function main() {
   const db = await databaseClass.get();
   console.log('client connected (url masked in logs)', Boolean(db));
 
-  // 2. Multi-tenant: pass a request to activate row-level filtering.
+  // 2. Multi-tenant: the request carries the tenant in req.user, which
+  //    auth.requireLoginToken() sets from the login token.
   //    Only active when BLOOM_DB_TENANT is set.
-  const req = { headers: { 'x-tenant-id': 'team-1', 'x-org-id': 'acme' } } as any;
-  const tenantScoped = await databaseClass.get(req);
-  console.log('tenant-scoped client:', (tenantScoped as any)._tenantId);
+  if (process.env.BLOOM_DB_TENANT && process.env.BLOOM_DB_TENANT !== 'false') {
+    const req = { user: { userId: 'u1', tenantId: 'team-1' } } as any;
+    const tenantId = await databaseClass.tenant(req, (scoped) => (scoped as any)._tenantId);
+    console.log('tenant-scoped client:', tenantId);
+  }
 
   // 3. Admin view — every tenant's data, no filtering.
-  const adminDb = await databaseClass.getTenants(req);
+  const adminDb = await databaseClass.getTenants();
   console.log('admin client tenantId (should be undefined):', (adminDb as any)._tenantId);
 
-  // 4. Org-specific connection.
-  const acme = databaseClass.org('acme');
-  const acmeDb = await acme.get(req);              // tenant-filtered within acme
-  const acmeAdmin = await acme.getTenants(req);    // unfiltered within acme
-  console.log('acme client org:', (acmeDb as any)._orgId, (acmeAdmin as any)._orgId);
-
-  // 5. Health check — pings the underlying driver.
+  // 4. Health check — pings the database.
   console.log('health:', await databaseClass.health());
 
-  // 6. Tenant admin operations (row-level strategy).
+  // 5. Tenant admin operations (row-level strategy).
   //    list() — distinct tenant_id values seen across models.
   //    exists(id) — does any row carry this tenant_id?
   //    create(id) — validates format (row-level creation is implicit).
@@ -64,12 +58,11 @@ async function main() {
   await databaseClass.create('team-new');
   // await databaseClass.delete('team-old', { confirm: true }); // destructive — opt-in
 
-  // 7. Run real queries with the returned client (Prisma shown here).
-  //    The client is the native ORM client — consult Prisma/Mongoose docs.
+  // 6. Run real queries with the returned client — it is the Prisma client.
   // const users = await (db as any).user.findMany({ take: 5 });
   // console.log(users);
 
-  // 8. Graceful shutdown — closes every cached connection.
+  // 7. Graceful shutdown — closes every cached connection.
   await databaseClass.disconnectAll();
 }
 

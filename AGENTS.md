@@ -47,7 +47,7 @@ multiple modules in the same file) but it tree-shakes slightly better.
 | Module | Import | Purpose |
 |---|---|---|
 | `authClass` | `from '@bloomneo/appkit/auth'` | JWT tokens, role.level permissions, middleware |
-| `databaseClass` | `from '@bloomneo/appkit/database'` | Prisma/Mongoose with multi-tenant filtering |
+| `databaseClass` | `from '@bloomneo/appkit/database'` | Prisma with multi-tenant filtering |
 | `securityClass` | `from '@bloomneo/appkit/security'` | CSRF, rate limiting, encryption, sanitization |
 | `errorClass` | `from '@bloomneo/appkit/error'` | HTTP errors with semantic types |
 | `cacheClass` | `from '@bloomneo/appkit/cache'` | Memory → Redis auto-scaling |
@@ -73,7 +73,7 @@ Every file path below ships inside the npm tarball at `node_modules/@bloomneo/ap
 | Protect a route by role or permission | [`cookbook/auth-protected-crud.ts`](./cookbook/auth-protected-crud.ts) |
 | Issue and verify API keys (service-to-service) | [`cookbook/api-key-service.ts`](./cookbook/api-key-service.ts) |
 | Query a tenant-aware database | [`examples/database.ts`](./examples/database.ts) |
-| Build a multi-tenant SaaS (auth + db + org scoping) | [`cookbook/multi-tenant-saas.ts`](./cookbook/multi-tenant-saas.ts) |
+| Build a multi-tenant SaaS (auth + db + tenant scoping) | [`cookbook/multi-tenant-saas.ts`](./cookbook/multi-tenant-saas.ts) |
 | Upload + process files in the background | [`cookbook/file-upload-pipeline.ts`](./cookbook/file-upload-pipeline.ts) |
 | Send email (dev → SMTP → Resend) | [`examples/email.ts`](./examples/email.ts) |
 | Cache DB queries (memory → Redis) | [`examples/cache.ts`](./examples/cache.ts) |
@@ -134,6 +134,8 @@ BLOOM_DB_TENANT=auto                   # → multi-tenant mode
   It throws in tenant mode because it cannot prove a tenant was applied. Use
   `database.tenant(req, db => ...)`, or `database.bypass('reason', db => ...)`
   when crossing tenants deliberately. Single-tenant apps keep using `get()`.
+  The tenant comes only from `req.user.tenantId` (the login token); headers,
+  route params and subdomains are ignored.
 - **Never hand-roll rate limiting.** Use `security.requests(maxRequests, windowMs)`.
 - **Never write a custom file-upload-to-S3 wrapper.** `storage.put()` /
   `storage.get()` / `storage.url()` handle local + S3 (and S3-compatible endpoints) with the same API.

@@ -78,7 +78,7 @@ appkit/
 │   │   ├── index.ts            # Module exports
 │   │   └── README.md           # Module documentation
 │   ├── database/                # Database module with adapters
-│   │   └── adapters/           # Database adapters (Prisma, Mongoose)
+│   │   └── adapters/           # Database adapter (Prisma)
 │   ├── email/                   # Email module
 │   │   └── strategies/         # Email strategies
 │   ├── error/                   # Error handling module

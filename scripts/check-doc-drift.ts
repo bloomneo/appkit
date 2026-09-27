@@ -55,6 +55,8 @@ const BANNED: Banned[] = [
   { pattern: /\bBLOOM_LOGGER_(HTTP|WEBHOOK|DB)_\w+|\bBLOOM_LOGGER_DATABASE\b/, now: 'removed in 6.0 — logger has console + file only; collect stdout or the log file (MIGRATION-6.md)' },
   { pattern: /\bBLOOM_QUEUE_REDIS_\w+|BLOOM_QUEUE_TRANSPORT\s*=\s*['"]?redis\b/, now: 'removed in 6.0 — queue transports are memory and database (MIGRATION-6.md)' },
   { pattern: /\bCLOUDFLARE_R2_\w+|\bR2_BUCKET\b|BLOOM_STORAGE_STRATEGY\s*=\s*['"]?r2\b/, now: 'removed in 6.0 — use the S3 strategy with S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com (MIGRATION-6.md)' },
+  { pattern: /\bdatabaseClass\.org\s*\(|\bORG_[A-Z][A-Z0-9_]*\s*=/, now: 'removed in 6.0 — one DATABASE_URL per app (MIGRATION-6.md)' },
+  { pattern: /\bMongooseAdapter\b/, now: 'removed in 6.0 — Prisma is the only adapter (MIGRATION-6.md)' },
 
   // database — 4.0.0 rename for cross-module teardown consistency
   { pattern: /\bdatabaseClass\.disconnect\s*\(/, now: 'databaseClass.disconnectAll()' },
