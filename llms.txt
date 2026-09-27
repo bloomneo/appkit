@@ -271,6 +271,17 @@ database.onBypass(({ reason }) => audit.log('tenant.bypass', { reason }));
 - `BLOOM_PRISMA_CLIENT` points appkit at a Prisma client generated to a
   custom `output` path.
 
+### Tenant context reaches jobs and cache
+
+- **Queue:** a job added inside a tenant context runs its handler in that same
+  tenant (a job added during `bypass()` runs as that bypass). The marker is
+  stripped before the handler sees `data`.
+- **Cache:** inside a tenant context keys are stored per tenant
+  (`<prefix>:<namespace>:t:<tenant>:<key>`), so a value cached for one tenant
+  never answers another. Bypass and non-request code share the global space.
+- **Storage:** keys are NOT prefixed automatically (existing files would move).
+  Put the tenant in the key yourself: `storage.put(\`${tenantId}/invoices/${id}.pdf\`, …)`.
+
 ### Methods
 
 ```ts

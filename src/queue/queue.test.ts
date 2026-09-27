@@ -271,3 +271,30 @@ describe('repeat() — recurring jobs (5.1)', () => {
     expect(q.getRepeating()).not.toContain('short-lived');
   });
 });
+
+describe('jobs keep the tenant they were queued in', () => {
+  async function waitFor(check: () => boolean) {
+    const deadline = Date.now() + 2500;
+    while (!check() && Date.now() < deadline) await new Promise((r) => setTimeout(r, 25));
+  }
+
+  it('runs the handler in the queuing tenant, and hides the marker from it', async () => {
+    const { tenantStore, currentTenant } = await import('../database/tenancy.js');
+    const queue = queueClass.get();
+    const seen: Array<{ tenant: unknown; data: unknown }> = [];
+    queue.process('tenant-job', async (data: any) => {
+      seen.push({ tenant: currentTenant(), data });
+    });
+
+    await tenantStore.run({ tenantId: 'firm-a' }, () => queue.add('tenant-job', { n: 1 }));
+    await queue.add('tenant-job', { n: 2 });
+    await tenantStore.run({ bypassReason: 'nightly export' }, () => queue.add('tenant-job', { n: 3 }));
+
+    await waitFor(() => seen.length === 3);
+    const byN = Object.fromEntries(seen.map((s) => [(s.data as any).n, s]));
+    expect(byN[1].tenant).toEqual({ tenantId: 'firm-a' });
+    expect(byN[1].data).toEqual({ n: 1 });
+    expect(byN[2].tenant).toBeUndefined();
+    expect(byN[3].tenant).toEqual({ bypassReason: 'nightly export' });
+  });
+});

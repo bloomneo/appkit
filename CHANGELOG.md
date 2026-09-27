@@ -8,6 +8,11 @@ Work in progress on the `next` branch; see `MIGRATION-6.md`.
 
 ### Added
 
+- **Jobs keep their tenant:** a job queued inside a tenant context runs its
+  handler in that tenant (or bypass); the marker is stripped from `data`.
+- **Per-tenant cache keys** inside a tenant context. Storage keys are left to
+  the app (prefixing would move existing files).
+
 - **`@bloomneo/appkit/server`**: `route(contract, handler)` enforces a route
   contract's auth decision, tenant context and input validation (400 with the
   failing fields) and sends the handler's return value; `contractRouter()`;

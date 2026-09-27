@@ -8,6 +8,7 @@
  * @llm-rule NOTE: Auto-detects Redis vs Memory from environment, namespace passed to get() function
  */
 
+import { tenantStore } from '../database/tenancy.js';
 import { RedisStrategy } from './strategies/redis.js';
 import { MemoryStrategy } from './strategies/memory.js';
 import { CacheError } from './errors.js';
@@ -293,7 +294,13 @@ export class CacheClass {
    * Builds full cache key with prefix and namespace
    */
   private buildKey(key: string): string {
-    return `${this.config.keyPrefix}:${this.namespace}:${key}`;
+    // Inside a tenant context (database.tenant(), database.context(), a
+    // contract route, a job queued there) keys are per tenant: a key like
+    // 'dashboard-stats' cached for one tenant must never answer another.
+    // Bypass contexts and code outside any request share the global space.
+    const ctx = tenantStore.getStore();
+    const tenant = ctx?.tenantId && !ctx.bypassReason ? `t:${ctx.tenantId}:` : '';
+    return `${this.config.keyPrefix}:${this.namespace}:${tenant}${key}`;
   }
 
   /**

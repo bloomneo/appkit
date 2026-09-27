@@ -14,6 +14,7 @@ import { DatabaseTransport } from './transports/database.js';
 import type { QueueConfig } from './defaults.js';
 import type { JobData, JobOptions, JobHandler, ProcessOptions, Queue, QueueStats, JobInfo, JobStatus } from './index.js';
 import { QueueError } from './errors.js';
+import { tenantStore } from '../database/tenancy.js';
 
 const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.md';
 
@@ -23,6 +24,22 @@ const DOCS_URL = 'https://github.com/bloomneo/appkit/blob/main/src/queue/README.
  * series survives a restart.
  */
 const REPEAT_KEY = '__appkitRepeat';
+
+/*
+ * Jobs keep the tenant they were queued in. A job added inside a tenant
+ * context (database.tenant(), database.context(), a contract route) runs its
+ * handler in that same context, so its database calls stay scoped; a job
+ * added during a bypass runs as that bypass. Without this, background work
+ * started from a request ran with no tenant — refused under tenant mode, or
+ * cross-tenant where an app had worked around that.
+ */
+const TENANT_KEY = '__appkitTenant';
+
+function stampTenant<T>(data: T): T {
+  const ctx = tenantStore.getStore();
+  if (!ctx || data === null || typeof data !== 'object' || Array.isArray(data)) return data;
+  return { ...(data as object), [TENANT_KEY]: { tenantId: ctx.tenantId, bypassReason: ctx.bypassReason } } as T;
+}
 
 export interface Transport {
   add(id: string, jobType: string, data: JobData, options: JobOptions): Promise<void>;
@@ -106,11 +123,12 @@ export class QueueClass implements Queue {
       removeOnFail: options.removeOnFail ?? this.config.removeOnFail,
     };
 
+    const stamped = stampTenant(data);
     try {
       if (jobOptions.delay && jobOptions.delay > 0) {
-        await this.transport.schedule(jobId, jobType, data as JobData, jobOptions.delay);
+        await this.transport.schedule(jobId, jobType, stamped as JobData, jobOptions.delay);
       } else {
-        await this.transport.add(jobId, jobType, data as JobData, jobOptions);
+        await this.transport.add(jobId, jobType, stamped as JobData, jobOptions);
       }
       
       return jobId;
@@ -224,7 +242,7 @@ export class QueueClass implements Queue {
     const jobId = randomUUID();
     
     try {
-      await this.transport.schedule(jobId, jobType, data as JobData, delay);
+      await this.transport.schedule(jobId, jobType, stampTenant(data) as JobData, delay);
       return jobId;
     } catch (error) {
       throw new QueueError(`[@bloomneo/appkit/queue] Failed to schedule job: ${(error as Error).message}. See: ${DOCS_URL}#common-issues`, { code: 'QUEUE_SCHEDULE_FAILED', cause: error });
@@ -412,7 +430,7 @@ export class QueueClass implements Queue {
     timeoutMs: number = 30_000,
     jobType: string = 'unknown',
   ): JobHandler<T> {
-    return async (data: T): Promise<any> => {
+    const run = async (data: T): Promise<any> => {
       // Enqueue the NEXT occurrence before doing any work. Re-scheduling after
       // the handler means a crash mid-handler silently ends the series, and a
       // recurring job that quietly stops is worse than one that never started.
@@ -457,6 +475,18 @@ export class QueueClass implements Queue {
       } finally {
         if (timer !== undefined) clearTimeout(timer);
       }
+    };
+
+    // Restore the tenant the job was queued in (see TENANT_KEY), and hand the
+    // handler its data without the marker.
+    return async (data: T): Promise<any> => {
+      const saved = (data as Record<string, any> | null)?.[TENANT_KEY] as
+        | { tenantId?: string; bypassReason?: string }
+        | undefined;
+      if (!saved) return run(data);
+      const { [TENANT_KEY]: _marker, ...rest } = data as Record<string, any>;
+      const ctx = saved.bypassReason ? { bypassReason: saved.bypassReason } : { tenantId: saved.tenantId };
+      return tenantStore.run(ctx, () => run(rest as T));
     };
   }
 

@@ -382,3 +382,17 @@ describe('Public API surface — drift check', () => {
     });
   }
 });
+
+describe('cache keys are per tenant inside a tenant context', () => {
+  it('a value cached for one tenant never answers another', async () => {
+    const { tenantStore } = await import('../database/tenancy.js');
+    const { cacheClass: cc } = await import('./index.js');
+    const cache = cc.get('tenant-scope-test');
+    await tenantStore.run({ tenantId: 'a' }, () => cache.set('stats', { n: 1 }));
+
+    expect(await tenantStore.run({ tenantId: 'a' }, () => cache.get('stats'))).toEqual({ n: 1 });
+    expect(await tenantStore.run({ tenantId: 'b' }, () => cache.get('stats'))).toBeNull();
+    expect(await cache.get('stats')).toBeNull();
+    expect(await tenantStore.run({ bypassReason: 'report' }, () => cache.get('stats'))).toBeNull();
+  });
+});
